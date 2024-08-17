@@ -1,4 +1,3 @@
-// @ts-check
 import { reactive } from '../../index.js'
 import { ToDoList } from './model.js'
 import { ToDoListState } from './state.js'

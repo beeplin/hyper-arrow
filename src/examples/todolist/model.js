@@ -1,5 +1,3 @@
-// @ts-check
-
 export class ToDoItem {
   constructor(id, text, done) {
     /** @type {number} */
