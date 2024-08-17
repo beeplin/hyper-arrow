@@ -1,0 +1,33 @@
+{
+  "name": "hyper-arrow",
+  "version": "0.0.1",
+  "description": "super tiny front-end UI framework",
+  "main": "dist/index.js",
+  "module": "src/index.js",
+  "scripts": {
+    "build": "rimraf dist && tsc && uglifyjs src/index.js --compress --mangle --source-map --module --output dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beeplin/h-arrow.git"
+  },
+  "keywords": [
+    "front-end",
+    "hyperscript",
+    "reactivity",
+    "vue",
+    "signal"
+  ],
+  "author": "Beep LIN",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/beeplin/h-arrow/issues"
+  },
+  "homepage": "https://github.com/beeplin/h-arrow#readme",
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.5.4",
+    "uglify-js": "^3.19.2"
+  }
+}

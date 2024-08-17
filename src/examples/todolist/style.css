@@ -1,0 +1,45 @@
+html {
+  color: #abb2bf;
+  background-color: #282c34;
+}
+body {
+  display: flex;
+  justify-content: center;
+}
+button {
+  min-width: 70px;
+}
+#root {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+#title-container,
+#input-container,
+#filter-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#title {
+  flex-grow: 1;
+}
+#input {
+  flex-grow: 1;
+}
+#filter-container > button {
+  flex-grow: 1;
+}
+.item-container {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin: 4px;
+}
+.item-input,
+.item-label {
+  width: auto;
+  flex-grow: 1;
+}
