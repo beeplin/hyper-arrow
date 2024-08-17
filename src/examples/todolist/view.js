@@ -105,6 +105,7 @@ export function render(/** @type {ToDoListState} */ s) {
               : h('label.item-label', {
                   children: item.text,
                   style: { minWidth: '150px' },
+                  class: () => (item.done ? 'done' : ''),
                   id: () => 'label-' + item.id,
                   for: () => 'checkbox-' + item.id,
                 }),

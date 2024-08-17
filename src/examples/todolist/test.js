@@ -1,5 +1,4 @@
 // @ts-check
-
 import { watch } from '../../index.js'
 import { ToDoListState } from './state.js'
 
@@ -22,8 +21,10 @@ export async function test(/** @type {ToDoListState}  */ s) {
     await raf()
     const id = s.model.create(String(i))
     const item = s.model.getItemById(id)
+    await raf()
     if (!item) return
     if (i % 2) s.model.toggle(item.id)
+    await raf()
     if (i % 3) {
       s.editingId = item.id
       await raf()

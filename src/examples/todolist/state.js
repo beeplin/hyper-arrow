@@ -1,5 +1,4 @@
 // @ts-check
-
 import { ToDoList } from './model.js'
 
 export class ToDoListState {

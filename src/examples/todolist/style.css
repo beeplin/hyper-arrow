@@ -43,3 +43,6 @@ button {
   width: auto;
   flex-grow: 1;
 }
+.done {
+  color: #5c6370;
+}
