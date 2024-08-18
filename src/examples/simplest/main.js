@@ -19,29 +19,29 @@ console.log(isReactive(model)) // true
 
 // create DOM tree with nested h() functions
 const view = h(
-  // create an DOM element, with tag as the first parameter
+  // create an DOM element, tag name as the first parameter
   'div',
-  // add element properties through the second parameter
+  // add element properties via the second parameter
   {
     id: 'container-id',
     class: 'container-class',
     style: 'padding: 4px;',
   },
-  // add DOM children through the third parameter
+  // add DOM children via the third parameter
   [
     // children can be a single node or string
     h('div', { style: 'margin: 4px' }, 'hyper-arrow demo'),
     // can also add id and classes here after the tag name
     h('input#input-id.input-class1.input-class2', {
-      // arrow function makes it dynamic and reactive
+      // arrow function makes the property dynamic/reactive
       value: () => model.input,
-      // dynamic classes are combined with static classes
+      // can combine dynamic classes with static classes
       // ('input-class1' and 'input-class2' above)
       class: () => (model.input ? 'class3' : 'class4'),
-      // can also add style as an object instead of a string
+      // style can be an object instead of a string
       style: {
         margin: '4px',
-        // again, arrow function for reactivity
+        // again, arrow function for reactive style
         color: () => (model.input.length > 5 ? 'red' : 'black'),
       },
       // event listeners can modify reactive objects
@@ -54,7 +54,7 @@ const view = h(
       },
     }),
     h('button', {
-      // can also add children here if you like
+      // can also add children here as a property if you like
       children: [h('span', 'all')],
       style: 'margin: 4px',
       onClick() {
@@ -62,7 +62,7 @@ const view = h(
       },
     }),
     h('button', {
-      // children can be non-array if only has one child
+      // children can be non-array if it only has one element
       children: h('span', 'clear'),
       style: { margin: '4px' },
       onClick() {
@@ -77,7 +77,7 @@ const view = h(
         model.clear()
       },
     }),
-    // arrow function as children, also reactive,
+    // children can be arrow function, also reactive,
     h('ul', () => model.list.map((item) => h('li', item))),
   ],
 )
