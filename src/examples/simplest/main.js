@@ -1,18 +1,3 @@
-# hyper-arrow (h=>)
-
-super tiny front-end UI library, for learning purposes
-
-- **ZERO** dependencies
-- less than **100** lines of plain JavaScript (prettiered, without comments)
-- less than **2KB** in size minified
-- no building steps, easy use via `<script module="type">` tag in plain HTML
-- proxy-based reactivity, like [`reactive()` in Vue 3](https://vuejs.org/api/reactivity-core.html#reactive) or [`makeAutoObservable()` in MobX](https://mobx.js.org/observable-state.html#makeautoobservable)
-- `h` function like [`h()` in hyperscript](https://github.com/hyperhype/hyperscript) or [h`()` in Vue 3](https://vuejs.org/api/render-function.html#h) to build DOM tree, no templates or JSX
-- `=>` arrow function within `h` provides reactivity in DOM
-
-## Usage
-
-```js
 import { deps, h, isReactive, reactive, watch } from '../../index.js'
 
 class Model {
@@ -115,14 +100,3 @@ setTimeout(() => {
 
 // check dependencies as a Map from context to getters
 console.log(deps)
-```
-
-`reactive` and `watch` work mostly like Vue3's `reactive`, `watch` and `watchEffect`
-
-See `src/examples` for more details of `h`, `reactive` and `watch` API.
-
-## Super Tiny ^o^~~
-
-`h`, `reactive` and `watch` all together add up to no more than 100 lines of plain JavaScript (prettiered, not including documentary comments) with NO extra code from external dependencies. After minification it reduces down to ~2KB in size (see `dist/index.js`).
-
-Check `src/index.js` for how it works.

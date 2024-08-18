@@ -1,4 +1,3 @@
-// @ts-check
 import { h } from '../../index.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'

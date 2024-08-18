@@ -1,0 +1,1 @@
+{"version":3,"file":"state.d.ts","sourceRoot":"","sources":["../../../src/examples/todolist/state.js"],"names":[],"mappings":"AAEA;IAGE,kBAAuB,QAAQ,EAE9B;IAJD,uBAAuB;IACvB,OADW,QAAQ,CACd;IAIL,iBAAa;IACb,0BAKC;IACD,eAAc;IACd,2DAMC;IACD,0BAA0B;IAC1B,WADW,MAAM,GAAC,IAAI,CACN;IAChB,cAAqB,MAAM,WAE1B;IACD,kBAAc;IACd,WAAkB,MAAM,QAAoB,MAAM,QAGjD;CACF;yBAjCwB,YAAY"}

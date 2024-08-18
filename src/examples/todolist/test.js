@@ -1,4 +1,3 @@
-// @ts-check
 import { watch } from '../../index.js'
 import { ToDoListState } from './state.js'
 
