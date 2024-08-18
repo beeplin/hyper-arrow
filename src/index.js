@@ -1,22 +1,14 @@
-// @ts-check
-const CLASS = 1,
-  STYLE = 2,
-  PROPERTY = 3,
-  ATTRIBUTE = 4,
-  CHILDREN = 5,
-  CHILD = 6,
-  WATCH = 7
+const [OBJECT, FUNCTION] = ['object', 'function']
+const [CLASS, STYLE, PROP, ATTR, CHILDREN, CHILD, WATCH] = [1, 2, 3, 4, 5, 6, 7]
+const is = (x, type) => typeof x === type
 const isMatch = (pair, target, prop) => pair[0] === target && pair[1] === prop
 const toArray = (x) => (Array.isArray(x) ? x : [x])
-const isOption = (x) =>
-  typeof x === 'object' && !Array.isArray(x) && !(x instanceof Node)
+const isOption = (x) => is(x, OBJECT) && !Array.isArray(x) && !(x instanceof Node)
 const reactiveBrand = Symbol('brand')
-/* reactive objet has a symbol property as brand */
-export const isReactive = (target) => !!target[reactiveBrand]
 /**
  * context within which reactive object runs getter
- * @typedef {1|2|3|4|5|6|7} ContextPosition
- * @typedef {string|number|Function} ContextPayload
+ * @typedef {number} ContextPosition
+ * @typedef {any} ContextPayload
  * @typedef {{fn: Function,
  *            at: ContextPosition,
  *            el?: HTMLElement,
@@ -30,20 +22,11 @@ let context = null
  * dependency map: context -> list of getters (target[prop]) called within the context
  * @type {Map<Context, Array<[object, string|symbol]>>}
  * */
-const deps = new Map()
-/**
- * build context and run function within it
- * @template T
- * @param {T | (() => T)} fn
- * @param {ContextPosition} at
- * @param {HTMLElement=} el
- * @param {ContextPayload=} x
- * @returns {T}
- */
-function runInContext(fn, at, el, x) {
-  if (typeof fn !== 'function') return fn
+export const deps = new Map()
+/* build context and run fn within it, or return fn itself if not a function */
+function evaluate(fn, at, el, x) {
+  if (!is(fn, FUNCTION)) return fn
   context = { fn, at, el, x }
-  // @ts-ignore
   const result = fn()
   context = null
   return result
@@ -61,22 +44,20 @@ export function h(selector, options, children) {
   const classes = classList.join(' ')
   const el = document.createElement(tag || 'div')
   if (id) el.id = id
-  if (classes) el.setAttribute('class', classes)
+  if (classes) el.className = classes
   options = isOption(options) ? { children, ...options } : { children: options }
   for (const [key, x] of Object.entries(options))
-    if (key.startsWith('on') && typeof x === 'function')
-      if (key.toLowerCase() in el) el.addEventListener(key.toLowerCase().slice(2), x)
-      else throw new Error('invalid event name: ' + key)
+    if (key.startsWith('on') && is(x, FUNCTION))
+      el.addEventListener(key.toLowerCase().slice(2), x)
     else if (key === 'class')
-      el.className = (classes + ' ' + runInContext(x, CLASS, el, classes)).trim()
-    else if (key === 'style' && typeof x === 'object' && x !== null)
-      for (const [_key, y] of Object.entries(x))
-        el.style[_key] = runInContext(y, STYLE, el, _key)
+      el.className = (classes + ' ' + evaluate(x, CLASS, el, classes)).trim()
+    else if (key === 'style' && is(x, OBJECT) && x !== null)
+      for (const [k, y] of Object.entries(x)) el.style[k] = evaluate(y, STYLE, el, k)
     else if (key === 'children')
-      for (const [i, y] of toArray(runInContext(x ?? [], CHILDREN, el)).entries())
-        el.append(runInContext(y, CHILD, el, i))
-    else if (key in el) el[key] = runInContext(x, PROPERTY, el, key)
-    else el.setAttribute(key, runInContext(x, ATTRIBUTE, el, key))
+      for (const [i, y] of toArray(evaluate(x ?? [], CHILDREN, el)).entries())
+        el.append(evaluate(y, CHILD, el, i))
+    else if (key in el) el[key] = evaluate(x, PROP, el, key)
+    else el.setAttribute(key, evaluate(x, ATTR, el, key))
   return el
 }
 /**
@@ -87,7 +68,7 @@ export function h(selector, options, children) {
  * @returns {() => void} stop auto rerunning
  */
 export function watch(watchFn, effectFn) {
-  runInContext(watchFn, WATCH, undefined, effectFn)
+  evaluate(watchFn, WATCH, undefined, effectFn)
   return () => {
     for (const ctx of deps.keys()) if (ctx.fn === watchFn) deps.delete(ctx)
   }
@@ -105,7 +86,7 @@ export function reactive(target) {
     get(target, prop) {
       if (prop === reactiveBrand) return true
       const result = Reflect.get(target, prop)
-      if (typeof target === 'function' && prop === 'prototype') return result
+      if (is(target, FUNCTION) && prop === 'prototype') return result
       if (!context) return reactive(result)
       if (!deps.has(context)) deps.set(context, [])
       const pairs = deps.get(context)
@@ -115,27 +96,28 @@ export function reactive(target) {
     set(target, prop, newValue) {
       const oldValue = Reflect.get(target, prop)
       const result = Reflect.set(target, prop, newValue)
-      for (const [{ fn, el, at, x }, pairs] of deps.entries())
+      for (const [{ fn, at, el, x }, pairs] of deps.entries())
         for (const pair of pairs) {
           if (pair[0] === oldValue) pair[0] = newValue
           if (isMatch(pair, target, prop))
-            if (el && typeof x === 'string') {
-              if (at === CLASS) el.className = (x + ' ' + fn()).trim()
-              else if (at === STYLE) el.style[x] = fn()
-              else if (at === PROPERTY) el[x] = fn()
-              else if (at === ATTRIBUTE) el.setAttribute(x, fn())
-            } else if (at === CHILDREN && el) {
+            if (at === CLASS) el.className = (x + ' ' + fn()).trim()
+            else if (at === STYLE) el.style[x] = fn()
+            else if (at === PROP) el[x] = fn()
+            else if (at === ATTR) el.setAttribute(x, fn())
+            else if (at === CHILDREN) {
               for (const ctx of deps.keys())
                 if (ctx.el && el !== ctx.el && el.contains(ctx.el)) deps.delete(ctx)
               el.replaceChildren(...toArray(fn()))
-            } else if (at === CHILD && el && typeof x === 'number') {
+            } else if (at === CHILD) {
               const old = el.children[x]
               for (const ctx of deps.keys())
                 if (ctx.el && (old === ctx.el || old.contains(ctx.el))) deps.delete(ctx)
               el.replaceChild(fn(), old)
-            } else if (at === WATCH) typeof x === 'function' ? x(fn()) : fn()
+            } else if (at === WATCH) x ? x(fn()) : fn()
         }
       return result
     },
   })
 }
+/* reactive objet has the symbol property as brand */
+export const isReactive = (x) => !!x[reactiveBrand]
