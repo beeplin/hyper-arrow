@@ -22,10 +22,10 @@ const toArray = (x) => (Array.isArray(x) ? x : [x])
 let context = null
 /**
  * dependency map: context -> list of getters (target[prop]) called within the context
- * @type {Map<Context, Array<[object, string|symbol]>>}
+ * @type {Map<Context, Array<[target: object, prop: string|symbol]>>}
  */
 export const deps = new Map()
-/* build context and run fn within it, or return fn itself if not a function */
+/* build context and evaluate fn() within it, or return fn if it's not a function */
 function evaluate(fn, at, el, x) {
   if (!is(fn, FUNCTION)) return fn
   context = { fn, at, el, x }
@@ -41,12 +41,12 @@ function evaluate(fn, at, el, x) {
  * @returns {HTMLElement}
  */
 export function h(type, props, ...args) {
-  const [head, ...classList] = type.split('.')
+  const [head, ...classes] = type.split('.')
   const [tag, id] = head.replace(/\s/g, '').split('#')
-  const classes = classList.join(' ')
+  const className = classes.join(' ')
   const el = document.createElement(tag || 'div')
   if (id) el.id = id
-  if (classes) el.className = classes
+  if (className) el.className = className
   args = isProps(props) ? args.flat() : [props, ...args].flat()
   const children = Array.isArray(args) && args.length === 1 ? args[0] : args
   props = isProps(props) ? { children, ...props } : { children }
@@ -54,7 +54,7 @@ export function h(type, props, ...args) {
     if (key.startsWith('on') && is(x, FUNCTION))
       el.addEventListener(key.toLowerCase().slice(2), x)
     else if (key === 'class')
-      el.className = (classes + ' ' + evaluate(x, CLASS, el, classes)).trim()
+      el.className = (className + ' ' + evaluate(x, CLASS, el, className)).trim()
     else if (key === 'style' && is(x, OBJECT) && x !== null)
       for (const [k, y] of Object.entries(x)) el.style[k] = evaluate(y, STYLE, el, k)
     else if (key === 'children')
@@ -67,7 +67,6 @@ export function h(type, props, ...args) {
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
  * auto rerun watchFn(), or effectFn(watchFn()) if effectFn provided,
- *
  * @template F
  * @param {F extends (() => any) ? F : never} watchFn
  * @param {(a: ReturnType<F extends (()=> any) ? F : never>) => any=} effectFn
@@ -80,7 +79,7 @@ export function watch(watchFn, effectFn) {
   }
 }
 /**
- * make object reactive, collecting contexts for getters, and updating dom in setters
+ * make object reactive, collecting contexts for getters, and updating DOM in setters
  * @template T
  * @param {T} target
  * @returns {T}
