@@ -1,12 +1,4 @@
-const [OBJECT, FUNCTION] = ['object', 'function']
-const [WATCH, CHILDREN, CHILD, CLASS, STYLE, PROP, ATTR] = [0, 1, 2, 3, 4, 5, 6, 7]
-const BRAND = Symbol('brand')
-const is = (x, type) => typeof x === type
-const isMatch = (pair, target, prop) => pair[0] === target && pair[1] === prop
-const toArray = (x) => (Array.isArray(x) ? x : [x])
-const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !(x instanceof Node)
 /**
- * context within which reactive object runs getter
  * @typedef {number} ContextPosition
  * @typedef {any} ContextPayload
  * @typedef {{fn: Function,
@@ -15,13 +7,23 @@ const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !(x instanceof Node
  *            x?: ContextPayload}} Context
  * @typedef {Node | string | (() => Node | string)} Child
  * @typedef {Child | Child[] | (() => Child | Child[])} Children
- * /
-/* @type {Context?} */
+ */
+const [OBJECT, FUNCTION] = ['object', 'function']
+const [WATCH, CHILDREN, CHILD, CLASS, STYLE, PROP, ATTR] = [0, 1, 2, 3, 4, 5, 6, 7]
+const BRAND = Symbol('brand')
+const is = (x, type) => typeof x === type
+const isMatch = (x, target, prop) => x[0] === target && x[1] === prop
+const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !(x instanceof Node)
+const toArray = (x) => (Array.isArray(x) ? x : [x])
+/**
+ * context within which reactive object runs getter
+ * @type {Context?}
+ */
 let context = null
 /**
  * dependency map: context -> list of getters (target[prop]) called within the context
  * @type {Map<Context, Array<[object, string|symbol]>>}
- * */
+ */
 export const deps = new Map()
 /* build context and run fn within it, or return fn itself if not a function */
 function evaluate(fn, at, el, x) {
@@ -35,17 +37,19 @@ function evaluate(fn, at, el, x) {
  * create a html element, setting contexts for lazy function calls
  * @param {string} type
  * @param {object|string=} props
- * @param {Children=} children
+ * @param {Array<Child|Children>} args
  * @returns {HTMLElement}
  */
-export function h(type, props, children) {
+export function h(type, props, ...args) {
   const [head, ...classList] = type.split('.')
   const [tag, id] = head.replace(/\s/g, '').split('#')
   const classes = classList.join(' ')
   const el = document.createElement(tag || 'div')
   if (id) el.id = id
   if (classes) el.className = classes
-  props = isProps(props) ? { children, ...props } : { children: props }
+  args = isProps(props) ? args.flat() : [props, ...args].flat()
+  const children = Array.isArray(args) && args.length === 1 ? args[0] : args
+  props = isProps(props) ? { children, ...props } : { children }
   for (const [key, x] of Object.entries(props))
     if (key.startsWith('on') && is(x, FUNCTION))
       el.addEventListener(key.toLowerCase().slice(2), x)
@@ -54,7 +58,7 @@ export function h(type, props, children) {
     else if (key === 'style' && is(x, OBJECT) && x !== null)
       for (const [k, y] of Object.entries(x)) el.style[k] = evaluate(y, STYLE, el, k)
     else if (key === 'children')
-      for (const [i, y] of toArray(evaluate(x ?? [], CHILDREN, el)).entries())
+      for (const [i, y] of toArray(evaluate(x, CHILDREN, el)).entries())
         el.append(evaluate(y, CHILD, el, i))
     else if (key in el) el[key] = evaluate(x, PROP, el, key)
     else el.setAttribute(key, evaluate(x, ATTR, el, key))

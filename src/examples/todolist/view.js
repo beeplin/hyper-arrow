@@ -1,16 +1,17 @@
-import { h } from '../../index.js'
+import { deps, h } from '../../index.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
 export function render(/** @type {ToDoListState} */ s) {
-  return h('div#root', [
-    h('div#title-container', [
+  return h('div', { id: 'root' }, [
+    h(
+      'div#title-container',
       h('label#title', { for: 'input' }, 'To-Do-List'),
-      h('small', 'via hyper-arrow'),
+      () => h('small', () => s.newInput || 'via hyper-arrow'),
       h('button#log', {
-        children: 'log state',
+        children: 'log deps',
         onclick() {
-          console.log(s)
+          console.log(deps)
         },
       }),
       h('button#test', {
@@ -20,7 +21,7 @@ export function render(/** @type {ToDoListState} */ s) {
           test(s)
         },
       }),
-    ]),
+    ),
     h('div#input-container', [
       h('input#input', {
         type: 'text',
@@ -48,7 +49,9 @@ export function render(/** @type {ToDoListState} */ s) {
         },
       }),
     ]),
-    h('div#filter-container', [
+    h(
+      'div',
+      { id: 'filter-container' },
       h('button#all', {
         children: 'all',
         disabled: () => s.filter === 'all' || s.editingId,
@@ -70,7 +73,7 @@ export function render(/** @type {ToDoListState} */ s) {
           s.filter = 'completed'
         },
       }),
-    ]),
+    ),
     h('button#delete-all-completed', {
       children: 'delete all completed',
       disabled: () => s.editingId,
