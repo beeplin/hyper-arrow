@@ -7,7 +7,7 @@ super tiny front-end UI library, for learning purposes
 - less than **2KB** in size minified
 - no building steps, easy use via `<script module="type">` tag in plain HTML
 - proxy-based reactivity, like [`reactive()` in Vue 3](https://vuejs.org/api/reactivity-core.html#reactive) or [`makeAutoObservable()` in MobX](https://mobx.js.org/observable-state.html#makeautoobservable)
-- `h` function like [`h()` in hyperscript](https://github.com/hyperhype/hyperscript) or [h`()` in Vue 3](https://vuejs.org/api/render-function.html#h) to build DOM tree, no templates or JSX
+- `h` function like [`h()` in hyperscript](https://github.com/hyperhype/hyperscript) or [`h()` in Vue 3](https://vuejs.org/api/render-function.html#h) to build DOM tree, no templates or JSX
 - `=>` arrow function within `h` provides reactivity in DOM
 
 ## Usage
