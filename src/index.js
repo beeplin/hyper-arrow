@@ -1,10 +1,10 @@
 /**
- * @typedef {number} ContextPosition
- * @typedef {any} ContextPayload
+ * @typedef {number} ArrowPosition
+ * @typedef {any} ArrowPayload
  * @typedef {{fn: Function,
- *            at: ContextPosition,
+ *            at: ArrowPosition,
  *            el?: HTMLElement,
- *            x?: ContextPayload}} Context
+ *            x?: ArrowPayload}} Arrow
  * @typedef {Node | string | (() => Node | string)} Child
  * @typedef {Child | Child[] | (() => Child | Child[])} Children
  */
@@ -16,25 +16,25 @@ const isMatch = (x, target, prop) => x[0] === target && x[1] === prop
 const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !(x instanceof Node)
 const toArray = (x) => (Array.isArray(x) ? x : [x])
 /**
- * context within which reactive object runs getter
- * @type {Context?}
+ * arrow within which reactive object runs getter
+ * @type {Arrow?}
  */
-let context = null
+let arrow = null
 /**
- * dependency map: context -> list of getters (target[prop]) called within the context
- * @type {Map<Context, Array<[target: object, prop: string|symbol]>>}
+ * dependency map: arrow -> list of getters (target[prop]) called within the arrow
+ * @type {Map<Arrow, Array<[target: object, prop: string|symbol]>>}
  */
 export const deps = new Map()
-/* build context and evaluate fn() within it, or return fn if it's not a function */
+/* build arrow and evaluate fn() within it, or return fn if it's not a function */
 function evaluate(fn, at, el, x) {
   if (!is(fn, FUNCTION)) return fn
-  context = { fn, at, el, x }
+  arrow = { fn, at, el, x }
   const result = fn()
-  context = null
+  arrow = null
   return result
 }
 /**
- * create a html element, setting contexts for lazy function calls
+ * create a html element, setting arrows for lazy function calls
  * @param {string} type
  * @param {object|string=} props
  * @param {Array<Child|Children>} args
@@ -81,7 +81,7 @@ export function watch(watchFn, effectFn) {
   }
 }
 /**
- * make object reactive, collecting contexts for getters, and updating DOM in setters
+ * make object reactive, collecting arrows for getters, and updating DOM in setters
  * @template T
  * @param {T} target
  * @returns {T}
@@ -94,9 +94,9 @@ export function reactive(target) {
       if (prop === BRAND) return true
       const result = Reflect.get(target, prop)
       if (is(target, FUNCTION) && prop === 'prototype') return result
-      if (!context) return reactive(result)
-      if (!deps.has(context)) deps.set(context, [])
-      const pairs = deps.get(context)
+      if (!arrow) return reactive(result)
+      if (!deps.has(arrow)) deps.set(arrow, [])
+      const pairs = deps.get(arrow)
       if (pairs?.every((p) => !isMatch(p, target, prop))) pairs.push([target, prop])
       return reactive(result)
     },
