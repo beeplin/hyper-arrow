@@ -3,3 +3,9 @@
 ✔ simplest example @done(24-08-18 12:08)
 ✘ reverse deps @cancelled(24-08-18 12:09)
 ✔ support ...args for children @done(24-08-18 14:19)
+✔ children => textContent / innerText @done(24-08-29 20:47)
+✔ attr 嵌套设置 @done(24-08-29 21:39)
+☐ context 改名 lazy or dynamic
+☐ context 类型 union 化
+☐ h 返回值 vel
+☐ 智能更新 children

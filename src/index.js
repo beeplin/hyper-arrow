@@ -42,9 +42,9 @@ function evaluate(fn, at, el, x) {
  */
 export function h(type, props, ...args) {
   const [head, ...classes] = type.split('.')
-  const [tag, id] = head.replace(/\s/g, '').split('#')
+  const [tagName, id] = head.replace(/\s/g, '').split('#')
   const className = classes.join(' ')
-  const el = document.createElement(tag || 'div')
+  const el = document.createElement(tagName || 'div')
   if (id) el.id = id
   if (className) el.className = className
   args = isProps(props) ? args.flat() : [props, ...args].flat()
@@ -55,13 +55,14 @@ export function h(type, props, ...args) {
       el.addEventListener(key.toLowerCase().slice(2), x)
     else if (key === 'class')
       el.className = (className + ' ' + evaluate(x, CLASS, el, className)).trim()
-    else if (key === 'style' && is(x, OBJECT) && x !== null)
-      for (const [k, y] of Object.entries(x)) el.style[k] = evaluate(y, STYLE, el, k)
-    else if (key === 'children')
+    else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
+      for (const [k, y] of Object.entries(x))
+        if (key === 'style') el.style[k] = evaluate(y, STYLE, el, k)
+        else if (key === 'attributes') el.setAttribute(k, evaluate(y, ATTR, el, k))
+    } else if (key === 'children')
       for (const [i, y] of toArray(evaluate(x, CHILDREN, el)).entries())
         el.append(evaluate(y, CHILD, el, i))
     else if (key in el) el[key] = evaluate(x, PROP, el, key)
-    else el.setAttribute(key, evaluate(x, ATTR, el, key))
   return el
 }
 /**

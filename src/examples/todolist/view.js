@@ -6,16 +6,16 @@ export function render(/** @type {ToDoListState} */ s) {
   return h('div', { id: 'root' }, [
     h(
       'div#title-container',
-      h('label#title', { for: 'input' }, 'To-Do-List'),
+      h('label#title', { attributes: { for: 'input' } }, 'To-Do-List'),
       () => h('small', () => s.newInput || 'via hyper-arrow'),
       h('button#log', {
-        children: 'log deps',
+        textContent: 'log deps',
         onclick() {
           console.log(deps)
         },
       }),
       h('button#test', {
-        children: 'auto test',
+        innerText: 'auto test',
         disabled: () => s.editingId,
         onClick() {
           test(s)
@@ -109,7 +109,7 @@ export function render(/** @type {ToDoListState} */ s) {
                   style: { minWidth: '150px' },
                   class: () => (item.done ? 'done' : ''),
                   id: () => 'label-' + item.id,
-                  for: () => 'checkbox-' + item.id,
+                  attributes: { for: () => 'checkbox-' + item.id },
                 }),
           h('button', {
             children: () => (s.isEditing(item.id) ? 'ok' : 'edit'),
