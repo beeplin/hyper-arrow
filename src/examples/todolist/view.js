@@ -6,7 +6,7 @@ export function render(/** @type {ToDoListState} */ s) {
   return h('div', { id: 'root' }, [
     h(
       'div#title-container',
-      h('label#title', { attributes: { for: 'input' } }, 'To-Do-List'),
+      h('label#title', { for: 'input' }, 'To-Do-List'),
       () => h('small', () => s.newInput || 'via hyper-arrow'),
       h('button#log', {
         textContent: 'log deps',

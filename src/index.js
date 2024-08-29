@@ -53,8 +53,6 @@ export function h(type, props, ...args) {
   for (const [key, x] of Object.entries(props))
     if (key.startsWith('on') && is(x, FUNCTION))
       el.addEventListener(key.toLowerCase().slice(2), x)
-    else if (key === 'class')
-      el.className = (className + ' ' + evaluate(x, CLASS, el, className)).trim()
     else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
       for (const [k, y] of Object.entries(x))
         if (key === 'style') el.style[k] = evaluate(y, STYLE, el, k)
@@ -62,7 +60,10 @@ export function h(type, props, ...args) {
     } else if (key === 'children')
       for (const [i, y] of toArray(evaluate(x, CHILDREN, el)).entries())
         el.append(evaluate(y, CHILD, el, i))
-    else if (key in el) el[key] = evaluate(x, PROP, el, key)
+    else if (key === 'class' || key === 'className')
+      el.className += ' ' + evaluate(x, CLASS, el, className).trim()
+    else if (key === 'for') el['htmlFor'] = evaluate(x, PROP, el, 'htmlFor')
+    else el[key] = evaluate(x, PROP, el, key)
   return el
 }
 /**
