@@ -2,7 +2,7 @@ import { deps, h } from '../../index.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
-export function render(/** @type {ToDoListState} */ s) {
+export function view(/** @type {ToDoListState} */ s) {
   return h('div', { id: 'root' }, [
     h(
       'div#title-container',

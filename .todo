@@ -6,6 +6,6 @@
 ✔ children => textContent / innerText @done(24-08-29 20:47)
 ✔ attr 嵌套设置 @done(24-08-29 21:39)
 ✔ context 改名 arrow @done(24-08-29 22:11)
-☐ arrow 类型 union 化
-☐ h 返回值 vel
+✘ arrow 类型 union 化 @cancelled(24-08-29 22:23)
+✔ h 返回值 vel @done(24-08-30 00:13)
 ☐ 智能更新 children

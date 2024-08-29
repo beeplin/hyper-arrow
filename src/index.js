@@ -3,9 +3,11 @@
  * @typedef {any} ArrowPayload
  * @typedef {{fn: Function,
  *            at: ArrowPosition,
- *            el?: HTMLElement,
+ *            vel?: Vel,
  *            x?: ArrowPayload}} Arrow
- * @typedef {Node | string | (() => Node | string)} Child
+ * @typedef {{el?: HTMLElement, tag: string, listeners: object, children: (Vel|String)[],
+ *            style: object, attrs: object, props: object}} Vel
+ * @typedef {Vel | string | (() => Vel | string)} Child
  * @typedef {Child | Child[] | (() => Child | Child[])} Children
  */
 const [OBJECT, FUNCTION] = ['object', 'function']
@@ -13,7 +15,7 @@ const [WATCH, CHILDREN, CHILD, CLASS, STYLE, PROP, ATTR] = [0, 1, 2, 3, 4, 5, 6,
 const BRAND = Symbol('brand')
 const is = (x, type) => typeof x === type
 const isMatch = (x, target, prop) => x[0] === target && x[1] === prop
-const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !(x instanceof Node)
+const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !x.tag
 const toArray = (x) => (Array.isArray(x) ? x : [x])
 /**
  * arrow within which reactive object runs getter
@@ -26,9 +28,9 @@ let arrow = null
  */
 export const deps = new Map()
 /* build arrow and evaluate fn() within it, or return fn if it's not a function */
-function evaluate(fn, at, el, x) {
+function evaluate(fn, at, vel, x) {
   if (!is(fn, FUNCTION)) return fn
-  arrow = { fn, at, el, x }
+  arrow = { fn, at, vel, x }
   const result = fn()
   arrow = null
   return result
@@ -38,32 +40,49 @@ function evaluate(fn, at, el, x) {
  * @param {string} type
  * @param {object|string=} props
  * @param {Array<Child|Children>} args
- * @returns {HTMLElement}
+ * @returns {Vel}
  */
 export function h(type, props, ...args) {
   const [head, ...classes] = type.split('.')
-  const [tagName, id] = head.replace(/\s/g, '').split('#')
+  const [tag, id] = head.replace(/\s/g, '').split('#')
   const className = classes.join(' ')
-  const el = document.createElement(tagName || 'div')
-  if (id) el.id = id
-  if (className) el.className = className
+  const vel = { tag, style: {}, attrs: {}, props: {}, listeners: {}, children: [] }
+  if (id) vel.props.id = id
+  if (className) vel.props.className = className
   args = isProps(props) ? args.flat() : [props, ...args].flat()
   const children = Array.isArray(args) && args.length === 1 ? args[0] : args
   props = isProps(props) ? { children, ...props } : { children }
   for (const [key, x] of Object.entries(props))
     if (key.startsWith('on') && is(x, FUNCTION))
-      el.addEventListener(key.toLowerCase().slice(2), x)
-    else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
+      vel.listeners[key.toLowerCase().slice(2)] = x
+    else if (['children', 'childNodes'].includes(key)) {
+      for (const [i, y] of toArray(evaluate(x, CHILDREN, vel)).entries()) {
+        vel.children.push(evaluate(y, CHILD, vel, i))
+      }
+    } else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
       for (const [k, y] of Object.entries(x))
-        if (key === 'style') el.style[k] = evaluate(y, STYLE, el, k)
-        else if (key === 'attributes') el.setAttribute(k, evaluate(y, ATTR, el, k))
-    } else if (['children', 'childNodes'].includes(key))
-      for (const [i, y] of toArray(evaluate(x, CHILDREN, el)).entries())
-        el.append(evaluate(y, CHILD, el, i))
-    else if (['class', 'className'].includes(key))
-      el.className += ' ' + evaluate(x, CLASS, el, className).trim()
-    else if (key === 'for') el['htmlFor'] = evaluate(x, PROP, el, 'htmlFor')
-    else el[key] = evaluate(x, PROP, el, key)
+        if (key === 'style') vel.style[k] = evaluate(y, STYLE, vel, k)
+        else if (key === 'attributes') vel.attrs[k] = evaluate(y, ATTR, vel, k)
+    } else if (['class', 'className'].includes(key))
+      vel.props.className += ' ' + evaluate(x, CLASS, vel, className).trim()
+    else if (key === 'for') vel.props.htmlFor = evaluate(x, PROP, vel, 'htmlFor')
+    else vel.props[key] = evaluate(x, PROP, vel, key)
+  return vel
+}
+/**
+ * render virtul element to real element
+ * @param {Vel|string} vel
+ * @returns {HTMLElement|Text}
+ */
+export function render(vel) {
+  if (typeof vel === 'string') return document.createTextNode(vel)
+  const el = document.createElement(vel.tag)
+  for (const [k, v] of Object.entries(vel.style)) el.style[k] = v
+  for (const [k, v] of Object.entries(vel.attrs)) el.setAttribute(k, v)
+  for (const [k, v] of Object.entries(vel.props)) el[k] = v
+  for (const [k, v] of Object.entries(vel.listeners)) el.addEventListener(k, v)
+  for (const child of vel.children) el.append(render(child))
+  vel.el = el
   return el
 }
 /**
@@ -103,24 +122,31 @@ export function reactive(target) {
     set(target, prop, newValue) {
       const oldValue = Reflect.get(target, prop)
       const result = Reflect.set(target, prop, newValue)
-      for (const [{ fn, at, el, x }, pairs] of deps.entries())
+      for (const [arrow, pairs] of deps.entries())
         for (const pair of pairs) {
           if (pair[0] === oldValue) pair[0] = newValue
-          if (isMatch(pair, target, prop))
+          if (isMatch(pair, target, prop)) {
+            const { fn, at, vel, x } = arrow
+            const { el } = vel ?? {}
             if (at === CLASS) el.className = (x + ' ' + fn()).trim()
             else if (at === STYLE) el.style[x] = fn()
             else if (at === PROP) el[x] = fn()
             else if (at === ATTR) el.setAttribute(x, fn())
             else if (at === CHILDREN) {
-              for (const ctx of deps.keys())
-                if (ctx.el && el !== ctx.el && el.contains(ctx.el)) deps.delete(ctx)
-              el.replaceChildren(...toArray(fn()))
+              for (const arrow of deps.keys()) {
+                const _el = arrow.vel?.el
+                if (_el && el !== _el && el.contains(_el)) deps.delete(arrow)
+              }
+              el.replaceChildren(...toArray(fn()).map(render))
             } else if (at === CHILD) {
               const old = el.children[x]
-              for (const ctx of deps.keys())
-                if (ctx.el && (old === ctx.el || old.contains(ctx.el))) deps.delete(ctx)
-              el.replaceChild(fn(), old)
+              for (const arrow of deps.keys()) {
+                const _el = arrow.vel?.el
+                if (_el && (old === _el || old.contains(_el))) deps.delete(arrow)
+              }
+              el.replaceChild(render(fn()), old)
             } else if (at === WATCH) x ? x(fn()) : fn()
+          }
         }
       return result
     },
