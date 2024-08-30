@@ -1,4 +1,4 @@
-import { watch } from '../../index.js'
+import { watch } from '../../core.js'
 import { ToDoListState } from './state.js'
 
 const pause = (ms = 500) => new Promise((r) => setTimeout(r, ms))

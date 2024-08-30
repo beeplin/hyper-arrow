@@ -1,15 +1,5 @@
-import {
-  button,
-  deps,
-  div,
-  input,
-  isReactive,
-  li,
-  mount,
-  reactive,
-  ul,
-  watch,
-} from '../../index.js'
+import { deps, isReactive, mount, reactive, watch } from '../../core.js'
+import { button, div, input, li, ul } from '../../full.js'
 
 class Model {
   input = ''

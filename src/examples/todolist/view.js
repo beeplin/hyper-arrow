@@ -1,4 +1,4 @@
-import { button, deps, div, input, label, li, small, ul } from '../../index.js'
+import { button, deps, div, input, label, li, small, ul } from '../../full.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
