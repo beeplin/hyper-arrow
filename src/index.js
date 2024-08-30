@@ -1,13 +1,11 @@
 /**
  * @typedef {number} ArrowPosition
  * @typedef {any} ArrowPayload
- * @typedef {{fn: Function,
- *            at: ArrowPosition,
- *            vel?: Vel,
- *            x?: ArrowPayload}} Arrow
- * @typedef {{el?: HTMLElement, tag: string, listeners: object, children: (Vel|String)[],
- *            style: object, attrs: object, props: object}} Vel
- * @typedef {Vel | string | (() => Vel | string)} Child
+ * @typedef {{fn: Function, at: ArrowPosition,
+ *            vel?: VEl, x?: ArrowPayload}} Arrow
+ * @typedef {{el?: HTMLElement, tag: string, listeners: object, children: (VEl|String)[],
+ *            style: object, attrs: object, props: object}} VEl
+ * @typedef {VEl | string | (() => VEl | string)} Child
  * @typedef {Child | Child[] | (() => Child | Child[])} Children
  */
 const [OBJECT, FUNCTION] = ['object', 'function']
@@ -40,7 +38,7 @@ function evaluate(fn, at, vel, x) {
  * @param {string} type
  * @param {object|string=} props
  * @param {Array<Child|Children>} args
- * @returns {Vel}
+ * @returns {VEl}
  */
 export function h(type, props, ...args) {
   const [head, ...classes] = type.split('.')
@@ -71,19 +69,27 @@ export function h(type, props, ...args) {
 }
 /**
  * render virtul element to real element
- * @param {Vel|string} vel
+ * @param {VEl|string} vel
  * @returns {HTMLElement|Text}
  */
-export function render(vel) {
+function realize(vel) {
   if (typeof vel === 'string') return document.createTextNode(vel)
   const el = document.createElement(vel.tag)
   for (const [k, v] of Object.entries(vel.style)) el.style[k] = v
   for (const [k, v] of Object.entries(vel.attrs)) el.setAttribute(k, v)
   for (const [k, v] of Object.entries(vel.props)) el[k] = v
   for (const [k, v] of Object.entries(vel.listeners)) el.addEventListener(k, v)
-  for (const child of vel.children) el.append(render(child))
+  for (const child of vel.children) el.append(realize(child))
   vel.el = el
   return el
+}
+/**
+ * mount vel to DOM tree
+ * @param {string} selector
+ * @param {VEl} vel
+ */
+export function mount(selector, vel) {
+  document.querySelector(selector)?.append(realize(vel))
 }
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
@@ -137,14 +143,14 @@ export function reactive(target) {
                 const _el = arrow.vel?.el
                 if (_el && el !== _el && el.contains(_el)) deps.delete(arrow)
               }
-              el.replaceChildren(...toArray(fn()).map(render))
+              el.replaceChildren(...toArray(fn()).map(realize))
             } else if (at === CHILD) {
               const old = el.children[x]
               for (const arrow of deps.keys()) {
                 const _el = arrow.vel?.el
                 if (_el && (old === _el || old.contains(_el))) deps.delete(arrow)
               }
-              el.replaceChild(render(fn()), old)
+              el.replaceChild(realize(fn()), old)
             } else if (at === WATCH) x ? x(fn()) : fn()
           }
         }
