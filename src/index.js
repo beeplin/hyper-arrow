@@ -1,84 +1,56 @@
 /**
- * @typedef {number} ArrowPosition
- * @typedef {any} ArrowPayload
- * @typedef {{fn: Function, at: ArrowPosition,
- *            vel?: VEl, x?: ArrowPayload}} Arrow
- * @typedef {{el?: HTMLElement, tag: string, listeners: object, children: (VEl|String)[],
- *            style: object, attrs: object, props: object}} VEl
- * @typedef {VEl | string | (() => VEl | string)} Child
- * @typedef {Child | Child[] | (() => Child | Child[])} Children
+ * @typedef {[fn: Function, velOrEffect: VEl|Function|undefined, key: string]} Arrow
+ * @typedef {[tag: string, props: object, children: VNode[], el?: HTMLElement]} VEl
+ * @typedef {VEl|string} VNode
+ * @typedef {VNode|(()=>VNode)} Child
+ * @typedef {Child[]|(()=>Child[])} Children
+ * @typedef {[target: object, prop: string|symbol]} Trigger
  */
-const [OBJECT, FUNCTION] = ['object', 'function']
-const [WATCH, CHILDREN, CHILD, CLASS, STYLE, PROP, ATTR] = [0, 1, 2, 3, 4, 5, 6, 7]
-const BRAND = Symbol('brand')
-const is = (x, type) => typeof x === type
-const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !x.tag
-const toArray = (x) => (Array.isArray(x) ? x : [x])
-/**
- * arrow within which reactive object runs trigger
- * @type {Arrow?}
- */
+/** @type {Arrow?} arrow within which reactive object runs trigger */
 let currentArrow = null
-/**
- * dependency map: arrow -> list of triggers (target[prop]) called within the arrow
- * @type {Map<Arrow, Array<[target: object, prop: string|symbol]>>}
- */
+/** @type {Map<Arrow, Trigger[]>} dependency map: arrow -> triggers of the arrow */
 export const deps = new Map()
 /* build arrow and evaluate fn() within it, or return fn if it's not a function */
-function evaluate(fn, at, vel, x) {
-  if (!is(fn, FUNCTION)) return fn
-  currentArrow = { fn, at, vel, x }
+function evaluate(fn, x, key) {
+  if (typeof fn !== 'function') return fn
+  currentArrow = [fn, x, key]
   const result = fn()
   currentArrow = null
   return result
 }
 /**
- * create a html element, setting arrows for lazy function calls
- * @param {string} type
- * @param {object|string=} props
- * @param {Array<Child|Children>} args
+ * create a virtual element, and create arrows for lazy function calls
+ * @param {string} tag
+ * @param {object=} props
+ * @param {Array<Child|Children> =} children
  * @returns {VEl}
  */
-export function h(type, props, ...args) {
-  const [head, ...classes] = type.split('.')
-  const [tag, id] = head.replace(/\s/g, '').split('#')
-  const className = classes.join(' ')
-  const vel = { tag, style: {}, attrs: {}, props: {}, listeners: {}, children: [] }
-  if (id) vel.props.id = id
-  if (className) vel.props.className = className
-  args = isProps(props) ? args.flat() : [props, ...args].flat()
-  const children = Array.isArray(args) && args.length === 1 ? args[0] : args
-  props = isProps(props) ? { children, ...props } : { children }
-  for (const [key, x] of Object.entries(props))
-    if (key.startsWith('on') && is(x, FUNCTION))
-      vel.listeners[key.toLowerCase().slice(2)] = x
-    else if (['children', 'childNodes'].includes(key))
-      for (const [i, y] of toArray(evaluate(x, CHILDREN, vel)).entries())
-        vel.children.push(evaluate(y, CHILD, vel, i))
-    else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
-      for (const [k, y] of Object.entries(x))
-        if (key === 'style') vel.style[k] = evaluate(y, STYLE, vel, k)
-        else if (key === 'attributes') vel.attrs[k] = evaluate(y, ATTR, vel, k)
-    } else if (['class', 'className'].includes(key))
-      vel.props.className += ' ' + evaluate(x, CLASS, vel, className).trim()
-    else if (key === 'for') vel.props.htmlFor = evaluate(x, PROP, vel, 'htmlFor')
-    else vel.props[key] = evaluate(x, PROP, vel, key)
+export function h(tag, props, children) {
+  const hasProps = typeof props === 'object' && !Array.isArray(props)
+  /** @type {VEl} */ const vel = [tag, {}, []]
+  for (const [k, v] of Object.entries(hasProps ? props : {}))
+    vel[1][k] = k.startsWith('on') ? v : evaluate(v, vel, k)
+  for (const [i, v] of evaluate(hasProps ? children ?? [] : props, vel, '*').entries())
+    vel[2].push(evaluate(v, vel, '#' + i))
   return vel
 }
 /**
- * render virtul element to real element
- * @param {VEl|string} vel
- * @returns {HTMLElement|Text}
+ * convert virtul node to real node
+ * @param {VNode} vnode
+ * @returns {Node}
  */
-function realize(vel) {
-  if (typeof vel === 'string') return document.createTextNode(vel)
-  const el = document.createElement(vel.tag)
-  for (const [k, v] of Object.entries(vel.style)) el.style[k] = v
-  for (const [k, v] of Object.entries(vel.attrs)) el.setAttribute(k, v)
-  for (const [k, v] of Object.entries(vel.props)) el[k] = v
-  for (const [k, v] of Object.entries(vel.listeners)) el.addEventListener(k, v)
-  for (const child of vel.children) el.append(realize(child))
-  vel.el = el
+function realize(vnode) {
+  if (typeof vnode === 'string') return document.createTextNode(vnode)
+  const el = document.createElement(vnode[0])
+  for (const [k, v] of Object.entries(vnode[1]))
+    if (k === 'class') el.className = v
+    else if (k === 'for') el['htmlFor'] = v
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v)
+    else if (k.startsWith('$')) el.style[k.slice(1)] = v
+    else if (k.startsWith('_')) el.setAttribute(k.slice(1), v)
+    else el[k] = v
+  for (const vn of vnode[2]) el.append(realize(vn))
+  vnode[3] = el
   return el
 }
 /**
@@ -87,7 +59,7 @@ function realize(vel) {
  * @param {VEl} vel
  */
 export function mount(selector, vel) {
-  document.querySelector(selector)?.append(realize(vel))
+  document.querySelector(selector).append(realize(vel))
 }
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
@@ -98,11 +70,12 @@ export function mount(selector, vel) {
  * @returns {() => void} stop auto rerunning
  */
 export function watch(watchFn, effectFn) {
-  evaluate(watchFn, WATCH, undefined, effectFn)
+  evaluate(watchFn, effectFn, '')
   return () => {
-    for (const ctx of deps.keys()) if (ctx.fn === watchFn) deps.delete(ctx)
+    for (const arrow of deps.keys()) if (arrow[0] === watchFn) deps.delete(arrow)
   }
 }
+const BRAND = Symbol('brand')
 /**
  * make object reactive, collecting arrows for getters, and updating DOM in setters
  * @template T
@@ -116,7 +89,7 @@ export function reactive(target) {
     get(target, prop) {
       if (prop === BRAND) return true
       const result = Reflect.get(target, prop)
-      if (is(target, FUNCTION) && prop === 'prototype') return result
+      if (typeof target === 'function' && prop === 'prototype') return result
       if (!currentArrow) return reactive(result)
       if (!deps.has(currentArrow)) deps.set(currentArrow, [])
       const triggers = deps.get(currentArrow)
@@ -127,35 +100,43 @@ export function reactive(target) {
     set(target, prop, newValue) {
       const oldValue = Reflect.get(target, prop)
       const result = Reflect.set(target, prop, newValue)
-      for (const [arrow, triggers] of deps.entries())
+      for (const [[fn, x, key], triggers] of deps.entries())
         for (const trigger of triggers) {
           if (trigger[0] === oldValue) trigger[0] = newValue
           if (trigger[0] === target && trigger[1] === prop) {
-            const { fn, at, vel, x } = arrow
-            const { el } = vel ?? {}
-            if (at === CLASS) el.className = (x + ' ' + fn()).trim()
-            else if (at === STYLE) el.style[x] = fn()
-            else if (at === PROP) el[x] = fn()
-            else if (at === ATTR) el.setAttribute(x, fn())
-            else if (at === CHILDREN) {
-              for (const arrow of deps.keys()) {
-                const _el = arrow.vel?.el
-                if (_el && el !== _el && el.contains(_el)) deps.delete(arrow)
-              }
-              el.replaceChildren(...toArray(fn()).map(realize))
-            } else if (at === CHILD) {
-              const old = el.children[x]
-              for (const arrow of deps.keys()) {
-                const _el = arrow.vel?.el
-                if (_el && (old === _el || old.contains(_el))) deps.delete(arrow)
-              }
-              el.replaceChild(realize(fn()), old)
-            } else if (at === WATCH) x ? x(fn()) : fn()
+            if (typeof x === 'function' || typeof x === 'undefined') x ? x(fn()) : fn()
+            else {
+              const el = x[3]
+              if (key === 'class') el.className = fn()
+              else if (key === 'for') el['htmlFor'] = fn()
+              else if (key.startsWith('$')) el.style[key.slice(1)] = fn()
+              else if (key.startsWith('_')) el.setAttribute(key.slice(1), fn())
+              else if (key.startsWith('#')) {
+                const old = el.children[key.slice(1)]
+                for (const arrow of deps.keys()) {
+                  const _el = arrow[1]?.[3]
+                  if (_el && (old === _el || old.contains(_el))) deps.delete(arrow)
+                }
+                el.replaceChild(realize(fn()), old)
+              } else if (key === '*') {
+                for (const arrow of deps.keys()) {
+                  const _el = arrow[1]?.[3]
+                  if (_el && el !== _el && el.contains(_el)) deps.delete(arrow)
+                }
+                el.replaceChildren(...fn().map(realize))
+              } else el[key] = fn()
+            }
           }
         }
       return result
     },
   })
 }
-/** check if target is reactive */
-export const isReactive = (x) => !!x[BRAND]
+
+export const div = h.bind(null, 'div')
+export const button = h.bind(null, 'button')
+export const input = h.bind(null, 'input')
+export const label = h.bind(null, 'label')
+export const small = h.bind(null, 'small')
+export const ul = h.bind(null, 'ul')
+export const li = h.bind(null, 'li')

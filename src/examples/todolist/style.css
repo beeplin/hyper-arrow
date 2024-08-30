@@ -40,7 +40,6 @@ button {
 }
 .item-input,
 .item-label {
-  width: auto;
   flex-grow: 1;
 }
 .done {

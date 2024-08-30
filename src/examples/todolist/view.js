@@ -1,34 +1,36 @@
-import { deps, h } from '../../index.js'
+import { button, deps, div, input, label, li, small, ul } from '../../index.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
 export function view(/** @type {ToDoListState} */ s) {
-  return h('div', { id: 'root' }, [
-    h(
-      'div#title-container',
-      h('label#title', { for: 'input' }, 'To-Do-List'),
-      () => h('small', () => s.newInput || 'via hyper-arrow'),
-      h('button#log', {
-        textContent: 'log deps',
+  return div({ id: 'root' }, [
+    div({ id: 'title-container' }, [
+      label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
+      () => small({ innerText: () => s.newInput || 'via hyper-arrow' }),
+      button({
+        id: 'log',
+        innerText: 'log deps',
         onclick() {
           console.log(deps)
         },
       }),
-      h('button#test', {
+      button({
+        id: 'test',
         innerText: 'auto test',
         disabled: () => s.editingId,
         onClick() {
           test(s)
         },
       }),
-    ),
-    h('div#input-container', [
-      h('input#input', {
+    ]),
+    div({ id: 'input-container' }, [
+      input({
+        id: 'input',
         type: 'text',
-        style: { padding: '1px 3px' },
-        placeholder: 'input new to-do here...',
         value: () => s.newInput,
         disabled: () => s.editingId,
+        placeholder: 'input new to-do here...',
+        $padding: '1px 3px',
         onInput(e) {
           s.newInput = e.target.value
         },
@@ -36,55 +38,60 @@ export function view(/** @type {ToDoListState} */ s) {
           if (e.code === 'Enter') s.createFromInput()
         },
       }),
-      h('button#add', {
-        children: 'add',
+      button({
+        id: 'add',
+        innerText: 'add',
         disabled: () => !s.newInput || s.editingId,
         onClick: s.createFromInput.bind(s),
       }),
-      h('button#clear', {
-        children: 'clear',
+      button({
+        id: 'clear',
+        innerText: 'clear',
         disabled: () => !s.newInput || s.editingId,
         onClick() {
           s.newInput = ''
         },
       }),
     ]),
-    h(
-      'div',
-      { id: 'filter-container' },
-      h('button#all', {
-        children: 'all',
+    div({ id: 'filter-container' }, [
+      button({
+        id: 'all',
+        innerText: 'all',
         disabled: () => s.filter === 'all' || s.editingId,
         onClick() {
           s.filter = 'all'
         },
       }),
-      h('button#active', {
-        children: 'active',
+      button({
+        id: 'active',
+        innerText: 'active',
         disabled: () => s.filter === 'active' || s.editingId,
         onClick() {
           s.filter = 'active'
         },
       }),
-      h('button#completed', {
-        children: 'completed',
+      button({
+        id: 'completed',
+        innerText: 'completed',
         disabled: () => s.filter === 'completed' || s.editingId,
         onClick() {
           s.filter = 'completed'
         },
       }),
-    ),
-    h('button#delete-all-completed', {
-      children: 'delete all completed',
+    ]),
+    button({
+      id: 'delete-all-completed',
+      innerText: 'delete all completed',
       disabled: () => s.editingId,
       onClick: s.model.deleteAllCompleted.bind(s.model),
     }),
-    h('ul#list', { style: 'padding: 0' }, () =>
+    ul({ id: 'list', style: 'padding: 0' }, () =>
       s.getFilteredReversedList().map((item) =>
-        h('li.item-container', { id: () => 'li-' + item.id }, [
-          h('input.checkbox', {
-            type: 'checkbox',
+        li({ id: () => 'li-' + item.id, _class: 'item-container' }, [
+          input({
             id: () => 'checkbox-' + item.id,
+            class: 'checkbox',
+            type: 'checkbox',
             checked: () => item.done,
             disabled: () => s.editingId,
             onInput() {
@@ -93,9 +100,10 @@ export function view(/** @type {ToDoListState} */ s) {
           }),
           () =>
             s.isEditing(item.id)
-              ? h('input.item-input', {
-                  type: 'text',
+              ? input({
                   id: () => 'edit-' + item.id,
+                  class: 'item-input',
+                  type: 'text',
                   value: () => s.editInput,
                   onInput(e) {
                     s.editInput = e.target.value
@@ -104,17 +112,17 @@ export function view(/** @type {ToDoListState} */ s) {
                     if (e.keyCode === 13) s.update(item.id, s.editInput)
                   },
                 })
-              : h('label.item-label', {
-                  children: item.text,
-                  style: { minWidth: '150px' },
-                  class: () => (item.done ? 'done' : ''),
+              : label({
                   id: () => 'label-' + item.id,
-                  attributes: { for: () => 'checkbox-' + item.id },
+                  _class: () => 'item-label ' + (item.done ? 'done' : ''),
+                  _for: () => 'checkbox-' + item.id,
+                  innerText: item.text,
+                  $minWidth: '150px',
                 }),
-          h('button', {
-            children: () => (s.isEditing(item.id) ? 'ok' : 'edit'),
+          button({
             id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
+            innerText: () => (s.isEditing(item.id) ? 'ok' : 'edit'),
             disabled: () => s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.update(item.id, s.editInput)
@@ -129,10 +137,10 @@ export function view(/** @type {ToDoListState} */ s) {
               }
             },
           }),
-          h('button.item-delete-cancel', {
-            children: () => (s.isEditing(item.id) ? 'cancel' : 'delete'),
+          button({
             id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
+            innerText: () => (s.isEditing(item.id) ? 'cancel' : 'delete'),
             disabled: () => s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.editingId = null
