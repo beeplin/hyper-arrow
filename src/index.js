@@ -12,25 +12,24 @@ const [OBJECT, FUNCTION] = ['object', 'function']
 const [WATCH, CHILDREN, CHILD, CLASS, STYLE, PROP, ATTR] = [0, 1, 2, 3, 4, 5, 6, 7]
 const BRAND = Symbol('brand')
 const is = (x, type) => typeof x === type
-const isMatch = (x, target, prop) => x[0] === target && x[1] === prop
 const isProps = (x) => is(x, OBJECT) && !Array.isArray(x) && !x.tag
 const toArray = (x) => (Array.isArray(x) ? x : [x])
 /**
- * arrow within which reactive object runs getter
+ * arrow within which reactive object runs trigger
  * @type {Arrow?}
  */
-let arrow = null
+let currentArrow = null
 /**
- * dependency map: arrow -> list of getters (target[prop]) called within the arrow
+ * dependency map: arrow -> list of triggers (target[prop]) called within the arrow
  * @type {Map<Arrow, Array<[target: object, prop: string|symbol]>>}
  */
 export const deps = new Map()
 /* build arrow and evaluate fn() within it, or return fn if it's not a function */
 function evaluate(fn, at, vel, x) {
   if (!is(fn, FUNCTION)) return fn
-  arrow = { fn, at, vel, x }
+  currentArrow = { fn, at, vel, x }
   const result = fn()
-  arrow = null
+  currentArrow = null
   return result
 }
 /**
@@ -53,11 +52,10 @@ export function h(type, props, ...args) {
   for (const [key, x] of Object.entries(props))
     if (key.startsWith('on') && is(x, FUNCTION))
       vel.listeners[key.toLowerCase().slice(2)] = x
-    else if (['children', 'childNodes'].includes(key)) {
-      for (const [i, y] of toArray(evaluate(x, CHILDREN, vel)).entries()) {
+    else if (['children', 'childNodes'].includes(key))
+      for (const [i, y] of toArray(evaluate(x, CHILDREN, vel)).entries())
         vel.children.push(evaluate(y, CHILD, vel, i))
-      }
-    } else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
+    else if (['style', 'attributes'].includes(key) && is(x, OBJECT) && x !== null) {
       for (const [k, y] of Object.entries(x))
         if (key === 'style') vel.style[k] = evaluate(y, STYLE, vel, k)
         else if (key === 'attributes') vel.attrs[k] = evaluate(y, ATTR, vel, k)
@@ -119,19 +117,20 @@ export function reactive(target) {
       if (prop === BRAND) return true
       const result = Reflect.get(target, prop)
       if (is(target, FUNCTION) && prop === 'prototype') return result
-      if (!arrow) return reactive(result)
-      if (!deps.has(arrow)) deps.set(arrow, [])
-      const pairs = deps.get(arrow)
-      if (pairs?.every((p) => !isMatch(p, target, prop))) pairs.push([target, prop])
+      if (!currentArrow) return reactive(result)
+      if (!deps.has(currentArrow)) deps.set(currentArrow, [])
+      const triggers = deps.get(currentArrow)
+      if (triggers?.every((trigger) => !(trigger[0] === target && trigger[1] === prop)))
+        triggers.push([target, prop])
       return reactive(result)
     },
     set(target, prop, newValue) {
       const oldValue = Reflect.get(target, prop)
       const result = Reflect.set(target, prop, newValue)
-      for (const [arrow, pairs] of deps.entries())
-        for (const pair of pairs) {
-          if (pair[0] === oldValue) pair[0] = newValue
-          if (isMatch(pair, target, prop)) {
+      for (const [arrow, triggers] of deps.entries())
+        for (const trigger of triggers) {
+          if (trigger[0] === oldValue) trigger[0] = newValue
+          if (trigger[0] === target && trigger[1] === prop) {
             const { fn, at, vel, x } = arrow
             const { el } = vel ?? {}
             if (at === CLASS) el.className = (x + ' ' + fn()).trim()
