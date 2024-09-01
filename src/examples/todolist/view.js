@@ -1,12 +1,15 @@
-import { button, deps, div, input, label, li, small, ul } from '../../full.js'
+import { deps, tags } from '../../index.js'
+
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
+
+const { button, div, input, label, li, small, ul } = tags
 
 export function view(/** @type {ToDoListState} */ s) {
   return div({ id: 'root' }, [
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
-      () => small({ innerText: () => s.newInput || 'via hyper-arrow' }),
+      () => small([() => s.newInput || 'via hyper-arrow']),
       button({
         id: 'log',
         innerText: 'log deps',
@@ -17,7 +20,7 @@ export function view(/** @type {ToDoListState} */ s) {
       button({
         id: 'test',
         innerText: 'auto test',
-        disabled: () => s.editingId,
+        disabled: () => !!s.editingId,
         onClick() {
           test(s)
         },
@@ -28,7 +31,7 @@ export function view(/** @type {ToDoListState} */ s) {
         id: 'input',
         type: 'text',
         value: () => s.newInput,
-        disabled: () => s.editingId,
+        disabled: () => !!s.editingId,
         placeholder: 'input new to-do here...',
         $padding: '1px 3px',
         onInput(e) {
@@ -41,13 +44,13 @@ export function view(/** @type {ToDoListState} */ s) {
       button({
         id: 'add',
         innerText: 'add',
-        disabled: () => !s.newInput || s.editingId,
+        disabled: () => !s.newInput || !!s.editingId,
         onClick: s.createFromInput.bind(s),
       }),
       button({
         id: 'clear',
         innerText: 'clear',
-        disabled: () => !s.newInput || s.editingId,
+        disabled: () => !s.newInput || !!s.editingId,
         onClick() {
           s.newInput = ''
         },
@@ -57,7 +60,7 @@ export function view(/** @type {ToDoListState} */ s) {
       button({
         id: 'all',
         innerText: 'all',
-        disabled: () => s.filter === 'all' || s.editingId,
+        disabled: () => s.filter === 'all' || !!s.editingId,
         onClick() {
           s.filter = 'all'
         },
@@ -65,7 +68,7 @@ export function view(/** @type {ToDoListState} */ s) {
       button({
         id: 'active',
         innerText: 'active',
-        disabled: () => s.filter === 'active' || s.editingId,
+        disabled: () => s.filter === 'active' || !!s.editingId,
         onClick() {
           s.filter = 'active'
         },
@@ -73,7 +76,7 @@ export function view(/** @type {ToDoListState} */ s) {
       button({
         id: 'completed',
         innerText: 'completed',
-        disabled: () => s.filter === 'completed' || s.editingId,
+        disabled: () => s.filter === 'completed' || !!s.editingId,
         onClick() {
           s.filter = 'completed'
         },
@@ -82,7 +85,7 @@ export function view(/** @type {ToDoListState} */ s) {
     button({
       id: 'delete-all-completed',
       innerText: 'delete all completed',
-      disabled: () => s.editingId,
+      disabled: () => !!s.editingId,
       onClick: s.model.deleteAllCompleted.bind(s.model),
     }),
     ul({ id: 'list', style: 'padding: 0' }, () =>
@@ -93,7 +96,7 @@ export function view(/** @type {ToDoListState} */ s) {
             class: 'checkbox',
             type: 'checkbox',
             checked: () => item.done,
-            disabled: () => s.editingId,
+            disabled: () => !!s.editingId,
             onInput() {
               s.model.toggle(item.id)
             },
@@ -114,16 +117,16 @@ export function view(/** @type {ToDoListState} */ s) {
                 })
               : label({
                   id: () => 'label-' + item.id,
-                  _class: () => 'item-label ' + (item.done ? 'done' : ''),
-                  _for: () => 'checkbox-' + item.id,
-                  innerText: item.text,
+                  class: () => 'item-label' + (item.done ? ' done' : ''),
+                  for: () => 'checkbox-' + item.id,
+                  innerText: () => item.text,
                   $minWidth: '150px',
                 }),
           button({
             id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
             innerText: () => (s.isEditing(item.id) ? 'ok' : 'edit'),
-            disabled: () => s.editingId && s.editingId !== item.id,
+            disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.update(item.id, s.editInput)
               else {
@@ -141,7 +144,7 @@ export function view(/** @type {ToDoListState} */ s) {
             id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
             innerText: () => (s.isEditing(item.id) ? 'cancel' : 'delete'),
-            disabled: () => s.editingId && s.editingId !== item.id,
+            disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.editingId = null
               else s.model.delete(item.id)

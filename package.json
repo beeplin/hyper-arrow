@@ -2,10 +2,10 @@
   "name": "hyper-arrow",
   "version": "0.1.1",
   "description": "super tiny front-end UI framework",
-  "main": "dist/full.min.js",
-  "module": "dist/full.min.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "scripts": {
-    "build": "rimraf dist && tsc && uglifyjs src/core.js --compress --mangle --source-map --module --output dist/core.min.js && uglifyjs src/full.js --compress --mangle --source-map --module --output dist/full.min.js",
+    "build": "rimraf dist && tsc && uglifyjs src/index.js --compress --mangle --source-map --module --output dist/index.js",
     "prepublishOnly": "npm run build"
   },
   "repository": {

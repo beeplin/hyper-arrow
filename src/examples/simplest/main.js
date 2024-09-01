@@ -1,5 +1,6 @@
-import { deps, isReactive, mount, reactive, watch } from '../../core.js'
-import { button, div, input, li, ul } from '../../full.js'
+import { deps, isReactive, mount, reactive, tags, watch } from '../../index.js'
+
+const { button, div, input, li, ul } = tags
 
 class Model {
   input = ''
