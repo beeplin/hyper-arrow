@@ -14,26 +14,26 @@ export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: 
  * @returns {T}
  */
 export function reactive<T>(target: T): T;
-export function mount(selector: string, ve: VE): void;
+export function mount(selector: string, ve: Ve): void;
 export const deps: Map<Arrow, Trigger[]>;
-export function h(tag: string, props?: object, children?: VNodesOrFn): VE;
-/** @type {{[tag: string]: (props?: object, children?: VNodesOrFn) => VE}} */
+export function h(tag: string, props: object | null, children: VnsOrFn | null): Ve;
+/** @type {{[tag: string]: (props?: object, children?: VnsOrFn) => Ve}} */
 export const tags: {
-    [tag: string]: (props?: object, children?: VNodesOrFn) => VE;
+    [tag: string]: (props?: object, children?: VnsOrFn) => Ve;
 };
 export function isReactive(x: unknown): boolean;
 export type El = HTMLElement;
 /**
  * - virtual element
  */
-export type VE = [tag: string, props: object, vnodes: VNode[], el?: El];
+export type Ve = [tag: string, props: object, vnodes: Vn[], el?: El];
 /**
  * - virtual node
  */
-export type VNode = VE | string;
-export type VNodeOrFn = VNode | (() => VNode);
-export type VNodesOrFn = VNodeOrFn[] | (() => VNodeOrFn[]);
-export type ElementArrow = [fn: Function, ve: VE, key: string];
+export type Vn = Ve | string;
+export type VnOrFn = Vn | (() => Vn);
+export type VnsOrFn = VnOrFn[] | (() => VnOrFn[]);
+export type ElementArrow = [fn: Function, ve: Ve, key: string];
 export type WatchArrow = [fn: Function, undefined, undefined, effect?: Function];
 export type Arrow = ElementArrow | WatchArrow;
 export type Trigger = [target: object, prop: string | symbol];
