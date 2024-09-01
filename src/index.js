@@ -94,11 +94,21 @@ export function mount(/**@type {string}*/ selector, /**@type {VE}*/ ve) {
   document.querySelector(selector).append(createNode(ve))
 }
 
+function createNode(/**@type {VNode}*/ vn) {
+  if (typeof vn === 'string') return document.createTextNode(vn)
+  const [tag, props, vnodes] = vn
+  const el = document.createElement(tag)
+  vn[3] = el
+  el.dataset.id = Math.random().toString().slice(2, 6) // TODO: remove
+  el.append(...vnodes.map(createNode))
+  for (const k in props) setElProp(el, k, props[k])
+  return el
+}
+
 function addArrowAndTriggerToDeps(/**@type {Trigger}*/ ...[target, prop]) {
   if (!currentArrow) return
   if (!deps.has(currentArrow)) deps.set(currentArrow, [])
   const triggers = deps.get(currentArrow)
-  // TODO: 好像有重复
   if (triggers.some((trigger) => trigger[0] === target && trigger[1] === prop)) return
   triggers.push([target, prop])
 }
@@ -121,6 +131,7 @@ function triggerArrowsInDeps(target, prop, oldValue, newValue) {
 
 function updateChildren(/**@type {VE}*/ ve, /**@type {VNode[]}*/ vnodes) {
   const [, , oldVNodes, el] = ve
+  for (const vn of oldVNodes) removeArrowsInVeFromDeps(vn)
   ve[2] = vnodes
   updateElChildren(el, oldVNodes, vnodes)
 }
@@ -129,10 +140,16 @@ function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VNode}
   const [, , vnodes, el] = ve
   const oldVN = vnodes[i]
   vnodes[i] = vn
-  if (typeof oldVN !== 'string') removeArrowsInVeFromDeps(oldVN)
-  if (typeof oldVN === 'string' || typeof vn === 'string' || oldVN[0] !== vn[0])
-    el.replaceChild(createNode(vn), el.childNodes[i])
-  else updateEl(oldVN, vn)
+  removeArrowsInVeFromDeps(oldVN)
+  if (typeof oldVN !== 'string' && typeof vn !== 'string' && oldVN[0] === vn[0]) {
+    const [, oldProps, oldVNodes, el] = oldVN
+    const [, props, vnodes] = vn
+    vn[3] = el
+    for (const k in props) if (props[k] !== oldProps[k]) setElProp(el, k, props[k])
+    for (const k in oldProps) if (!(k in props)) resetElProp(el, k)
+    if (!['innerText', 'textContent'].some((k) => k in props))
+      updateElChildren(el, oldVNodes, vnodes)
+  } else el.replaceChild(createNode(vn), el.childNodes[i])
 }
 
 function updateProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {any}*/ v) {
@@ -140,30 +157,6 @@ function updateProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {any}*/ 
   if (props[k] === v) return
   props[k] = v
   setElProp(el, k, v)
-}
-
-function createNode(/**@type {VNode}*/ vn) {
-  return typeof vn === 'string' ? document.createTextNode(vn) : createEl(vn)
-}
-
-function createEl(/**@type {VE}*/ ve) {
-  const [tag, props, vnodes] = ve
-  const el = document.createElement(tag)
-  ve[3] = el
-  el.dataset.id = Math.random().toString().slice(2, 6) // TODO: remove
-  el.append(...vnodes.map(createNode))
-  for (const k in props) setElProp(el, k, props[k])
-  return el
-}
-
-function updateEl(/**@type {VE}*/ oldVE, /**@type {VE}*/ ve) {
-  const [, oldProps, oldVNodes, el] = oldVE
-  const [, props, vnodes] = ve
-  ve[3] = el
-  for (const k in props) if (props[k] !== oldProps[k]) setElProp(el, k, props[k])
-  for (const k in oldProps) if (!(k in props)) resetElProp(el, k)
-  if (['innerText', 'textContent'].some((k) => k in props)) return
-  updateElChildren(el, oldVNodes, vnodes)
 }
 
 function setElProp(/**@type {El}*/ el, /**@type {string}*/ k, /**@type {any}*/ v) {
@@ -187,12 +180,12 @@ function updateElChildren(
   /**@type {VNode[]}*/ vnodes,
 ) {
   // TODO: smart
-  for (const vn of old) if (typeof vn !== 'string') removeArrowsInVeFromDeps(vn)
   el.replaceChildren(...vnodes.map(createNode))
 }
 
-function removeArrowsInVeFromDeps(/**@type {VE}*/ ve) {
-  for (const arrow of deps.keys()) if (contains(ve, arrow[1])) deps.delete(arrow)
+function removeArrowsInVeFromDeps(/**@type {VNode}*/ vn) {
+  if (typeof vn !== 'string')
+    for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
 }
 
 function contains(/**@type {VE}*/ ve1, /**@type {VE}*/ ve2) {
