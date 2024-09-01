@@ -8,4 +8,5 @@
 ✔ context 改名 arrow @done(24-08-29 22:11)
 ✘ arrow 类型 union 化 @cancelled(24-08-29 22:23)
 ✔ h 返回值 vel @done(24-08-30 00:13)
-☐ 智能更新 children
+✔ 复用 children 已有元素 @done(24-09-02 01:24)
+☐ 根据key顺序智能更新children
