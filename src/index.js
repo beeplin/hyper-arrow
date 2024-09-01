@@ -120,17 +120,18 @@ function triggerArrowsInDeps(target, prop, oldValue, newValue) {
 }
 
 function updateChildren(/**@type {VE}*/ ve, /**@type {VNode[]}*/ vnodes) {
-  // TODO: smart
-  for (const vn of ve[2]) if (typeof vn !== 'string') removeArrowsInVeFromDeps(vn)
-  ve[3].replaceChildren(...vnodes.map(createNode))
+  const [, , oldVNodes, el] = ve
+  ve[2] = vnodes
+  updateElChildren(el, oldVNodes, vnodes)
 }
 
 function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VNode}*/ vn) {
-  const oldVN = ve[2][i]
-  ve[2][i] = vn
+  const [, , vnodes, el] = ve
+  const oldVN = vnodes[i]
+  vnodes[i] = vn
   if (typeof oldVN !== 'string') removeArrowsInVeFromDeps(oldVN)
   if (typeof oldVN === 'string' || typeof vn === 'string' || oldVN[0] !== vn[0])
-    ve[3].replaceChild(createNode(vn), ve[3].childNodes[i])
+    el.replaceChild(createNode(vn), el.childNodes[i])
   else updateEl(oldVN, vn)
 }
 
@@ -183,15 +184,14 @@ function resetElProp(/**@type {El}*/ el, /**@type {string}*/ k) {
 function updateElChildren(
   /**@type {El}*/ el,
   /**@type {VNode[]}*/ old,
-  /**@type {VNode[]}*/ vns,
+  /**@type {VNode[]}*/ vnodes,
 ) {
-  // TODO:
+  // TODO: smart
   for (const vn of old) if (typeof vn !== 'string') removeArrowsInVeFromDeps(vn)
-  el.replaceChildren(...vns.map(createNode))
+  el.replaceChildren(...vnodes.map(createNode))
 }
 
 function removeArrowsInVeFromDeps(/**@type {VE}*/ ve) {
-  // TODO: bug
   for (const arrow of deps.keys()) if (contains(ve, arrow[1])) deps.delete(arrow)
 }
 
