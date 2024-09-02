@@ -1,32 +1,28 @@
+// @ts-check
 /**
  * @typedef {HTMLElement} El
  * @typedef {{[k:string]: unknown}} Props
- * @typedef {[tag: string, props: Props, vnodes: Vn[], el: El]} Ve (virtual element)
- * @typedef {Ve|string} Vn (virtual node)
+ * @typedef {[tag: string, props: Props, vnodes: Vn[], el: El]} Ve virtual element
+ * @typedef {Ve|string} Vn virtual node
  * @typedef {Vn | (() => Vn)} Child
  * @typedef {Child[] | (() => Child[])} Children
  * @typedef {[fn: Function, ve: Ve, key?: string]} VeArrow
  * @typedef {[fn: Function, undefined, undefined,effect?: Function]} WatchArrow
  * @typedef {VeArrow | WatchArrow} Arrow
  * @typedef {[target: object, prop: string | symbol]} Trigger
- * @typedef {(propsOrChildren?: Props|Children, children?: Children) => Ve} TagFn
  */
 
 const BRAND = Symbol('brand')
 const NO_EL = document.createElement('a')
 
-/**@type {Arrow?}*/
+/** set current arrow context where function runs @type {Arrow?} */
 let currentArrow = null
 
-/**@type {Map<Arrow, Trigger[]>}*/
+/** map for dependencies @type {Map<Arrow, Trigger[]>} */
 export const deps = new Map()
 
-/** create virtual element */
-export function h(
-  /**@type {string}*/ tag,
-  /**@type {Props|Children=}*/ p,
-  /**@type {Children=}*/ c,
-) {
+/** create virtual element @type {(tag:string, p?:Props|Children, c?:Children) => Ve} */
+export function h(tag, p, c) {
   const /**@type {Ve}*/ ve = [tag, Object.create(null), [], NO_EL]
   if (typeof p !== 'object' || Array.isArray(p)) c = p
   else for (const k in p) ve[1][k] = k.startsWith('on') ? p[k] : evaluate(p[k], ve, k)
@@ -35,11 +31,12 @@ export function h(
   return ve
 }
 
-/** @type {{[tag: string]: TagFn}} */
+/** tag functions @type {{[tag: string]: (p?: Props|Children, c?: Children) => Ve}} */
 // @ts-ignore
 export const tags = new Proxy({}, { get: (_, p) => h.bind(null, p) })
 
-export function mount(/**@type {string}*/ selector, /**@type {Ve}*/ ve) {
+/** mount virtual element to DOM @type {(selector: string, ve: Ve) => void} */
+export function mount(selector, ve) {
   // @ts-ignore
   document.querySelector(selector).append(createNode(ve))
 }
@@ -59,12 +56,7 @@ export function watch(watchFn, effectFn) {
   }
 }
 
-/**
- * make object reactive, collecting arrows for getters, and updating DOM in setters
- * @template T
- * @param {T} target
- * @returns {T}
- */
+/** make object reactive @template T @param {T} target @returns {T} */
 export function reactive(target) {
   if (target !== Object(target) || isReactive(target)) return target
   // @ts-ignore
@@ -172,7 +164,8 @@ function updateVeProp(/**@type {Ve}*/ ve, /**@type {string}*/ k, /**@type {any}*
   setElProp(el, k, v)
 }
 
-function setElProp(/**@type {any}*/ el, /**@type {string}*/ k, /**@type {any}*/ v) {
+// @ts-ignore
+function setElProp(el, k, v) {
   if (k === 'class' || k === 'for') k = '_' + k
   if (k[0] === '$') el.style[k.slice(1)] = v
   else if (k[0] === '_') el.setAttribute(k.slice(1), v)
@@ -180,7 +173,8 @@ function setElProp(/**@type {any}*/ el, /**@type {string}*/ k, /**@type {any}*/ 
   else el[k] = v
 }
 
-function resetElProp(/**@type {any}*/ el, /**@type {string}*/ k) {
+// @ts-ignore
+function resetElProp(el, k) {
   if (k[0] === '$') el.style[k.slice(1)] = null
   else if (k[0] === '_' || k.toLowerCase() in el.attributes)
     el.removeAttribute(k.replace(/^_/, '').toLowerCase())
