@@ -9,7 +9,6 @@ export function mount(selector: string, ve: Ve): void;
  * @returns {() => void} stop auto rerunning
  */
 export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: ((a: ReturnType<F extends (() => any) ? F : never>) => any) | undefined): () => void;
-/** make object reactive @template T @param {T} target @returns {T} */
 export function reactive<T>(target: T): T;
 /** map for dependencies @type {Map<Arrow, Trigger[]>} */
 export const deps: Map<Arrow, Trigger[]>;

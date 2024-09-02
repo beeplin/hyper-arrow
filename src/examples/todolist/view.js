@@ -42,13 +42,13 @@ export function view(/** @type {ToDoListState} */ s) {
       }),
       button({
         id: 'add',
-        innerText: 'add',
+        innerText: '✓',
         disabled: () => !s.newInput || !!s.editingId,
         onClick: s.createFromInput.bind(s),
       }),
       button({
         id: 'clear',
-        innerText: 'clear',
+        innerText: '✗',
         disabled: () => !s.newInput || !!s.editingId,
         onClick() {
           s.newInput = ''
@@ -56,37 +56,55 @@ export function view(/** @type {ToDoListState} */ s) {
       }),
     ]),
     div({ id: 'filter-container' }, [
+      div({ class: 'filter' }, [
+        input({
+          id: 'all',
+          type: 'radio',
+          name: 'filter',
+          value: 'all',
+          checked: () => s.filter === 'all',
+          disabled: () => !!s.editingId,
+          onInput() {
+            s.filter = 'all'
+          },
+        }),
+        label({ id: 'label-all', for: 'all', innerText: 'all' }),
+      ]),
+      div({ class: 'filter' }, [
+        input({
+          id: 'active',
+          type: 'radio',
+          name: 'filter',
+          value: 'active',
+          checked: () => s.filter === 'active',
+          disabled: () => !!s.editingId,
+          onClick() {
+            s.filter = 'active'
+          },
+        }),
+        label({ id: 'label-active', for: 'active', innerText: 'active' }),
+      ]),
+      div({ class: 'filter' }, [
+        input({
+          id: 'completed',
+          type: 'radio',
+          name: 'filter',
+          value: 'completed',
+          checked: () => s.filter === 'completed',
+          disabled: () => !!s.editingId,
+          onClick() {
+            s.filter = 'completed'
+          },
+        }),
+        label({ id: 'label-completed', for: 'completed', innerText: 'completed' }),
+      ]),
       button({
-        id: 'all',
-        innerText: 'all',
-        disabled: () => s.filter === 'all' || !!s.editingId,
-        onClick() {
-          s.filter = 'all'
-        },
-      }),
-      button({
-        id: 'active',
-        innerText: 'active',
-        disabled: () => s.filter === 'active' || !!s.editingId,
-        onClick() {
-          s.filter = 'active'
-        },
-      }),
-      button({
-        id: 'completed',
-        innerText: 'completed',
-        disabled: () => s.filter === 'completed' || !!s.editingId,
-        onClick() {
-          s.filter = 'completed'
-        },
+        id: 'delete-all-completed',
+        innerText: 'delete all completed',
+        disabled: () => !!s.editingId,
+        onClick: s.model.deleteAllCompleted.bind(s.model),
       }),
     ]),
-    button({
-      id: 'delete-all-completed',
-      innerText: 'delete all completed',
-      disabled: () => !!s.editingId,
-      onClick: s.model.deleteAllCompleted.bind(s.model),
-    }),
     ul({ id: 'list', style: 'padding: 0', cacheChildrenByKey: true }, () =>
       s.getFilteredReversedList().map((item) =>
         li({ id: () => 'li-' + item.id, class: 'item-container', key: () => item.id }, [
@@ -121,10 +139,11 @@ export function view(/** @type {ToDoListState} */ s) {
                   innerText: () => item.text,
                   $minWidth: '150px',
                 }),
+
           button({
             id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
-            innerText: () => (s.isEditing(item.id) ? 'ok' : 'edit'),
+            innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
             disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.update(item.id, s.editInput)
@@ -142,15 +161,58 @@ export function view(/** @type {ToDoListState} */ s) {
           button({
             id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
-            innerText: () => (s.isEditing(item.id) ? 'cancel' : 'delete'),
+            innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
             disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.editingId = null
               else s.model.delete(item.id)
             },
           }),
+          button({
+            id: () => 'up-' + item.id,
+            class: 'item-up',
+            innerHTML: '⇧',
+            disabled: () => !!s.editingId,
+            onClick() {
+              const index = s
+                .getFilteredReversedList()
+                .findIndex((i) => i.id === item.id)
+              if (index === 0) return
+              const prevItem = s.getFilteredReversedList()[index - 1]
+              swap(s.model.list, item, prevItem)
+            },
+          }),
+          button({
+            id: () => 'down-' + item.id,
+            class: 'item-down',
+            innerHTML: '⇩',
+            disabled: () => !!s.editingId,
+            onClick() {
+              const index = s
+                .getFilteredReversedList()
+                .findIndex((i) => i.id === item.id)
+              if (index === s.getFilteredReversedList().length - 1) return
+              const nextItem = s.getFilteredReversedList()[index + 1]
+              swap(s.model.list, item, nextItem)
+            },
+          }),
         ]),
       ),
     ),
   ])
+}
+
+/** @type {<T extends {id: unknown}>(list: T[], a: T, b: T) => void} */
+function swap(list, a, b) {
+  const ia = list.findIndex((i) => i.id === a.id)
+  const ib = list.findIndex((i) => i.id === b.id)
+  if (ib < ia) {
+    list.splice(ia, 1)
+    list.splice(ib, 1, a)
+    list.splice(ia, 0, b)
+  } else {
+    list.splice(ib, 1)
+    list.splice(ia, 1, b)
+    list.splice(ib, 0, a)
+  }
 }

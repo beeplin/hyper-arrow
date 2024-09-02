@@ -7,30 +7,37 @@ body {
   justify-content: center;
 }
 button {
-  min-width: 70px;
+  background: none;
+  color: #abb2bf;
 }
 #root {
-  width: 400px;
+  width: 450px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 0.5em;
 }
 #title-container,
 #input-container,
-#filter-container {
+#filter-container,
+#filter {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5em;
 }
 #title {
   flex-grow: 1;
 }
+#log,
+#test {
+  width: 6em;
+}
 #input {
   flex-grow: 1;
 }
-#filter-container > button {
-  flex-grow: 1;
+#delete-all-completed {
+  width: 12.5em;
+  margin-left: auto;
 }
 .item-container {
   display: flex;

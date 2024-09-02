@@ -58,7 +58,7 @@ export function watch(watchFn, effectFn) {
   }
 }
 
-/** make object reactive @template T @param {T} target @returns {T} */
+/** make object reactive @type {<T>(target: T) => T} */
 export function reactive(target) {
   if (target !== Object(target) || isReactive(target)) return target
   // @ts-ignore
@@ -130,7 +130,7 @@ function createNode(/** @type {Vn} */ vn) {
 function createEl(/** @type {Ve} */ ve) {
   const [tag, props, vnodes] = ve
   const el = document.createElement(tag)
-  el.dataset.id = Math.random().toString().slice(2, 5) // TODO: remove
+  el.dataset.id = Math.random().toString().slice(2, 4) // TODO: remove
   el.append(...vnodes.map(createNode))
   for (const k in props) setElProp(el, k, props[k])
   ve[3] = el
@@ -159,20 +159,32 @@ function updateVeChildren(ve, vnodes) {
   if (keys && oldKeys.length === ve[2].length) {
     ve[2] = oldVes.filter((ve) => keys.includes(ve[1].key))
     for (const vn of oldVes) if (!ve[2].includes(vn)) vn[3].remove()
-    // TODO: sort oldVnodes by key here
     const cache = ve[4]
     for (const [i, vn] of vnodes.entries())
-      if (typeof vn !== 'string' && typeof ve[2][i] !== 'string') {
+      if (typeof vn !== 'string') {
         const { key } = vn[1]
-        if (key === ve[2][i]?.[1].key) updateVeChild(ve, i, vn)
-        else {
-          ve[2].splice(i, 0, vn)
-          const node = cache?.get(key) ?? createEl(vn)
-          vn[3] = node
-          if (cache && !cache.has(key)) cache.set(key, node)
+        // @ts-ignore
+        if (key !== ve[2][i]?.[1].key) {
+          /** @type {El} */ let node
+          // @ts-ignore
+          const index = ve[2].findIndex((v) => v[1].key === key)
+          if (index !== -1) {
+            const oldVn = ve[2][index]
+            // @ts-ignore
+            node = oldVn[3]
+            node.remove()
+            ve[2].splice(index, 1)
+            ve[2].splice(i, 0, oldVn)
+          } else {
+            node = cache?.get(key) ?? createEl(vn)
+            vn[3] = node
+            if (cache && !cache.has(key)) cache.set(key, node)
+            ve[2].splice(i, 0, vn)
+          }
           if (i === 0) el.prepend(node)
           else el.childNodes[i - 1].after(node)
         }
+        updateVeChild(ve, i, vn)
       }
   } else {
     const len = vnodes.length
