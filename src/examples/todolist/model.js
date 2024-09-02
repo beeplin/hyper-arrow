@@ -1,21 +1,17 @@
 export class ToDoItem {
   constructor(
-    /**@type {number}*/ id,
-    /**@type {string}*/ text,
-    /**@type {boolean}*/ done,
+    /** @type {number} */ id,
+    /** @type {string} */ text,
+    /** @type {boolean} */ done,
   ) {
-    /** @type {number} */
-    this.id = id
-    /** @type {string} */
-    this.text = text
-    /** @type {boolean} */
-    this.done = done
+    /** @type {number} */ this.id = id
+    /** @type {string} */ this.text = text
+    /** @type {boolean} */ this.done = done
   }
 }
 
 export class ToDoList {
-  /** @type {ToDoItem[]} */
-  list = []
+  /** @type {ToDoItem[]} */ list = []
   _currentId = 0
   getItemById(/** @type {number} */ id) {
     return this.list.find((x) => x.id === id)
