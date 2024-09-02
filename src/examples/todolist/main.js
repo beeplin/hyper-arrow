@@ -1,4 +1,4 @@
-import { mount, reactive } from '../../index.js'
+import { mount, reactive } from '../../hyper-arrow.js'
 import { ToDoList } from './model.js'
 import { ToDoListState } from './state.js'
 import { view } from './view.js'

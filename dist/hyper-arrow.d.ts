@@ -30,4 +30,4 @@ export type VeArrow = [fn: Function, ve: Ve, key?: string];
 export type WatchArrow = [fn: Function, undefined, undefined, effect?: Function];
 export type Arrow = VeArrow | WatchArrow;
 export type Trigger = [target: object, prop: string | symbol];
-//# sourceMappingURL=index.d.ts.map
+//# sourceMappingURL=hyper-arrow.d.ts.map

@@ -3,7 +3,7 @@
 super tiny front-end UI library, for learning purposes
 
 - **ZERO** dependencies
-- less than **3KB** in size minified
+- less than **3.5KB** in size minified
 - no building steps, easy use via `<script module="type">` tag in plain HTML
 - proxy-based reactivity, like [`reactive()` in Vue 3](https://vuejs.org/api/reactivity-core.html#reactive) or [`makeAutoObservable()` in MobX](https://mobx.js.org/observable-state.html#makeautoobservable)
 - `h` function like [`h()` in hyperscript](https://github.com/hyperhype/hyperscript) or [`h()` in Vue 3](https://vuejs.org/api/render-function.html#h) to build DOM tree, no templates or JSX
@@ -13,7 +13,7 @@ super tiny front-end UI library, for learning purposes
 ## Usage
 
 ```js
-import { deps, isReactive, mount, reactive, tags, watch } from '../../index.js'
+import { deps, isReactive, mount, reactive, tags, watch } from '../../hyper-arrow.js'
 
 const { button, div, input, li, ul } = tags
 
@@ -116,7 +116,6 @@ See `src/examples` for more details of `h`, `tags`, `reactive` and `watch` API.
 
 ## Super Tiny ^o^~~
 
-`h`, `tags`, `reactive` and `watch` reduces down to ~3KB in size
-after minification, with NO extra code from external dependencies. (see `dist/index.js`).
+`h`, `tags`, `reactive` and `watch` reduces down to ~3.5KB in size after minification, with NO extra code from external dependencies. (see `dist/hyper-arrow.js`).
 
-Check `src/core.js` for how it works.
+Check `src/hyper-arrow.js` for how it works.
