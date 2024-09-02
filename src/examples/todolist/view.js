@@ -1,4 +1,4 @@
-import { deps, tags } from '../../index.js'
+import { deps, h, tags } from '../../index.js'
 
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
@@ -6,7 +6,7 @@ import { test } from './test.js'
 const { button, div, input, label, li, small, ul } = tags
 
 export function view(/** @type {ToDoListState} */ s) {
-  return div({ id: 'root' }, [
+  return h('div', { id: 'root' }, [
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
       () => small([() => s.newInput || 'via hyper-arrow']),
@@ -34,10 +34,10 @@ export function view(/** @type {ToDoListState} */ s) {
         disabled: () => !!s.editingId,
         placeholder: 'input new to-do here...',
         $padding: '1px 3px',
-        onInput(e) {
+        onInput(/**@type {any}*/ e) {
           s.newInput = e.target.value
         },
-        onKeyDown(e) {
+        onKeyDown(/**@type {any}*/ e) {
           if (e.code === 'Enter') s.createFromInput()
         },
       }),
@@ -108,10 +108,10 @@ export function view(/** @type {ToDoListState} */ s) {
                   class: 'item-input',
                   type: 'text',
                   value: () => s.editInput,
-                  onInput(e) {
+                  onInput(/**@type {any}*/ e) {
                     s.editInput = e.target.value
                   },
-                  onKeyDown(e) {
+                  onKeyDown(/**@type {any}*/ e) {
                     if (e.keyCode === 13) s.update(item.id, s.editInput)
                   },
                 })

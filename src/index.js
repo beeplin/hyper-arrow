@@ -1,51 +1,48 @@
 /**
  * @typedef {HTMLElement} El
- * @typedef {[tag: string, props: object, vnodes: Vn[], el?: El]} Ve - virtual element
- * @typedef {Ve|string} Vn - virtual node
- * @typedef {Vn | (() => Vn)} VnOrFn
- * @typedef {VnOrFn[] | (() => VnOrFn[])} VnsOrFn
- * @typedef {[fn: Function, ve: Ve, key: string]} ElementArrow
- * @typedef {[fn: Function, undefined, undefined, effect?: Function]} WatchArrow
- * @typedef {ElementArrow | WatchArrow} Arrow
+ * @typedef {{[k:string]: unknown}} Props
+ * @typedef {[tag: string, props: Props, vnodes: Vn[], el: El]} Ve (virtual element)
+ * @typedef {Ve|string} Vn (virtual node)
+ * @typedef {Vn | (() => Vn)} Child
+ * @typedef {Child[] | (() => Child[])} Children
+ * @typedef {[fn: Function, ve: Ve, key?: string]} VeArrow
+ * @typedef {[fn: Function, undefined, undefined,effect?: Function]} WatchArrow
+ * @typedef {VeArrow | WatchArrow} Arrow
  * @typedef {[target: object, prop: string | symbol]} Trigger
+ * @typedef {(propsOrChildren?: Props|Children, children?: Children) => Ve} TagFn
  */
 
 const BRAND = Symbol('brand')
+const NO_EL = document.createElement('a')
 
-let /**@type {Arrow?}*/ currentArrow = null
+/**@type {Arrow?}*/
+let currentArrow = null
 
-export const /**@type {Map<Arrow, Trigger[]>}*/ deps = new Map()
+/**@type {Map<Arrow, Trigger[]>}*/
+export const deps = new Map()
 
-function evaluate(
-  /**@type {unknown}*/ fn,
-  /**@type {Ve?}*/ ve,
-  /**@type {string?}*/ key,
-  /**@type {Function?}*/ effect,
-) {
-  if (typeof fn !== 'function') return fn
-  currentArrow = ve ? [fn, ve, key] : [fn, , , effect]
-  const result = fn()
-  currentArrow = null
-  return result
-}
-
-export const h = function createVElement(
+/** create virtual element */
+export function h(
   /**@type {string}*/ tag,
-  /**@type {object?}*/ props,
-  /**@type {VnsOrFn?}*/ children,
+  /**@type {Props|Children=}*/ p,
+  /**@type {Children=}*/ c,
 ) {
-  const /**@type {Ve}*/ ve = [tag, Object.create(null), []]
-  if (typeof props !== 'object' || Array.isArray(props)) children = props
-  else
-    for (const k in props)
-      ve[1][k] = k.startsWith('on') ? props[k] : evaluate(props[k], ve, k)
-  for (const i in evaluate(children ?? [], ve, '*'))
-    ve[2].push(evaluate(children[i], ve, '#' + i))
+  const /**@type {Ve}*/ ve = [tag, Object.create(null), [], NO_EL]
+  if (typeof p !== 'object' || Array.isArray(p)) c = p
+  else for (const k in p) ve[1][k] = k.startsWith('on') ? p[k] : evaluate(p[k], ve, k)
+  const /**@type {Child[]}*/ children = evaluate(c, ve) ?? []
+  for (const i in children) ve[2].push(evaluate(children[i], ve, '#' + i))
   return ve
 }
 
-/** @type {{[tag: string]: (props?: object, children?: VnsOrFn) => Ve}} */
-export const tags = new Proxy({}, { get: (_, tag) => h.bind(null, tag) })
+/** @type {{[tag: string]: TagFn}} */
+// @ts-ignore
+export const tags = new Proxy({}, { get: (_, p) => h.bind(null, p) })
+
+export function mount(/**@type {string}*/ selector, /**@type {Ve}*/ ve) {
+  // @ts-ignore
+  document.querySelector(selector).append(createNode(ve))
+}
 
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
@@ -56,7 +53,7 @@ export const tags = new Proxy({}, { get: (_, tag) => h.bind(null, tag) })
  * @returns {() => void} stop auto rerunning
  */
 export function watch(watchFn, effectFn) {
-  evaluate(watchFn, null, null, effectFn)
+  evaluate(watchFn, undefined, undefined, effectFn)
   return () => {
     for (const arrow of deps.keys()) if (arrow[0] === watchFn) deps.delete(arrow)
   }
@@ -72,26 +69,53 @@ export function reactive(target) {
   if (target !== Object(target) || isReactive(target)) return target
   // @ts-ignore
   return new Proxy(target, {
-    get(target, prop) {
-      if (prop === BRAND) return true
-      const result = Reflect.get(target, prop)
-      if (typeof target === 'function' && prop === 'prototype') return result
-      addArrowAndTriggerToDeps(target, prop)
+    get(t, p) {
+      if (p === BRAND) return true
+      const result = Reflect.get(t, p)
+      if (typeof t === 'function' && p === 'prototype') return result
+      if (currentArrow) {
+        if (!deps.has(currentArrow)) deps.set(currentArrow, [])
+        const triggers = deps.get(currentArrow)
+        // @ts-ignore
+        if (!triggers.some((t) => t[0] === t && t[1] === p)) triggers.push([t, p])
+      }
       return reactive(result)
     },
-    set(target, prop, newValue) {
-      const oldValue = Reflect.get(target, prop)
-      const result = Reflect.set(target, prop, newValue)
-      triggerArrowsInDeps(target, prop, oldValue, newValue)
+    set(t, p, newValue) {
+      const oldValue = Reflect.get(t, p)
+      const result = Reflect.set(t, p, newValue)
+      if (!Object.is(oldValue, newValue) || p === 'length')
+        for (const [arrow, triggers] of deps.entries())
+          for (const trigger of triggers) {
+            if (trigger[0] === oldValue) trigger[0] = newValue
+            if (trigger[0] === t && trigger[1] === p) {
+              const [fn, ve, k, effect] = arrow
+              const v = fn()
+              if (!ve) effect ? effect(v) : v
+              else if (!k) {
+                for (const vn of ve[2]) removeArrowsInVeFromDeps(vn)
+                updateVeChildren(ve, v)
+              } else if (k[0] === '#') {
+                const i = +k.slice(1)
+                removeArrowsInVeFromDeps(ve[2][i])
+                updateVeChild(ve, i, v)
+              } else updateVeProp(ve, k, v)
+            }
+          }
       return result
     },
   })
 }
 
-export const isReactive = (/**@type {unknown}*/ x) => !!x[BRAND]
+export const isReactive = (/**@type {any}*/ x) => !!x[BRAND]
 
-export function mount(/**@type {string}*/ selector, /**@type {Ve}*/ ve) {
-  document.querySelector(selector).append(createNode(ve))
+// @ts-ignore
+function evaluate(fn, ve, key, effect) {
+  if (typeof fn !== 'function') return fn
+  currentArrow = ve ? [fn, ve, key] : [fn, , , effect]
+  const result = fn()
+  currentArrow = null
+  return result
 }
 
 function createNode(/**@type {Vn}*/ vn) {
@@ -105,43 +129,16 @@ function createNode(/**@type {Vn}*/ vn) {
   return el
 }
 
-function addArrowAndTriggerToDeps(/**@type {Trigger}*/ ...[target, prop]) {
-  if (!currentArrow) return
-  if (!deps.has(currentArrow)) deps.set(currentArrow, [])
-  const triggers = deps.get(currentArrow)
-  if (triggers.some((trigger) => trigger[0] === target && trigger[1] === prop)) return
-  triggers.push([target, prop])
-}
-
-function triggerArrowsInDeps(target, prop, oldValue, newValue) {
-  if (oldValue === newValue && prop !== 'length') return
-  for (const [arrow, triggers] of deps.entries())
-    for (const trigger of triggers) {
-      if (trigger[0] === oldValue) trigger[0] = newValue
-      if (trigger[0] === target && trigger[1] === prop) {
-        const [fn, ve, k, effect] = arrow
-        const v = fn()
-        if (!ve) effect ? effect(v) : v
-        else if (k === '*') {
-          for (const vn of ve[2]) removeArrowsInVeFromDeps(vn)
-          updateVeChildren(ve, v)
-        } else if (k[0] === '#') {
-          const i = +k.slice(1)
-          removeArrowsInVeFromDeps(ve[2][i])
-          updateVeChild(ve, i, v)
-        } else updateVeProp(ve, k, v)
-      }
-    }
-}
-
 function removeArrowsInVeFromDeps(/**@type {Vn}*/ vn) {
   if (typeof vn !== 'string')
     for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
 }
 
-function contains(/**@type {Ve}*/ ve1, /**@type {Ve}*/ ve2) {
-  if (ve1 === ve2) return true
-  return ve1[2].filter((vn) => typeof vn !== 'string').some((vn) => contains(vn, ve2))
+function contains(/**@type {Vn}*/ ancestor, /**@type {Vn=}*/ offspring) {
+  if (typeof ancestor === 'string' || offspring === undefined) return false
+  if (ancestor === offspring) return true
+  const result = ancestor[2].some((vn) => contains(vn, offspring))
+  return result
 }
 
 function updateVeChildren(/**@type {Ve}*/ ve, /**@type {Vn[]}*/ vnodes) {
@@ -174,7 +171,7 @@ function updateVeProp(/**@type {Ve}*/ ve, /**@type {string}*/ k, /**@type {any}*
   setElProp(el, k, v)
 }
 
-function setElProp(/**@type {El}*/ el, /**@type {string}*/ k, /**@type {any}*/ v) {
+function setElProp(/**@type {any}*/ el, /**@type {string}*/ k, /**@type {any}*/ v) {
   if (k === 'class' || k === 'for') k = '_' + k
   if (k[0] === '$') el.style[k.slice(1)] = v
   else if (k[0] === '_') el.setAttribute(k.slice(1), v)
@@ -182,7 +179,7 @@ function setElProp(/**@type {El}*/ el, /**@type {string}*/ k, /**@type {any}*/ v
   else el[k] = v
 }
 
-function resetElProp(/**@type {El}*/ el, /**@type {string}*/ k) {
+function resetElProp(/**@type {any}*/ el, /**@type {string}*/ k) {
   if (k[0] === '$') el.style[k.slice(1)] = null
   else if (k[0] === '_' || k.toLowerCase() in el.attributes)
     el.removeAttribute(k.replace(/^_/, '').toLowerCase())
