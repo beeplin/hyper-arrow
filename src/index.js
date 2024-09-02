@@ -123,8 +123,7 @@ function createNode(/** @type {Vn} */ vn) {
 }
 
 function removeArrowsInVeFromDeps(/** @type {Vn} */ vn) {
-  if (typeof vn !== 'string')
-    for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
+  for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
 }
 
 function contains(/** @type {Vn} */ ancestor, /** @type {Vn=} */ offspring) {
@@ -136,12 +135,33 @@ function contains(/** @type {Vn} */ ancestor, /** @type {Vn=} */ offspring) {
 
 /** @type {(ve: Ve, vnodes: Vn[]) => void} */
 function updateVeChildren(ve, vnodes) {
-  const [, , oldVnodes, el] = ve
-  for (const i in vnodes)
-    if (+i < oldVnodes.length) updateVeChild(ve, +i, vnodes[i])
-    else el.append(createNode(vnodes[i]))
-  // @ts-ignore
-  for (let i = vnodes.length; i < oldVnodes.length; i++) el.removeChild(el.lastChild)
+  const el = ve[3]
+  const ves = vnodes.filter((vn) => typeof vn !== 'string')
+  const keys = ves.filter((ve) => 'key' in ve[1]).map((ve) => ve[1].key)
+  if (new Set(keys).size !== keys.length) throw new Error('duplicate keys')
+  const oldVes = ve[2].filter((vn) => typeof vn !== 'string')
+  const oldKeys = oldVes.filter((ve) => 'key' in ve[1]).map((ve) => ve[1].key)
+  if (keys.length === vnodes.length && oldKeys.length === ve[2].length) {
+    ve[2] = oldVes.filter((ve) => keys.includes(ve[1].key))
+    for (const vn of oldVes) if (!ve[2].includes(vn)) vn[3].remove()
+    // TODO: sort oldVnodes by key here
+    for (const [i, vn] of vnodes.entries())
+      if (typeof vn !== 'string' && typeof ve[2][i] !== 'string')
+        if (vn[1].key === ve[2][i]?.[1].key) updateVeChild(ve, i, vn)
+        else {
+          ve[2].splice(i, 0, vn)
+          const node = createNode(vn)
+          if (i === 0) el.prepend(node)
+          else el.childNodes[i - 1].after(node)
+        }
+  } else {
+    const len = vnodes.length
+    const oldLen = ve[2].length
+    for (let i = 0; i < len || i < oldLen; i++)
+      if (i < len && i < oldLen) updateVeChild(ve, i, vnodes[i])
+      else if (i >= oldLen) el.append(createNode(vnodes[i]))
+      else el.lastChild?.remove()
+  }
   ve[2] = vnodes
 }
 

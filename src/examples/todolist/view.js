@@ -89,7 +89,7 @@ export function view(/** @type {ToDoListState} */ s) {
     }),
     ul({ id: 'list', style: 'padding: 0' }, () =>
       s.getFilteredReversedList().map((item) =>
-        li({ id: () => 'li-' + item.id, _class: 'item-container' }, [
+        li({ id: () => 'li-' + item.id, class: 'item-container', key: () => item.id }, [
           input({
             id: () => 'checkbox-' + item.id,
             class: 'checkbox',
