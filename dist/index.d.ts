@@ -1,5 +1,4 @@
-/** create virtual element */
-export function h(tag: string, p: (Props | Children) | undefined, c: Children | undefined): Ve;
+export function h(tag: string, p?: Props | Children, c?: Children): Ve;
 export function mount(selector: string, ve: Ve): void;
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
@@ -10,31 +9,21 @@ export function mount(selector: string, ve: Ve): void;
  * @returns {() => void} stop auto rerunning
  */
 export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: ((a: ReturnType<F extends (() => any) ? F : never>) => any) | undefined): () => void;
-/**
- * make object reactive, collecting arrows for getters, and updating DOM in setters
- * @template T
- * @param {T} target
- * @returns {T}
- */
+/** make object reactive @template T @param {T} target @returns {T} */
 export function reactive<T>(target: T): T;
-/**@type {Map<Arrow, Trigger[]>}*/
+/** map for dependencies @type {Map<Arrow, Trigger[]>} */
 export const deps: Map<Arrow, Trigger[]>;
-/** @type {{[tag: string]: TagFn}} */
+/** tag functions @type {{[tag: string]: (p?: Props|Children, c?: Children) => Ve}} */
 export const tags: {
-    [tag: string]: TagFn;
+    [tag: string]: (p?: Props | Children, c?: Children) => Ve;
 };
 export function isReactive(x: any): boolean;
 export type El = HTMLElement;
 export type Props = {
     [k: string]: unknown;
 };
-/**
- * (virtual element)
- */
-export type Ve = [tag: string, props: Props, vnodes: Vn[], el: El];
-/**
- * (virtual node)
- */
+export type ElCache = Map<unknown, El>;
+export type Ve = [tag: string, props: Props, vnodes: Vn[], el: El, cache?: ElCache];
 export type Vn = Ve | string;
 export type Child = Vn | (() => Vn);
 export type Children = Child[] | (() => Child[]);
@@ -42,5 +31,4 @@ export type VeArrow = [fn: Function, ve: Ve, key?: string];
 export type WatchArrow = [fn: Function, undefined, undefined, effect?: Function];
 export type Arrow = VeArrow | WatchArrow;
 export type Trigger = [target: object, prop: string | symbol];
-export type TagFn = (propsOrChildren?: Props | Children, children?: Children) => Ve;
 //# sourceMappingURL=index.d.ts.map

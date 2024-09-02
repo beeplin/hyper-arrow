@@ -87,7 +87,7 @@ export function view(/** @type {ToDoListState} */ s) {
       disabled: () => !!s.editingId,
       onClick: s.model.deleteAllCompleted.bind(s.model),
     }),
-    ul({ id: 'list', style: 'padding: 0' }, () =>
+    ul({ id: 'list', style: 'padding: 0', cacheChildrenByKey: true }, () =>
       s.getFilteredReversedList().map((item) =>
         li({ id: () => 'li-' + item.id, class: 'item-container', key: () => item.id }, [
           input({
