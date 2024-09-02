@@ -3,7 +3,7 @@ export class ToDoListState {
     /** @type {ToDoList} */
     model: ToDoList;
     newInput: string;
-    createFromInput(): number;
+    createFromInput(): number | undefined;
     filter: string;
     getFilteredReversedList(): import("./model.js").ToDoItem[];
     /** @type {number|null} */

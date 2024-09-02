@@ -1,5 +1,5 @@
 export class ToDoItem {
-    constructor(id: any, text: any, done: any);
+    constructor(id: number, text: string, done: boolean);
     /** @type {number} */
     id: number;
     /** @type {string} */
@@ -11,7 +11,7 @@ export class ToDoList {
     /** @type {ToDoItem[]} */
     list: ToDoItem[];
     _currentId: number;
-    getItemById(id: number): ToDoItem;
+    getItemById(id: number): ToDoItem | undefined;
     getIndexById(id: number): number;
     create(text: string): number;
     toggle(id: number): void;

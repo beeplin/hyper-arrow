@@ -146,6 +146,7 @@ function updateVeChildren(/**@type {Ve}*/ ve, /**@type {Vn[]}*/ vnodes) {
   for (const i in vnodes)
     if (+i < oldVnodes.length) updateVeChild(ve, +i, vnodes[i])
     else el.append(createNode(vnodes[i]))
+  // @ts-ignore
   for (let i = vnodes.length; i < oldVnodes.length; i++) el.removeChild(el.lastChild)
   ve[2] = vnodes
 }

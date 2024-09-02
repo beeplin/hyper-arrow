@@ -1,3 +1,6 @@
+/** create virtual element */
+export function h(tag: string, p: (Props | Children) | undefined, c: Children | undefined): Ve;
+export function mount(selector: string, ve: Ve): void;
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
  * auto rerun watchFn(), or effectFn(watchFn()) if effectFn provided,
@@ -14,27 +17,30 @@ export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: 
  * @returns {T}
  */
 export function reactive<T>(target: T): T;
-export function mount(selector: string, ve: Ve): void;
+/**@type {Map<Arrow, Trigger[]>}*/
 export const deps: Map<Arrow, Trigger[]>;
-export function h(tag: string, props: object | null, children: VnsOrFn | null): Ve;
-/** @type {{[tag: string]: (props?: object, children?: VnsOrFn) => Ve}} */
+/** @type {{[tag: string]: TagFn}} */
 export const tags: {
-    [tag: string]: (props?: object, children?: VnsOrFn) => Ve;
+    [tag: string]: TagFn;
 };
-export function isReactive(x: unknown): boolean;
+export function isReactive(x: any): boolean;
 export type El = HTMLElement;
+export type Props = {
+    [k: string]: unknown;
+};
 /**
- * - virtual element
+ * (virtual element)
  */
-export type Ve = [tag: string, props: object, vnodes: Vn[], el?: El];
+export type Ve = [tag: string, props: Props, vnodes: Vn[], el: El];
 /**
- * - virtual node
+ * (virtual node)
  */
 export type Vn = Ve | string;
-export type VnOrFn = Vn | (() => Vn);
-export type VnsOrFn = VnOrFn[] | (() => VnOrFn[]);
-export type ElementArrow = [fn: Function, ve: Ve, key: string];
+export type Child = Vn | (() => Vn);
+export type Children = Child[] | (() => Child[]);
+export type VeArrow = [fn: Function, ve: Ve, key?: string];
 export type WatchArrow = [fn: Function, undefined, undefined, effect?: Function];
-export type Arrow = ElementArrow | WatchArrow;
+export type Arrow = VeArrow | WatchArrow;
 export type Trigger = [target: object, prop: string | symbol];
+export type TagFn = (propsOrChildren?: Props | Children, children?: Children) => Ve;
 //# sourceMappingURL=index.d.ts.map

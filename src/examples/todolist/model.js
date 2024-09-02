@@ -1,5 +1,9 @@
 export class ToDoItem {
-  constructor(id, text, done) {
+  constructor(
+    /**@type {number}*/ id,
+    /**@type {string}*/ text,
+    /**@type {boolean}*/ done,
+  ) {
     /** @type {number} */
     this.id = id
     /** @type {string} */

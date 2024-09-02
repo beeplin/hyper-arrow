@@ -1,6 +1,7 @@
 {
   // Change this to match your project
   "include": ["src/**/*.js"],
+  "exclude": ["src/examples/simple/*.js"],
   "compilerOptions": {
     "lib": ["esnext", "dom"],
     "target": "ESNext",
