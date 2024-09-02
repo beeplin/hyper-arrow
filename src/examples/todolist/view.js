@@ -108,6 +108,34 @@ export function view(/** @type {ToDoListState} */ s) {
     ul({ id: 'list', style: 'padding: 0', cacheChildrenByKey: true }, () =>
       s.getFilteredReversedList().map((item) =>
         li({ id: () => 'li-' + item.id, class: 'item-container', key: () => item.id }, [
+          button({
+            id: () => 'up-' + item.id,
+            class: 'item-up',
+            innerHTML: '⇧',
+            disabled: () => !!s.editingId,
+            onClick() {
+              const index = s
+                .getFilteredReversedList()
+                .findIndex((i) => i.id === item.id)
+              if (index === 0) return
+              const prevItem = s.getFilteredReversedList()[index - 1]
+              swap(s.model.list, item, prevItem)
+            },
+          }),
+          button({
+            id: () => 'down-' + item.id,
+            class: 'item-down',
+            innerHTML: '⇩',
+            disabled: () => !!s.editingId,
+            onClick() {
+              const index = s
+                .getFilteredReversedList()
+                .findIndex((i) => i.id === item.id)
+              if (index === s.getFilteredReversedList().length - 1) return
+              const nextItem = s.getFilteredReversedList()[index + 1]
+              swap(s.model.list, item, nextItem)
+            },
+          }),
           input({
             id: () => 'checkbox-' + item.id,
             class: 'checkbox',
@@ -139,12 +167,12 @@ export function view(/** @type {ToDoListState} */ s) {
                   innerText: () => item.text,
                   $minWidth: '150px',
                 }),
-
           button({
             id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
             innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
             disabled: () => !!s.editingId && s.editingId !== item.id,
+            // FIXME: 切换 filter 到 completed 后 innerText 和 disable 失效
             onClick() {
               if (s.editingId === item.id) s.update(item.id, s.editInput)
               else {
@@ -166,34 +194,6 @@ export function view(/** @type {ToDoListState} */ s) {
             onClick() {
               if (s.editingId === item.id) s.editingId = null
               else s.model.delete(item.id)
-            },
-          }),
-          button({
-            id: () => 'up-' + item.id,
-            class: 'item-up',
-            innerHTML: '⇧',
-            disabled: () => !!s.editingId,
-            onClick() {
-              const index = s
-                .getFilteredReversedList()
-                .findIndex((i) => i.id === item.id)
-              if (index === 0) return
-              const prevItem = s.getFilteredReversedList()[index - 1]
-              swap(s.model.list, item, prevItem)
-            },
-          }),
-          button({
-            id: () => 'down-' + item.id,
-            class: 'item-down',
-            innerHTML: '⇩',
-            disabled: () => !!s.editingId,
-            onClick() {
-              const index = s
-                .getFilteredReversedList()
-                .findIndex((i) => i.id === item.id)
-              if (index === s.getFilteredReversedList().length - 1) return
-              const nextItem = s.getFilteredReversedList()[index + 1]
-              swap(s.model.list, item, nextItem)
             },
           }),
         ]),

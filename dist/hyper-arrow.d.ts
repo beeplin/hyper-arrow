@@ -1,4 +1,3 @@
-export function h(tag: string, p?: Props | Children, c?: Children): Ve;
 export function mount(selector: string, ve: Ve): void;
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
@@ -12,6 +11,8 @@ export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: 
 export function reactive<T>(target: T): T;
 /** map for dependencies @type {Map<Arrow, Trigger[]>} */
 export const deps: Map<Arrow, Trigger[]>;
+/** create virtual el @type {(tag: string, p?: Props|Children, c?: Children) => Ve} */
+export const h: (tag: string, p?: Props | Children, c?: Children) => Ve;
 /** tag functions @type {{[tag: string]: (p?: Props|Children, c?: Children) => Ve}} */
 export const tags: {
     [tag: string]: (p?: Props | Children, c?: Children) => Ve;
@@ -21,10 +22,11 @@ export type El = HTMLElement;
 export type Props = {
     [k: string]: unknown;
 };
-export type ElCache = Map<unknown, El>;
-export type Ve = [tag: string, props: Props, vnodes: Vn[], el: El, cache?: ElCache];
-export type Vn = Ve | string;
-export type Child = Vn | (() => Vn);
+export type Cache = Map<unknown, Node>;
+export type Ve = [node: Node, tag: string, props: Props, children: Vn[], cache?: Cache];
+export type Vt = [node: Node, null, props: Props, children: Vn[], null, text: string];
+export type Vn = Ve | Vt;
+export type Child = Ve | string | (() => (Ve | string));
 export type Children = Child[] | (() => Child[]);
 export type VeArrow = [fn: Function, ve: Ve, key?: string];
 export type WatchArrow = [fn: Function, undefined, undefined, effect?: Function];

@@ -6,10 +6,6 @@ body {
   display: flex;
   justify-content: center;
 }
-button {
-  background: none;
-  color: #abb2bf;
-}
 #root {
   width: 450px;
   display: flex;
