@@ -1,11 +1,10 @@
 // @ts-check
 
 /**
- * @typedef {HTMLElement} El
  * @typedef {{[k:string]: unknown}} Props
  * @typedef {Map<unknown, Node>} Cache
  * @typedef {[node: Node, tag: string, props: Props, children: Vn[], cache?: Cache]} Ve
- * @typedef {[node: Node, null, props: Props, children: Vn[], null, text: string]} Vt
+ * @typedef {[node: Node, txt: string, props: Props, children: Vn[], type: 0]} Vt
  * @typedef {Ve | Vt} Vn
  * @typedef {Ve | string | (() => (Ve | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -17,6 +16,7 @@
 
 const BRAND = Symbol('brand')
 const NO_EL = document.createElement('_')
+const VNKEY = '__hyper_arrow__'
 
 /** set current arrow context where function runs @type {Arrow?} */
 let currentArrow = null
@@ -26,13 +26,13 @@ export const deps = new Map()
 
 /** create virtual el @type {(tag: string, p?: Props|Children, c?: Children) => Ve} */
 export const h = function createVe(tag, p, c) {
-  const /** @type {Ve} */ ve = [NO_EL, tag, Object.create(null), []]
+  const /**@type {Ve}*/ ve = [NO_EL, tag, Object.create(null), []]
   if (typeof p !== 'object' || Array.isArray(p)) c = p
   else
     for (const k in p)
       if (k.startsWith('on')) ve[2][k.toLowerCase()] = p[k]
       else ve[2][k] = evaluate(p[k], ve, k)
-  const /** @type {Child[]} */ children = evaluate(c, ve) ?? []
+  const /**@type {Child[]}*/ children = evaluate(c, ve) ?? []
   for (const i in children) ve[3].push(createVn(evaluate(children[i], ve, '#' + i)))
   return ve
 }
@@ -41,8 +41,8 @@ export const h = function createVe(tag, p, c) {
 // @ts-ignore
 export const tags = new Proxy({}, { get: (_, p) => h.bind(null, p) })
 
-/** mount virtual element to DOM @type {(selector: string, ve: Ve) => void} */
-export function mount(selector, ve) {
+/** mount virtual element to DOM */
+export function mount(/**@type {string}*/ selector, /**@type {Ve}*/ ve) {
   // @ts-ignore
   document.querySelector(selector).append(createNode(ve))
 }
@@ -105,7 +105,7 @@ export function reactive(target) {
   })
 }
 
-export const isReactive = (/** @type {any} */ x) => !!x[BRAND]
+export const isReactive = (/**@type {any}*/ x) => !!x[BRAND]
 
 // @ts-ignore
 function evaluate(fn, ve, key, effect) {
@@ -116,26 +116,25 @@ function evaluate(fn, ve, key, effect) {
   return result
 }
 
-/** create virtual node from string or virutal el @type {(x: Ve|string) => Vn} */
-function createVn(x) {
+function createVn(/**@type {Ve|string}*/ x) {
   if (typeof x !== 'string') return x
-  const /** @type {Vt} */ vt = [NO_EL, null, {}, [], null, x]
+  const /**@type {Vt}*/ vt = [NO_EL, x, Object.create(null), [], 0]
   return vt
 }
 
-function createNode(/** @type {Vn} */ vn) {
-  return typeof vn[1] === 'string' ? createEl(vn) : createText(vn)
+function createNode(/**@type {Vn}*/ vn) {
+  return vn[4] === 0 ? createTextNode(vn) : createElement(vn)
 }
 
-function createText(/** @type {Vt} */ vt) {
-  const text = document.createTextNode(vt[5])
+function createTextNode(/**@type {Vt}*/ vt) {
+  const text = document.createTextNode(vt[1])
   vt[0] = text
   // @ts-ignore
-  text.__hyper_arrow__ = vt
+  text[VNKEY] = vt
   return text
 }
 
-function createEl(/** @type {Ve} */ ve) {
+function createElement(/**@type {Ve}*/ ve) {
   const [, tag, props, children] = ve
   const el = document.createElement(tag)
   el.dataset.id = Math.random().toString().slice(2, 4) // TODO: 测试用，待删除
@@ -147,34 +146,32 @@ function createEl(/** @type {Ve} */ ve) {
     for (const child of children) ve[4].set(child[2].key, child[0])
   }
   // @ts-ignore
-  el.__hyper_arrow__ = ve
+  el[VNKEY] = ve
   const { onmount } = props
   if (typeof onmount === 'function') onmount(...ve)
   return el
 }
 
-function getKeysFromVnodes(/** @type {Vn[]} */ vnodes) {
+function getKeysFromVnodes(/**@type {Vn[]}*/ vnodes) {
   const keys = vnodes.filter((vn) => 'key' in vn[2]).map((vn) => vn[2].key)
   if (new Set(keys).size !== keys.length) throw new Error('duplicate keys')
   else return keys.length === vnodes.length ? keys : null
 }
 
-function removeArrowsInVeFromDeps(/** @type {Vn} */ vn) {
+function removeArrowsInVeFromDeps(/**@type {Vn}*/ vn) {
   for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
 }
 
-function contains(/** @type {Vn} */ ancestor, /** @type {Vn=} */ descendant) {
+function contains(/**@type {Vn}*/ ancestor, /**@type {Vn=}*/ descendant) {
   if (!descendant) return false
   if (ancestor === descendant) return true
   const result = ancestor[3].some((vn) => contains(vn, descendant))
   return result
 }
 
-/** @type {(ve: Ve, vnodes: Vn[]) => void} */
-function updateChildren(ve, vnodes) {
+function updateChildren(/**@type {Ve}*/ ve, /**@type {Vn[]}*/ vnodes) {
   const keys = getKeysFromVnodes(vnodes)
-  const oldKeys = ve[3].filter((vn) => 'key' in vn[2]).map((vn) => vn[2].key)
-  if (keys && oldKeys.length === ve[3].length) {
+  if (keys && getKeysFromVnodes(ve[3])) {
     const remained = ve[3].filter((vn) => keys.includes(vn[2].key))
     for (const vn of ve[3]) if (!remained.includes(vn)) removeNode(vn)
     ve[3] = remained
@@ -190,9 +187,9 @@ function updateChildren(ve, vnodes) {
           ve[3].splice(index, 1)
           ve[3].splice(i, 0, oldVn)
         } else {
+          if (cache && !cache.has(key)) cache.set(key, node)
           vn[0] = node
           ve[3].splice(i, 0, vn)
-          if (cache && !cache.has(key)) cache.set(key, node)
         }
         ve[0].insertBefore(node, ve[0].childNodes.item(i))
       }
@@ -209,10 +206,9 @@ function updateChildren(ve, vnodes) {
   }
 }
 
-/** @type {(ve: Ve, i: number, vn: Vn) => void} */
-function updateChild(ve, i, vn) {
+function updateChild(/**@type {Ve}*/ ve, /**@type {number}*/ i, /**@type {Vn}*/ vn) {
   const oldVn = ve[3][i]
-  if (typeof oldVn[1] === 'string' && typeof vn[1] === 'string' && oldVn[1] === vn[1]) {
+  if (oldVn[4] !== 0 && vn[4] !== 0 && oldVn[1] === vn[1]) {
     const [el, , oldProps] = oldVn
     const [, , props, vnodes] = vn
     vn[0] = el
@@ -229,15 +225,14 @@ function updateChild(ve, i, vn) {
   ve[3][i] = vn
 }
 
-/** @type {(ve: Ve, k: string, v: any) => void} */
-function updateProp(ve, k, v) {
+function updateProp(/**@type {Ve}*/ ve, /**@type {string}*/ k, /**@type {any}*/ v) {
   const [el, , props] = ve
   if (props[k] === v) return
   props[k] = v
   setElementProp(el, k, v)
 }
 
-function removeNode(/** @type {Vn} */ vn) {
+function removeNode(/**@type {Vn}*/ vn) {
   const { onunmount } = vn[2]
   if (typeof onunmount === 'function') onunmount(...vn)
   vn[0].parentNode?.removeChild(vn[0])

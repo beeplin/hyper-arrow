@@ -4,7 +4,7 @@ import { test } from './test.js'
 
 const { button, div, input, label, li, small, ul } = tags
 
-export function view(/** @type {ToDoListState} */ s) {
+export function view(/**@type {ToDoListState}*/ s) {
   return h('div', { id: 'root' }, [
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
@@ -112,10 +112,10 @@ export function view(/** @type {ToDoListState} */ s) {
             id: () => 'li-' + item.id,
             class: 'item-container',
             key: () => item.id,
-            onMount(/** @type {Node} */ node) {
+            onMount(/**@type {Node}*/ node) {
               console.log('mounted:', node)
             },
-            onUnmount(/** @type {Node} */ node) {
+            onUnmount(/**@type {Node}*/ node) {
               console.log('unmounted:', node)
             },
           },
@@ -171,10 +171,10 @@ export function view(/** @type {ToDoListState} */ s) {
                     onKeyDown(/**@type {any}*/ e) {
                       if (e.keyCode === 13) s.update(item.id, s.editInput)
                     },
-                    onMount(/** @type {Node} */ node) {
+                    onMount(/**@type {Node}*/ node) {
                       console.log('mounted:', node)
                     },
-                    onUnmount(/** @type {Node} */ node) {
+                    onUnmount(/**@type {Node}*/ node) {
                       console.log('unmounted:', node)
                     },
                   })

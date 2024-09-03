@@ -1,9 +1,9 @@
 import { ToDoList } from './model.js'
 
 export class ToDoListState {
-  /** @type {ToDoList} */
+  /**@type {ToDoList}*/
   model
-  constructor(/** @type {ToDoList} */ list) {
+  constructor(/**@type {ToDoList}*/ list) {
     this.model = list
   }
   newInput = ''
@@ -21,13 +21,13 @@ export class ToDoListState {
       ? this.model.list.filter((x) => x.done).reverse()
       : [...this.model.list].reverse()
   }
-  /** @type {number|null} */
+  /**@type {number|null}*/
   editingId = null
-  isEditing(/** @type {number} */ id) {
+  isEditing(/**@type {number}*/ id) {
     return this.editingId === id
   }
   editInput = ''
-  update(/** @type {number} */ id, /** @type {string} */ text) {
+  update(/**@type {number}*/ id, /**@type {string}*/ text) {
     this.model.update(id, text)
     this.editingId = null
   }
