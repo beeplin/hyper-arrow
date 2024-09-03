@@ -1,11 +1,11 @@
-import { deps, h, tags } from '../../hyper-arrow.js'
+import { deps, tags } from '../../hyper-arrow.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
-const { button, div, input, label, li, small, ul } = tags
+const { button, div, input, label, li, small, ul } = tags.html
 
 export function view(/**@type {ToDoListState}*/ s) {
-  return h('div', { id: 'root' }, [
+  return div({ id: 'root' }, [
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
       () => small([() => s.newInput || 'via hyper-arrow']),
