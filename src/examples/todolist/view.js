@@ -112,11 +112,11 @@ export function view(/**@type {ToDoListState}*/ s) {
             id: () => 'li-' + item.id,
             class: 'item-container',
             key: () => item.id,
-            onMount(/**@type {Node}*/ node) {
-              console.log('mounted:', node)
+            onCreate(/**@type {HTMLElement}*/ el) {
+              console.log('created:', el)
             },
-            onUnmount(/**@type {Node}*/ node) {
-              console.log('unmounted:', node)
+            onRemove(/**@type {HTMLElement}*/ el) {
+              console.log('removed:', el)
             },
           },
           [
@@ -171,11 +171,12 @@ export function view(/**@type {ToDoListState}*/ s) {
                     onKeyDown(/**@type {any}*/ e) {
                       if (e.keyCode === 13) s.update(item.id, s.editInput)
                     },
-                    onMount(/**@type {Node}*/ node) {
-                      console.log('mounted:', node)
+                    onCreate(/**@type {any}*/ el) {
+                      console.log('created:', el)
+                      requestAnimationFrame(() => el.select())
                     },
-                    onUnmount(/**@type {Node}*/ node) {
-                      console.log('unmounted:', node)
+                    onRemove(/**@type {HTMLElement}*/ el) {
+                      console.log('removed:', el)
                     },
                   })
                 : label({
@@ -196,11 +197,6 @@ export function view(/**@type {ToDoListState}*/ s) {
                 else {
                   s.editingId = item.id
                   s.editInput = item.text
-                  requestAnimationFrame(() => {
-                    document.getElementById('edit-' + item.id)?.focus()
-                    // @ts-ignore
-                    document.getElementById('edit-' + item.id)?.select()
-                  })
                 }
               },
             }),

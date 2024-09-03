@@ -3,8 +3,8 @@
 /**
  * @typedef {{[k:string]: unknown}} Props
  * @typedef {Map<unknown, Node>} Cache
- * @typedef {[node: Node, tag: string, props: Props, children: Vn[], cache?: Cache]} Ve
- * @typedef {[node: Node, txt: string, props: Props, children: Vn[], type: 0]} Vt
+ * @typedef {[el: Element, tag: string, props: Props, children: Vn[], cache?: Cache]} Ve
+ * @typedef {[node: Text, text: string, props: Props, children: Vn[], mark: 0]} Vt
  * @typedef {Ve | Vt} Vn
  * @typedef {Ve | string | (() => (Ve | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -15,7 +15,8 @@
  */
 
 const BRAND = Symbol('brand')
-const NO_EL = document.createElement('_')
+const NOELE = document.createElement('_')
+const NOTXT = document.createTextNode('_')
 const VNKEY = '__hyper_arrow__'
 
 /** set current arrow context where function runs @type {Arrow?} */
@@ -26,7 +27,7 @@ export const deps = new Map()
 
 /** create virtual el @type {(tag: string, p?: Props|Children, c?: Children) => Ve} */
 export const h = function createVe(tag, p, c) {
-  const /**@type {Ve}*/ ve = [NO_EL, tag, Object.create(null), []]
+  const /**@type {Ve}*/ ve = [NOELE, tag, Object.create(null), []]
   if (typeof p !== 'object' || Array.isArray(p)) c = p
   else
     for (const k in p)
@@ -82,7 +83,7 @@ export function reactive(target) {
     set(t, p, newValue) {
       const oldValue = Reflect.get(t, p)
       const result = Reflect.set(t, p, newValue)
-      if (!Object.is(oldValue, newValue) || p === 'length')
+      if (oldValue !== newValue || p === 'length')
         for (const [arrow, triggers] of deps.entries())
           for (const trigger of triggers) {
             if (trigger[0] === oldValue) trigger[0] = newValue
@@ -118,7 +119,7 @@ function evaluate(fn, ve, key, effect) {
 
 function createVn(/**@type {Ve|string}*/ x) {
   if (typeof x !== 'string') return x
-  const /**@type {Vt}*/ vt = [NO_EL, x, Object.create(null), [], 0]
+  const /**@type {Vt}*/ vt = [NOTXT, x, Object.create(null), [], 0]
   return vt
 }
 
@@ -147,49 +148,40 @@ function createElement(/**@type {Ve}*/ ve) {
   }
   // @ts-ignore
   el[VNKEY] = ve
-  const { onmount } = props
-  if (typeof onmount === 'function') onmount(...ve)
+  const fn = props.oncreate
+  if (typeof fn === 'function') fn(...ve)
   return el
 }
 
-function getKeysFromVnodes(/**@type {Vn[]}*/ vnodes) {
-  const keys = vnodes.filter((vn) => 'key' in vn[2]).map((vn) => vn[2].key)
-  if (new Set(keys).size !== keys.length) throw new Error('duplicate keys')
-  else return keys.length === vnodes.length ? keys : null
-}
-
-function removeArrowsInVeFromDeps(/**@type {Vn}*/ vn) {
-  for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
-}
-
-function contains(/**@type {Vn}*/ ancestor, /**@type {Vn=}*/ descendant) {
-  if (!descendant) return false
-  if (ancestor === descendant) return true
-  const result = ancestor[3].some((vn) => contains(vn, descendant))
-  return result
+function removeNode(/**@type {Vn}*/ vn) {
+  if (vn[4] !== 0) {
+    const fn = vn[2].onremove
+    if (typeof fn === 'function') fn(...vn)
+  }
+  vn[0].parentNode?.removeChild(vn[0])
 }
 
 function updateChildren(/**@type {Ve}*/ ve, /**@type {Vn[]}*/ vnodes) {
   const keys = getKeysFromVnodes(vnodes)
-  if (keys && getKeysFromVnodes(ve[3])) {
-    const remained = ve[3].filter((vn) => keys.includes(vn[2].key))
-    for (const vn of ve[3]) if (!remained.includes(vn)) removeNode(vn)
-    ve[3] = remained
-    const cache = ve[4]
+  const children = ve[3]
+  if (keys && getKeysFromVnodes(children)) {
+    const remained = (ve[3] = children.filter((vn) => keys.includes(vn[2].key)))
+    for (const vn of children) if (!remained.includes(vn)) removeNode(vn)
     for (const [i, vn] of vnodes.entries()) {
-      const { key } = vn[2]
-      if (key !== ve[3][i]?.[2].key) {
-        const index = ve[3].findIndex((c) => c[2].key === key)
-        const oldVn = ve[3][index]
+      const key = vn[2].key
+      if (key !== remained[i]?.[2].key) {
+        const index = remained.findIndex((c) => c[2].key === key)
+        const oldVn = remained[index]
+        const cache = ve[4]
         const node = oldVn?.[0] ?? cache?.get(key) ?? createNode(vn)
         if (oldVn) {
           removeNode(oldVn)
-          ve[3].splice(index, 1)
-          ve[3].splice(i, 0, oldVn)
+          remained.splice(index, 1)
+          remained.splice(i, 0, oldVn)
         } else {
           if (cache && !cache.has(key)) cache.set(key, node)
           vn[0] = node
-          ve[3].splice(i, 0, vn)
+          remained.splice(i, 0, vn)
         }
         ve[0].insertBefore(node, ve[0].childNodes.item(i))
       }
@@ -232,10 +224,21 @@ function updateProp(/**@type {Ve}*/ ve, /**@type {string}*/ k, /**@type {any}*/ 
   setElementProp(el, k, v)
 }
 
-function removeNode(/**@type {Vn}*/ vn) {
-  const { onunmount } = vn[2]
-  if (typeof onunmount === 'function') onunmount(...vn)
-  vn[0].parentNode?.removeChild(vn[0])
+function getKeysFromVnodes(/**@type {Vn[]}*/ vnodes) {
+  const keys = vnodes.filter((vn) => 'key' in vn[2]).map((vn) => vn[2].key)
+  if (new Set(keys).size !== keys.length) throw new Error('duplicate keys')
+  else return keys.length === vnodes.length ? keys : null
+}
+
+function removeArrowsInVeFromDeps(/**@type {Vn}*/ vn) {
+  for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
+}
+
+function contains(/**@type {Vn}*/ ancestor, /**@type {Vn=}*/ descendant) {
+  if (!descendant) return false
+  if (ancestor === descendant) return true
+  const result = ancestor[3].some((vn) => contains(vn, descendant))
+  return result
 }
 
 // @ts-ignore
