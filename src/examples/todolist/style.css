@@ -45,6 +45,14 @@ body {
 .item-label {
   flex-grow: 1;
 }
+.item-up,
+.item-down,
+.item-edit,
+.item-delete {
+  background: none;
+  border: 2px solid transparent;
+  color: #abb2bf;
+}
 .done {
   color: #5c6370;
 }

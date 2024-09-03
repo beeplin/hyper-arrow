@@ -107,96 +107,115 @@ export function view(/** @type {ToDoListState} */ s) {
     ]),
     ul({ id: 'list', style: 'padding: 0', cacheChildrenByKey: true }, () =>
       s.getFilteredReversedList().map((item) =>
-        li({ id: () => 'li-' + item.id, class: 'item-container', key: () => item.id }, [
-          button({
-            id: () => 'up-' + item.id,
-            class: 'item-up',
-            innerHTML: '⇧',
-            disabled: () => !!s.editingId,
-            onClick() {
-              const index = s
-                .getFilteredReversedList()
-                .findIndex((i) => i.id === item.id)
-              if (index === 0) return
-              const prevItem = s.getFilteredReversedList()[index - 1]
-              swap(s.model.list, item, prevItem)
+        li(
+          {
+            id: () => 'li-' + item.id,
+            class: 'item-container',
+            key: () => item.id,
+            onMount(/** @type {Node} */ node) {
+              console.log('mounted:', node)
             },
-          }),
-          button({
-            id: () => 'down-' + item.id,
-            class: 'item-down',
-            innerHTML: '⇩',
-            disabled: () => !!s.editingId,
-            onClick() {
-              const index = s
-                .getFilteredReversedList()
-                .findIndex((i) => i.id === item.id)
-              if (index === s.getFilteredReversedList().length - 1) return
-              const nextItem = s.getFilteredReversedList()[index + 1]
-              swap(s.model.list, item, nextItem)
+            onUnmount(/** @type {Node} */ node) {
+              console.log('unmounted:', node)
             },
-          }),
-          input({
-            id: () => 'checkbox-' + item.id,
-            class: 'checkbox',
-            type: 'checkbox',
-            checked: () => item.done,
-            disabled: () => !!s.editingId,
-            onInput() {
-              s.model.toggle(item.id)
-            },
-          }),
-          () =>
-            s.isEditing(item.id)
-              ? input({
-                  id: () => 'edit-' + item.id,
-                  class: 'item-input',
-                  type: 'text',
-                  value: () => s.editInput,
-                  onInput(/**@type {any}*/ e) {
-                    s.editInput = e.target.value
-                  },
-                  onKeyDown(/**@type {any}*/ e) {
-                    if (e.keyCode === 13) s.update(item.id, s.editInput)
-                  },
-                })
-              : label({
-                  id: () => 'label-' + item.id,
-                  class: () => 'item-label' + (item.done ? ' done' : ''),
-                  for: () => 'checkbox-' + item.id,
-                  innerText: () => item.text,
-                  $minWidth: '150px',
-                }),
-          button({
-            id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
-            class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
-            innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
-            disabled: () => !!s.editingId && s.editingId !== item.id,
-            // FIXME: 切换 filter 到 completed 后 innerText 和 disable 失效
-            onClick() {
-              if (s.editingId === item.id) s.update(item.id, s.editInput)
-              else {
-                s.editingId = item.id
-                s.editInput = item.text
-                requestAnimationFrame(() => {
-                  document.getElementById('edit-' + item.id)?.focus()
-                  // @ts-ignore
-                  document.getElementById('edit-' + item.id)?.select()
-                })
-              }
-            },
-          }),
-          button({
-            id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
-            class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
-            innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
-            disabled: () => !!s.editingId && s.editingId !== item.id,
-            onClick() {
-              if (s.editingId === item.id) s.editingId = null
-              else s.model.delete(item.id)
-            },
-          }),
-        ]),
+          },
+          [
+            button({
+              id: () => 'up-' + item.id,
+              class: 'item-up',
+              innerHTML: '⇧',
+              disabled: () => !!s.editingId,
+              onClick() {
+                const index = s
+                  .getFilteredReversedList()
+                  .findIndex((i) => i.id === item.id)
+                if (index === 0) return
+                const prevItem = s.getFilteredReversedList()[index - 1]
+                swap(s.model.list, item, prevItem)
+              },
+            }),
+            button({
+              id: () => 'down-' + item.id,
+              class: 'item-down',
+              innerHTML: '⇩',
+              disabled: () => !!s.editingId,
+              onClick() {
+                const index = s
+                  .getFilteredReversedList()
+                  .findIndex((i) => i.id === item.id)
+                if (index === s.getFilteredReversedList().length - 1) return
+                const nextItem = s.getFilteredReversedList()[index + 1]
+                swap(s.model.list, item, nextItem)
+              },
+            }),
+            input({
+              id: () => 'checkbox-' + item.id,
+              class: 'checkbox',
+              type: 'checkbox',
+              checked: () => item.done,
+              disabled: () => !!s.editingId,
+              onInput() {
+                s.model.toggle(item.id)
+              },
+            }),
+            () =>
+              s.isEditing(item.id)
+                ? input({
+                    id: () => 'edit-' + item.id,
+                    class: 'item-input',
+                    type: 'text',
+                    value: () => s.editInput,
+                    onInput(/**@type {any}*/ e) {
+                      s.editInput = e.target.value
+                    },
+                    onKeyDown(/**@type {any}*/ e) {
+                      if (e.keyCode === 13) s.update(item.id, s.editInput)
+                    },
+                    onMount(/** @type {Node} */ node) {
+                      console.log('mounted:', node)
+                    },
+                    onUnmount(/** @type {Node} */ node) {
+                      console.log('unmounted:', node)
+                    },
+                  })
+                : label({
+                    id: () => 'label-' + item.id,
+                    class: () => 'item-label' + (item.done ? ' done' : ''),
+                    for: () => 'checkbox-' + item.id,
+                    innerText: () => item.text,
+                    $minWidth: '150px',
+                  }),
+            button({
+              id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
+              class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
+              innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
+              disabled: () => !!s.editingId && s.editingId !== item.id,
+              // FIXME: 切换 filter 到 completed 后 innerText 和 disable 失效
+              onClick() {
+                if (s.editingId === item.id) s.update(item.id, s.editInput)
+                else {
+                  s.editingId = item.id
+                  s.editInput = item.text
+                  requestAnimationFrame(() => {
+                    document.getElementById('edit-' + item.id)?.focus()
+                    // @ts-ignore
+                    document.getElementById('edit-' + item.id)?.select()
+                  })
+                }
+              },
+            }),
+            button({
+              id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
+              class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
+              innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
+              disabled: () => !!s.editingId && s.editingId !== item.id,
+              onClick() {
+                if (s.editingId === item.id) s.editingId = null
+                else s.model.delete(item.id)
+              },
+            }),
+          ],
+        ),
       ),
     ),
   ])

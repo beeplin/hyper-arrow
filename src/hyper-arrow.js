@@ -28,7 +28,10 @@ export const deps = new Map()
 export const h = function createVe(tag, p, c) {
   const /** @type {Ve} */ ve = [NO_EL, tag, Object.create(null), []]
   if (typeof p !== 'object' || Array.isArray(p)) c = p
-  else for (const k in p) ve[2][k] = k.startsWith('on') ? p[k] : evaluate(p[k], ve, k)
+  else
+    for (const k in p)
+      if (k.startsWith('on')) ve[2][k.toLowerCase()] = p[k]
+      else ve[2][k] = evaluate(p[k], ve, k)
   const /** @type {Child[]} */ children = evaluate(c, ve) ?? []
   for (const i in children) ve[3].push(createVn(evaluate(children[i], ve, '#' + i)))
   return ve
@@ -89,12 +92,12 @@ export function reactive(target) {
               if (!ve) effect ? effect(v) : v
               else if (!k) {
                 for (const vn of ve[3]) removeArrowsInVeFromDeps(vn)
-                updateVeChildren(ve, v)
+                updateChildren(ve, v)
               } else if (k[0] === '#') {
                 const i = +k.slice(1)
                 removeArrowsInVeFromDeps(ve[3][i])
-                updateVeChild(ve, i, createVn(v))
-              } else updateVeProp(ve, k, v)
+                updateChild(ve, i, createVn(v))
+              } else updateProp(ve, k, v)
             }
           }
       return result
@@ -120,23 +123,11 @@ function createVn(x) {
   return vt
 }
 
-function removeArrowsInVeFromDeps(/** @type {Vn} */ vn) {
-  for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
-}
-
-function contains(/** @type {Vn} */ ancestor, /** @type {Vn=} */ descendant) {
-  if (!descendant) return false
-  if (ancestor === descendant) return true
-  const result = ancestor[3].some((vn) => contains(vn, descendant))
-  return result
-}
-
 function createNode(/** @type {Vn} */ vn) {
   return typeof vn[1] === 'string' ? createEl(vn) : createText(vn)
 }
 
 function createText(/** @type {Vt} */ vt) {
-  console.log('vt:', vt)
   const text = document.createTextNode(vt[5])
   vt[0] = text
   // @ts-ignore
@@ -148,9 +139,8 @@ function createEl(/** @type {Ve} */ ve) {
   const [, tag, props, children] = ve
   const el = document.createElement(tag)
   el.dataset.id = Math.random().toString().slice(2, 4) // TODO: 测试用，待删除
-  console.log('children:', children)
   el.append(...children.map(createNode))
-  for (const k in props) setElProp(el, k, props[k])
+  for (const k in props) setElementProp(el, k, props[k])
   ve[0] = el
   if (props.cacheChildrenByKey && getKeysFromVnodes(children)) {
     ve[4] = new Map()
@@ -158,6 +148,8 @@ function createEl(/** @type {Ve} */ ve) {
   }
   // @ts-ignore
   el.__hyper_arrow__ = ve
+  const { onmount } = props
+  if (typeof onmount === 'function') onmount(...ve)
   return el
 }
 
@@ -167,24 +159,36 @@ function getKeysFromVnodes(/** @type {Vn[]} */ vnodes) {
   else return keys.length === vnodes.length ? keys : null
 }
 
+function removeArrowsInVeFromDeps(/** @type {Vn} */ vn) {
+  for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
+}
+
+function contains(/** @type {Vn} */ ancestor, /** @type {Vn=} */ descendant) {
+  if (!descendant) return false
+  if (ancestor === descendant) return true
+  const result = ancestor[3].some((vn) => contains(vn, descendant))
+  return result
+}
+
 /** @type {(ve: Ve, vnodes: Vn[]) => void} */
-function updateVeChildren(ve, vnodes) {
+function updateChildren(ve, vnodes) {
   const keys = getKeysFromVnodes(vnodes)
   const oldKeys = ve[3].filter((vn) => 'key' in vn[2]).map((vn) => vn[2].key)
   if (keys && oldKeys.length === ve[3].length) {
     const remained = ve[3].filter((vn) => keys.includes(vn[2].key))
-    for (const vn of ve[3]) if (!remained.includes(vn)) ve[0].removeChild(vn[0])
+    for (const vn of ve[3]) if (!remained.includes(vn)) removeNode(vn)
     ve[3] = remained
     const cache = ve[4]
     for (const [i, vn] of vnodes.entries()) {
       const { key } = vn[2]
       if (key !== ve[3][i]?.[2].key) {
         const index = ve[3].findIndex((c) => c[2].key === key)
-        const node = ve[3][index]?.[0] ?? cache?.get(key) ?? createNode(vn)
-        if (index !== -1) {
-          ve[0].removeChild(node)
+        const oldVn = ve[3][index]
+        const node = oldVn?.[0] ?? cache?.get(key) ?? createNode(vn)
+        if (oldVn) {
+          removeNode(oldVn)
           ve[3].splice(index, 1)
-          ve[3].splice(i, 0, ve[3][index])
+          ve[3].splice(i, 0, oldVn)
         } else {
           vn[0] = node
           ve[3].splice(i, 0, vn)
@@ -192,49 +196,55 @@ function updateVeChildren(ve, vnodes) {
         }
         ve[0].insertBefore(node, ve[0].childNodes.item(i))
       }
-      updateVeChild(ve, i, vn)
+      updateChild(ve, i, vn)
     }
   } else {
     const len = vnodes.length
     const oldLen = ve[3].length
     for (let i = 0; i < len || i < oldLen; i++)
-      if (i < len && i < oldLen) updateVeChild(ve, i, vnodes[i])
+      if (i < len && i < oldLen) updateChild(ve, i, vnodes[i])
       else if (i >= oldLen) ve[0].appendChild(createNode(vnodes[i]))
-      else ve[0].lastChild?.remove()
+      else removeNode(ve[3][i])
     ve[3] = vnodes
   }
 }
 
 /** @type {(ve: Ve, i: number, vn: Vn) => void} */
-function updateVeChild(ve, i, vn) {
-  console.log('vn:', vn)
+function updateChild(ve, i, vn) {
   const oldVn = ve[3][i]
   if (typeof oldVn[1] === 'string' && typeof vn[1] === 'string' && oldVn[1] === vn[1]) {
     const [el, , oldProps] = oldVn
     const [, , props, vnodes] = vn
     vn[0] = el
-    for (const k in props) if (props[k] !== oldProps[k]) setElProp(el, k, props[k])
-    for (const k in oldProps) if (!(k in props)) resetElProp(el, k)
+    for (const k in props) if (props[k] !== oldProps[k]) setElementProp(el, k, props[k])
+    for (const k in oldProps) if (!(k in props)) resetElementProp(el, k)
     if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in props))
-      updateVeChildren(oldVn, vnodes)
+      updateChildren(oldVn, vnodes)
   } else {
     const node = createNode(vn)
-    ve[0].replaceChild(node, ve[0].childNodes[i])
+    removeNode(ve[3][i])
+    ve[0].insertBefore(node, ve[0].childNodes.item(i))
     ve[4]?.set(vn[2].key, node)
   }
   ve[3][i] = vn
 }
 
 /** @type {(ve: Ve, k: string, v: any) => void} */
-function updateVeProp(ve, k, v) {
+function updateProp(ve, k, v) {
   const [el, , props] = ve
   if (props[k] === v) return
   props[k] = v
-  setElProp(el, k, v)
+  setElementProp(el, k, v)
+}
+
+function removeNode(/** @type {Vn} */ vn) {
+  const { onunmount } = vn[2]
+  if (typeof onunmount === 'function') onunmount(...vn)
+  vn[0].parentNode?.removeChild(vn[0])
 }
 
 // @ts-ignore
-function setElProp(el, k, v) {
+function setElementProp(el, k, v) {
   if (k === 'class' || k === 'for') k = '_' + k
   if (k[0] === '$') el.style[k.slice(1)] = v
   else if (k[0] === '_') el.setAttribute(k.slice(1), v)
@@ -243,9 +253,8 @@ function setElProp(el, k, v) {
 }
 
 // @ts-ignore
-function resetElProp(el, k) {
+function resetElementProp(el, k) {
   if (k[0] === '$') el.style[k.slice(1)] = null
-  else if (k[0] === '_' || k.toLowerCase() in el.attributes)
-    el.removeAttribute(k.replace(/^_/, '').toLowerCase())
+  else if (k[0] === '_' || k in el.attributes) el.removeAttribute(k.replace(/^_/, ''))
   else el[k] = undefined // TODO: 需要研究正确性
 }
