@@ -107,9 +107,8 @@ function getOrCreateElement(/**@type {VE}*/ ve) {
   el.append(...children.map(getOrCreateNode))
   for (const k in props) setProp(ve, k, props[k])
   const ids = getChildIds(children)
-  if (props[CACHE_KEY] && ids) {
+  if (props[CACHE_KEY] && ids)
     ve[5] = ids.reduce((acc, id, i) => ({ ...acc, [id]: children[i] }), {})
-  }
   // @ts-ignore let it crash if oncreate is not function
   props.oncreate?.(el)
   // @ts-ignore in fact works`
@@ -163,7 +162,6 @@ export function reactive(target) {
             if (trigger[0] === oldValue) trigger[0] = newValue
             if (trigger[0] === t && trigger[1] === p) {
               const [fn, ve, k, effect] = arrow
-              // console.log({ t, p, newValue, el: ve?.[4], k })
               const v = fn()
               if (!ve) effect?.(v)
               else if (k === null) {
@@ -225,12 +223,14 @@ function updateChildren(/**@type {VE}*/ ve, /**@type {VN[]}*/ vnodes) {
 function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ vn) {
   const _vn = ve[3][i]
   if (_vn[0] !== 'text' && vn[0] !== 'text' && _vn[1] === vn[1]) {
-    // both ve, same tag, change in place
+    // both ve, same tag, change node in place
     const props = vn[2]
     for (const k in props) updateProp(_vn, k, props[k])
     for (const k in _vn[2]) if (!(k in props)) unsetProp(_vn, k)
     if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in props))
       updateChildren(_vn, vn[3])
+    vn[4] = _vn[4]
+    ve[3][i] = vn
   } else {
     // replace whole node
     removeChild(ve, i)
