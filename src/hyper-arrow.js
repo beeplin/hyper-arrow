@@ -95,33 +95,31 @@ function evaluate(fn, ve, k, effect) {
 /** mount virtual element to DOM */
 export function mount(/**@type {string}*/ selector, /**@type {VE}*/ ve) {
   // @ts-ignore let it crash if selector not found
-  document.querySelector(selector).append(getOrCreateElement(ve))
+  document.querySelector(selector).append(createElement(ve))
 }
 
-function getOrCreateElement(/**@type {VE}*/ ve) {
-  if (ve[4]) return ve[4]
+function createElement(/**@type {VE}*/ ve) {
   const [type, tag, props, children] = ve
   const el = document.createElementNS(ELEMENT_NS[type], tag)
   ve[4] = el
   el.setAttribute('uid', Math.random().toString().slice(2, 4)) // TODO: 测试用，待删除
-  el.append(...children.map(getOrCreateNode))
   for (const k in props) setProp(ve, k, props[k])
+  el.append(...children.map(createNode))
   const ids = getChildIds(children)
   if (props[CACHE_KEY] && ids)
     ve[5] = ids.reduce((acc, id, i) => ({ ...acc, [id]: children[i] }), {})
+  // @ts-ignore in fact works
+  el[BRAND_KEY] = ve
   // @ts-ignore let it crash if oncreate is not function
   props.oncreate?.(el)
-  // @ts-ignore in fact works`
-  el[BRAND_KEY] = ve
   return el
 }
 
-function getOrCreateNode(/**@type {VN}*/ vn) {
-  return vn[0] === 'text' ? getOrCreateTextNode(vn) : getOrCreateElement(vn)
+function createNode(/**@type {VN}*/ vn) {
+  return vn[0] === 'text' ? createTextNode(vn) : createElement(vn)
 }
 
-function getOrCreateTextNode(/**@type {VT}*/ vt) {
-  if (vt[4]) return vt[4]
+function createTextNode(/**@type {VT}*/ vt) {
   const textNode = document.createTextNode(vt[1])
   vt[4] = textNode
   // @ts-ignore in fact works
@@ -240,16 +238,17 @@ function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ 
 
 function insertChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ vn) {
   ve[3].splice(i, 0, vn)
-  const el = getOrCreateElement(ve)
-  el.insertBefore(getOrCreateNode(vn), el.childNodes.item(i))
+  // @ts-ignore let it crash if no el
+  const /**@type {Element}*/ el = ve[4]
+  const node = vn[4] ?? createNode(vn)
+  el.insertBefore(node, el.childNodes.item(i))
   if (ve[5] && vn[2].id) ve[5][vn[2].id] = vn
 }
 
 function removeChild(/**@type {VE}*/ ve, /**@type {number}*/ i) {
   const vn = ve[3].splice(i, 1)[0]
-  const node = getOrCreateNode(vn)
-  // @ts-ignore let it crash if onremove is not function
-  vn[2].onremove?.(node)
+  // @ts-ignore let it crash if no node
+  const /**@type {Element}*/ node = vn[4]
   node.remove()
   return vn
 }
@@ -260,7 +259,8 @@ function updateProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {unknown
 
 function setProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {unknown}*/ v) {
   ve[2][k] = v
-  const el = getOrCreateElement(ve)
+  // @ts-ignore let it crash if no el
+  const /**@type {Element}*/ el = ve[4]
   if (k === 'class' || k === 'for') k = '_' + k
   // @ts-ignore let it crash if no el.style (not html, svg, mathml) or v is not string
   if (k[0] === '$') el.style.setProperty(k.slice(1), v)
@@ -272,7 +272,8 @@ function setProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {unknown}*/
 
 function unsetProp(/**@type {VE}*/ ve, /**@type {string}*/ k) {
   delete ve[2][k]
-  const el = getOrCreateElement(ve)
+  // @ts-ignore let it crash if no el
+  const /**@type {Element}*/ el = ve[4]
   // @ts-ignore let it crash if no el.style (not html, svg, mathml)
   if (k[0] === '$') el.style.removeProperty(k.slice(1))
   else if (k[0] === '_' || k.toLowerCase() in el.attributes)
