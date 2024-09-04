@@ -2,15 +2,16 @@
 
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
+ * @typedef {HTMLElement | SVGElement | MathMLElement} El
  * @typedef {{[k: string]: unknown, id?: string}} Props
  * @typedef {{[k: string]: VN}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @typedef {[ElType, tag: string, Props, VN[], Element?, Cache?]} VE virtal element
+ * @typedef {[ElType, tag: string, Props, VN[], El?, Cache?]} VE virtal element
  * @typedef {['text', txt: string, Empty, [], Text?]} VT virtual textnode
  * @typedef {VE | VT} VN virtual node
- * @typedef {[Function, VE, k: ?string|number]} ElementArrow
+ * @typedef {[Function, VE, k: ?string|number]} ElArrow
  * @typedef {[Function, null, null, effect?: Function]} WatchArrow
- * @typedef {ElementArrow | WatchArrow} Arrow
+ * @typedef {ElArrow | WatchArrow} Arrow
  * @typedef {[target: object, prop: string | symbol]} Trigger
  * @typedef {{[k: string]: unknown}} HProps
  * @typedef {VE | string | (() => (VE | string))} HChild
@@ -18,9 +19,11 @@
  * @typedef {[propsOrChildren?: HProps|HChildren, children?: HChildren]} HArgs
  */
 
-const CACHE_KEY = 'cacheChildren'
-const BRAND_KEY = '__hyper_arrow__'
-const BRAND_SYMBOL = Symbol(BRAND_KEY)
+const UID = 'uid'
+const ONCREATE = 'oncreate'
+const CACHE_CHIDLREN = 'cacheChildren'
+const BRAND = '__hyper_arrow__'
+const BRAND_SYMBOL = Symbol(BRAND)
 const ELEMENT_NS = {
   html: 'http://www.w3.org/1999/xhtml',
   svg: 'http://www.w3.org/2000/svg',
@@ -100,18 +103,19 @@ export function mount(/**@type {string}*/ selector, /**@type {VE}*/ ve) {
 
 function createElement(/**@type {VE}*/ ve) {
   const [type, tag, props, children] = ve
-  const el = document.createElementNS(ELEMENT_NS[type], tag)
+  // @ts-ignore in fact works
+  const /**@type {El}*/ el = document.createElementNS(ELEMENT_NS[type], tag)
   ve[4] = el
-  el.setAttribute('uid', Math.random().toString().slice(2, 4)) // TODO: 测试用，待删除
-  for (const k in props) setProp(ve, k, props[k])
+  el.setAttribute(UID, Math.random().toString().slice(2, 4)) // TODO: 测试用，待删除
+  for (const k in props) setProp(el, k, props[k])
   el.append(...children.map(createNode))
   const ids = getChildIds(children)
-  if (props[CACHE_KEY] && ids)
+  if (props[CACHE_CHIDLREN] && ids)
     ve[5] = ids.reduce((acc, id, i) => ({ ...acc, [id]: children[i] }), {})
   // @ts-ignore in fact works
-  el[BRAND_KEY] = ve
+  el[BRAND] = ve
   // @ts-ignore let it crash if oncreate is not function
-  props.oncreate?.(el)
+  props[ONCREATE]?.(el)
   return el
 }
 
@@ -123,13 +127,13 @@ function createTextNode(/**@type {VT}*/ vt) {
   const textNode = document.createTextNode(vt[1])
   vt[4] = textNode
   // @ts-ignore in fact works
-  textNode[BRAND_KEY] = vt
+  textNode[BRAND] = vt
   return textNode
 }
 
 function getChildIds(/**@type {VN[]}*/ vnodes) {
   const ids = vnodes.map((vn) => vn[2].id).filter((id) => typeof id === 'string')
-  if (new Set(ids).size !== ids.length) throw new Error('duplicate child id')
+  if (new Set(ids).size !== ids.length) throw new Error(`duplicate children id: ${ids}`)
   else return ids.length === vnodes.length ? ids : null
 }
 
@@ -161,6 +165,7 @@ export function reactive(target) {
             if (trigger[0] === t && trigger[1] === p) {
               const [fn, ve, k, effect] = arrow
               const v = fn()
+              console.log({ t, p, newValue, el_id: ve?.[4].id, k, v })
               if (!ve) effect?.(v)
               else if (k === null) {
                 for (const vn of ve[3]) removeArrowsInVnFromDeps(vn)
@@ -168,7 +173,8 @@ export function reactive(target) {
               } else if (typeof k === 'number') {
                 removeArrowsInVnFromDeps(ve[3][k])
                 updateChild(ve, k, createVN(v))
-              } else updateProp(ve, k, v)
+                // @ts-ignore in fact works, ve has el
+              } else setProp(ve[4], k, v)
             }
           }
       return result
@@ -203,6 +209,7 @@ function updateChildren(/**@type {VE}*/ ve, /**@type {VN[]}*/ vnodes) {
         insertChild(ve, i, removeChild(ve, j))
         updateChild(ve, i, vn)
       } else if (ve[5]?.[id]) {
+        // FIXME: buggy cache when swap with splice
         insertChild(ve, i, ve[5][id])
         updateChild(ve, i, vn)
       } else insertChild(ve, i, vn)
@@ -222,10 +229,24 @@ function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ 
   const _vn = ve[3][i]
   if (_vn[0] !== 'text' && vn[0] !== 'text' && _vn[1] === vn[1]) {
     // both ve, same tag, change node in place
-    const props = vn[2]
-    for (const k in props) updateProp(_vn, k, props[k])
-    for (const k in _vn[2]) if (!(k in props)) unsetProp(_vn, k)
-    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in props))
+    // @ts-ignore in fact works, ve has children nodes
+    const /**@type {El}*/ el = _vn[4]
+    for (const k in vn[2]) {
+      const oldV = _vn[2][k]
+      const newV = vn[2][k]
+      if (oldV !== newV) {
+        setProp(el, k, newV)
+        // FIXME: buggy cache when swap with splice
+        if (ve[5] && k === 'id') {
+          // @ts-ignore in fact works
+          delete ve[5][oldV]
+          // @ts-ignore in fact works
+          ve[5][newV] = vn
+        }
+      }
+    }
+    for (const k in _vn[2]) if (!(k in vn[2])) unsetProp(el, k)
+    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in vn[2]))
       updateChildren(_vn, vn[3])
     vn[4] = _vn[4]
     ve[3][i] = vn
@@ -239,7 +260,7 @@ function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ 
 function insertChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ vn) {
   ve[3].splice(i, 0, vn)
   // @ts-ignore let it crash if no el
-  const /**@type {Element}*/ el = ve[4]
+  const /**@type {El}*/ el = ve[4]
   const node = vn[4] ?? createNode(vn)
   el.insertBefore(node, el.childNodes.item(i))
   if (ve[5] && vn[2].id) ve[5][vn[2].id] = vn
@@ -248,36 +269,35 @@ function insertChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ 
 function removeChild(/**@type {VE}*/ ve, /**@type {number}*/ i) {
   const vn = ve[3].splice(i, 1)[0]
   // @ts-ignore let it crash if no node
-  const /**@type {Element}*/ node = vn[4]
+  const /**@type {El}*/ node = vn[4]
   node.remove()
   return vn
 }
 
-function updateProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {unknown}*/ v) {
-  if (ve[2][k] !== v) setProp(ve, k, v)
-}
-
-function setProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {unknown}*/ v) {
-  ve[2][k] = v
-  // @ts-ignore let it crash if no el
-  const /**@type {Element}*/ el = ve[4]
-  if (k === 'class' || k === 'for') k = '_' + k
-  // @ts-ignore let it crash if no el.style (not html, svg, mathml) or v is not string
-  if (k[0] === '$') el.style.setProperty(k.slice(1), v)
-  // @ts-ignore let it crash if v is not string
+function setProp(/**@type {El}*/ el, /**@type {string}*/ k, /**@type {unknown}*/ v) {
+  // @ts-ignore in fact works after hasSetter check
+  if (hasSetter(el, k) || [ONCREATE, CACHE_CHIDLREN].includes(k)) el[k] = v
+  else if (typeof v !== 'string')
+    throw new Error(`<${el.nodeName}> attribute/style should be string: ${k} = ${v}`)
+  // @ts-ignore let it crash if no el.style (not html, svg, mathml)
+  else if (k[0] === '$') el.style.setProperty(k.slice(1), v)
   else if (k[0] === '_') el.setAttribute(k.slice(1), v)
-  // @ts-ignore in fact arbitray property name works
-  else el[k] = v
+  else el.setAttribute(k, v)
 }
 
-function unsetProp(/**@type {VE}*/ ve, /**@type {string}*/ k) {
-  delete ve[2][k]
-  // @ts-ignore let it crash if no el
-  const /**@type {Element}*/ el = ve[4]
+function unsetProp(/**@type {El}*/ el, /**@type {string}*/ k) {
   // @ts-ignore let it crash if no el.style (not html, svg, mathml)
   if (k[0] === '$') el.style.removeProperty(k.slice(1))
   else if (k[0] === '_' || k.toLowerCase() in el.attributes)
     el.removeAttribute(k.replace(/^_/, ''))
   // @ts-ignore in fact arbitray property name works
-  else el[k] = undefined // TODO: how to unset js properties??
+  else el[k] = typeof el[k] === 'string' ? '' : undefined // TODO: more test, improve
+}
+
+function hasSetter(/**@type {object|null}}*/ t, /**@type {string}*/ p) {
+  if (!t || !(p in t)) return false
+  const pd = Object.getOwnPropertyDescriptor(t, p)
+  if (!pd) return hasSetter(Object.getPrototypeOf(t), p)
+  if (pd.value || (pd.get && !pd.set)) return false
+  return true
 }

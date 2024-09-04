@@ -3,9 +3,30 @@ import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
 const { button, div, input, label, li, small, ul } = tags.html
+const { svg, circle } = tags.svg
+const { math, semantics, mfrac, mi, mo, mn, mrow } = tags.mathml
 
 export function view(/**@type {ToDoListState}*/ s) {
+  function item(/**@type {number}*/ i) {
+    return s.getFilteredReversedList()[i]
+  }
   return div({ id: 'root' }, [
+    div(
+      {
+        $height: '100px',
+        $display: 'flex',
+        $flexDirection: 'row',
+        $alignItems: 'baseline',
+      },
+      [
+        svg({ xmlns: 'http://www.w3.org/2000/svg', stroke: 'red', fill: 'grey' }, [
+          circle({ cx: '50', cy: '50', r: () => (s.newInput.length + 10).toString() }),
+        ]),
+        math({ display: 'block' }, [
+          semantics([mfrac([mi(['x']), mn([() => s.newInput.length.toString()])])]),
+        ]),
+      ],
+    ),
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
       () => small([() => s.newInput || 'via hyper-arrow']),
@@ -106,50 +127,50 @@ export function view(/**@type {ToDoListState}*/ s) {
       }),
     ]),
     ul({ id: 'list', style: 'padding: 0', cacheChildren: true }, () =>
-      s.getFilteredReversedList().map((item) =>
-        li({ id: () => 'li-' + item.id, class: 'item-container' }, [
+      s.getFilteredReversedList().map((_, i) =>
+        li({ id: () => 'li-' + item(i).id, class: 'item-container' }, [
           button({
-            id: () => 'up-' + item.id,
+            id: () => 'up-' + item(i).id,
             class: 'item-up',
             innerHTML: '⇧',
             disabled: () => !!s.editingId,
             onClick() {
-              const index = s
+              const j = s
                 .getFilteredReversedList()
-                .findIndex((i) => i.id === item.id)
-              if (index === 0) return
-              const prevItem = s.getFilteredReversedList()[index - 1]
-              swap(s.model.list, item, prevItem)
+                .findIndex((j) => j.id === item(i).id)
+              if (j === 0) return
+              const prevItem = s.getFilteredReversedList()[j - 1]
+              swap(s.model.list, item(i), prevItem)
             },
           }),
           button({
-            id: () => 'down-' + item.id,
+            id: () => 'down-' + item(i).id,
             class: 'item-down',
             innerHTML: '⇩',
             disabled: () => !!s.editingId,
             onClick() {
-              const index = s
+              const j = s
                 .getFilteredReversedList()
-                .findIndex((i) => i.id === item.id)
-              if (index === s.getFilteredReversedList().length - 1) return
-              const nextItem = s.getFilteredReversedList()[index + 1]
-              swap(s.model.list, item, nextItem)
+                .findIndex((j) => j.id === item(i).id)
+              if (j === s.getFilteredReversedList().length - 1) return
+              const nextItem = s.getFilteredReversedList()[j + 1]
+              swap(s.model.list, item(i), nextItem)
             },
           }),
           input({
-            id: () => 'checkbox-' + item.id,
+            id: () => 'checkbox-' + item(i).id,
             class: 'checkbox',
             type: 'checkbox',
-            checked: () => item.done,
+            checked: () => item(i).done,
             disabled: () => !!s.editingId,
             onInput() {
-              s.model.toggle(item.id)
+              s.model.toggle(item(i).id)
             },
           }),
           () =>
-            s.isEditing(item.id)
+            s.isEditing(item(i).id)
               ? input({
-                  id: () => 'edit-' + item.id,
+                  id: () => 'edit-' + item(i).id,
                   class: 'item-input',
                   type: 'text',
                   value: () => s.editInput,
@@ -157,41 +178,44 @@ export function view(/**@type {ToDoListState}*/ s) {
                     s.editInput = e.target.value
                   },
                   onKeyDown(/**@type {any}*/ e) {
-                    if (e.keyCode === 13) s.update(item.id, s.editInput)
+                    if (e.keyCode === 13) s.update(item(i).id, s.editInput)
                   },
                   onCreate(/**@type {any}*/ el) {
                     requestAnimationFrame(() => el.select())
                   },
                 })
-              : label({
-                  id: () => 'label-' + item.id,
-                  class: () => 'item-label' + (item.done ? ' done' : ''),
-                  for: () => 'checkbox-' + item.id,
-                  innerText: () => item.text,
-                  $minWidth: '150px',
-                }),
+              : label(
+                  {
+                    id: () => 'label-' + item(i).id,
+                    class: () => 'item-label' + (item(i).done ? ' done' : ''),
+                    for: () => 'checkbox-' + item(i).id,
+                    // innerText: () => item(i).text,
+                    $minWidth: '150px',
+                  },
+                  [() => item(i).text],
+                ),
           button({
-            id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
-            class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
-            innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
-            disabled: () => !!s.editingId && s.editingId !== item.id,
-            // FIXME: 切换 filter 到 completed 后 innerText 和 disable 失效
+            id: () => (s.isEditing(item(i).id) ? 'ok' : 'edit') + '-' + item(i).id,
+            class: () => (s.isEditing(item(i).id) ? 'item-ok' : 'item-edit'),
+            innerText: () => (s.isEditing(item(i).id) ? '✓' : '🖉'),
+            disabled: () => !!s.editingId && s.editingId !== item(i).id,
             onClick() {
-              if (s.editingId === item.id) s.update(item.id, s.editInput)
+              if (s.editingId === item(i).id) s.update(item(i).id, s.editInput)
               else {
-                s.editingId = item.id
-                s.editInput = item.text
+                s.editingId = item(i).id
+                s.editInput = item(i).text
               }
             },
           }),
           button({
-            id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
-            class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
-            innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
-            disabled: () => !!s.editingId && s.editingId !== item.id,
+            id: () =>
+              (s.isEditing(item(i).id) ? 'cancel' : 'delete') + '-' + item(i).id,
+            class: () => (s.isEditing(item(i).id) ? 'item-cancel' : 'item-delete'),
+            innerText: () => (s.isEditing(item(i).id) ? '✗' : '🗑'),
+            disabled: () => !!s.editingId && s.editingId !== item(i).id,
             onClick() {
-              if (s.editingId === item.id) s.editingId = null
-              else s.model.delete(item.id)
+              if (s.editingId === item(i).id) s.editingId = null
+              else s.model.delete(item(i).id)
             },
           }),
         ]),
@@ -204,13 +228,21 @@ export function view(/**@type {ToDoListState}*/ s) {
 function swap(list, a, b) {
   const ia = list.findIndex((i) => i.id === a.id)
   const ib = list.findIndex((i) => i.id === b.id)
+
+  // const t = a
+  // list[ia] = b
+  // list[ib] = t
+
+  // FIXME: dup children when swap with cach
   if (ib < ia) {
     list.splice(ia, 1)
-    list.splice(ib, 1, a)
+    list.splice(ib, 1)
+    list.splice(ib, 0, a)
     list.splice(ia, 0, b)
   } else {
     list.splice(ib, 1)
-    list.splice(ia, 1, b)
+    list.splice(ia, 1)
+    list.splice(ia, 0, b)
     list.splice(ib, 0, a)
   }
 }
