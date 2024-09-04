@@ -1,12 +1,12 @@
 export class ToDoListState {
     constructor(list: ToDoList);
-    /** @type {ToDoList} */
+    /**@type {ToDoList}*/
     model: ToDoList;
     newInput: string;
     createFromInput(): number | undefined;
     filter: string;
     getFilteredReversedList(): import("./model.js").ToDoItem[];
-    /** @type {number|null} */
+    /**@type {number|null}*/
     editingId: number | null;
     isEditing(id: number): boolean;
     editInput: string;

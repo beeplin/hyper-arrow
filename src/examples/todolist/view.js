@@ -105,13 +105,12 @@ export function view(/**@type {ToDoListState}*/ s) {
         onClick: s.model.deleteAllCompleted.bind(s.model),
       }),
     ]),
-    ul({ id: 'list', style: 'padding: 0', cacheChildrenByKey: true }, () =>
+    ul({ id: 'list', style: 'padding: 0', cacheChildren: true }, () =>
       s.getFilteredReversedList().map((item) =>
         li(
           {
             id: () => 'li-' + item.id,
             class: 'item-container',
-            key: () => item.id,
             onCreate(/**@type {HTMLElement}*/ el) {
               console.log('created:', el)
             },

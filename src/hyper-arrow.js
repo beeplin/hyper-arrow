@@ -2,23 +2,23 @@
 
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
- * @typedef {{[k:string]: unknown}} Props
- * @typedef {Map<unknown, VN>} Cache
+ * @typedef {{[k: string]: unknown, id?: string}} Props
+ * @typedef {{[k: string]: VN}} Cache
  * @typedef {{[k: string]: never}} Empty
  * @typedef {[ElType, tag: string, Props, VN[], Element?, Cache?]} VE virtal element
  * @typedef {['text', txt: string, Empty, [], Text?]} VT virtual textnode
  * @typedef {VE | VT} VN virtual node
- * @typedef {VE | string | (() => (VE | string))} Child
- * @typedef {Child[] | (() => Child[])} Children
- * @typedef {[propsOrChildren?: Props|Children, children?: Children]} HArgs
  * @typedef {[Function, VE, k: ?string|number]} ElementArrow
  * @typedef {[Function, null, null, effect?: Function]} WatchArrow
  * @typedef {ElementArrow | WatchArrow} Arrow
  * @typedef {[target: object, prop: string | symbol]} Trigger
+ * @typedef {{[k: string]: unknown}} HProps
+ * @typedef {VE | string | (() => (VE | string))} HChild
+ * @typedef {HChild[] | (() => HChild[])} HChildren
+ * @typedef {[propsOrChildren?: HProps|HChildren, children?: HChildren]} HArgs
  */
 
-const CHILD_KEY = 'key'
-const CACHE_KEY = 'cacheChildrenByKey'
+const CACHE_KEY = 'cacheChildren'
 const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
 const ELEMENT_NS = {
@@ -54,7 +54,7 @@ export const h = function createVE(name, props, children) {
     for (const k in props)
       if (k.startsWith('on')) ve[2][k.toLowerCase()] = props[k]
       else ve[2][k] = evaluate(props[k], ve, k)
-  const /**@type {Child[]}*/ childList = evaluate(children, ve, null) ?? []
+  const /**@type {HChild[]}*/ childList = evaluate(children, ve, null) ?? []
   for (const i in childList) ve[3].push(createVN(evaluate(childList[i], ve, +i)))
   return ve
 }
@@ -106,12 +106,13 @@ function getOrCreateElement(/**@type {VE}*/ ve) {
   el.setAttribute('uid', Math.random().toString().slice(2, 4)) // TODO: 测试用，待删除
   el.append(...children.map(getOrCreateNode))
   for (const k in props) setProp(ve, k, props[k])
-  if (props[CACHE_KEY] && getChildKeys(children)) {
-    ve[5] = new Map()
-    for (const child of children) ve[5].set(child[2][CHILD_KEY], child)
+  const ids = getChildIds(children)
+  if (props[CACHE_KEY] && ids) {
+    ve[5] = ids.reduce((acc, id, i) => ({ ...acc, [id]: children[i] }), {})
   }
-  if (typeof props.oncreate === 'function') props.oncreate(el)
-  // @ts-ignore in fact works
+  // @ts-ignore let it crash if oncreate is not function
+  props.oncreate?.(el)
+  // @ts-ignore in fact works`
   el[BRAND_KEY] = ve
   return el
 }
@@ -129,10 +130,10 @@ function getOrCreateTextNode(/**@type {VT}*/ vt) {
   return textNode
 }
 
-function getChildKeys(/**@type {VN[]}*/ vnodes) {
-  const keys = vnodes.map((vn) => vn[2][CHILD_KEY]).filter((k) => k != null)
-  if (new Set(keys).size !== keys.length) throw new Error('duplicate child keys')
-  else return keys.length === vnodes.length ? keys : null
+function getChildIds(/**@type {VN[]}*/ vnodes) {
+  const ids = vnodes.map((vn) => vn[2].id).filter((id) => typeof id === 'string')
+  if (new Set(ids).size !== ids.length) throw new Error('duplicate child id')
+  else return ids.length === vnodes.length ? ids : null
 }
 
 export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
@@ -162,13 +163,14 @@ export function reactive(target) {
             if (trigger[0] === oldValue) trigger[0] = newValue
             if (trigger[0] === t && trigger[1] === p) {
               const [fn, ve, k, effect] = arrow
+              // console.log({ t, p, newValue, el: ve?.[4], k })
               const v = fn()
               if (!ve) effect?.(v)
               else if (k === null) {
-                for (const vn of ve[3]) removeArrowsInVeFromDeps(vn)
+                for (const vn of ve[3]) removeArrowsInVnFromDeps(vn)
                 updateChildren(ve, v.map(createVN))
               } else if (typeof k === 'number') {
-                removeArrowsInVeFromDeps(ve[3][k])
+                removeArrowsInVnFromDeps(ve[3][k])
                 updateChild(ve, k, createVN(v))
               } else updateProp(ve, k, v)
             }
@@ -178,7 +180,7 @@ export function reactive(target) {
   })
 }
 
-function removeArrowsInVeFromDeps(/**@type {VN}*/ vn) {
+function removeArrowsInVnFromDeps(/**@type {VN}*/ vn) {
   for (const arrow of deps.keys()) if (contains(vn, arrow[1])) deps.delete(arrow)
 }
 
@@ -191,31 +193,26 @@ function contains(/**@type {VN}*/ ancestor, /**@type {?VN}*/ descendant) {
 }
 
 function updateChildren(/**@type {VE}*/ ve, /**@type {VN[]}*/ vnodes) {
-  const keys = getChildKeys(vnodes)
-  if (keys && getChildKeys(ve[3])) {
-    // has keys, smart update
-    for (let i = ve[3].length - 1; i >= 0; i--) {
-      const key = ve[3][i][2][CHILD_KEY]
-      if (key == null || !keys.includes(key)) removeChild(ve, i)
-    }
-    for (const [i, vn] of vnodes.entries()) {
-      const key = vn[2][CHILD_KEY]
-      if (key !== ve[3][i]?.[2][CHILD_KEY]) {
-        const j = ve[3].findIndex((_vn) => _vn[2][CHILD_KEY] === key)
-        if (ve[3][j]) {
-          insertChild(ve, i, removeChild(ve, j))
-          updateChild(ve, i, vn)
-        } else if (ve[5]?.has(key)) {
-          // @ts-ignore in fact works, map key checked above
-          insertChild(ve, i, ve[5].get(key))
-          updateChild(ve, i, vn)
-        } else {
-          insertChild(ve, i, vn)
-        }
-      }
+  const oldIds = getChildIds(ve[3])
+  const ids = getChildIds(vnodes)
+  if (oldIds && ids) {
+    // has unique ids, smart update
+    for (let i = oldIds.length - 1; i >= 0; i--)
+      if (!ids.includes(oldIds[i])) removeChild(ve, i)
+    for (const [i, id] of ids.entries()) {
+      const j = ve[3].findIndex((vn) => vn[2].id === id)
+      const vn = vnodes[i]
+      if (i === j) updateChild(ve, i, vn)
+      else if (ve[3][j]) {
+        insertChild(ve, i, removeChild(ve, j))
+        updateChild(ve, i, vn)
+      } else if (ve[5]?.[id]) {
+        insertChild(ve, i, ve[5][id])
+        updateChild(ve, i, vn)
+      } else insertChild(ve, i, vn)
     }
   } else {
-    // no keys, simple update
+    // no unique ids, simple update
     const newLen = vnodes.length
     const oldLen = ve[3].length
     for (let i = 0; i < newLen || i < oldLen; i++)
@@ -245,17 +242,16 @@ function insertChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ 
   ve[3].splice(i, 0, vn)
   const el = getOrCreateElement(ve)
   el.insertBefore(getOrCreateNode(vn), el.childNodes.item(i))
-  ve[5]?.set(vn[2][CHILD_KEY], vn)
+  if (ve[5] && vn[2].id) ve[5][vn[2].id] = vn
 }
 
 function removeChild(/**@type {VE}*/ ve, /**@type {number}*/ i) {
-  removeNodeFromDOM(ve[3][i])
-  return ve[3].splice(i, 1)[0]
-}
-
-function removeNodeFromDOM(/**@type {VN}*/ vn) {
-  if (typeof vn[2].onremove === 'function') vn[2].onremove(...vn)
-  getOrCreateNode(vn).remove()
+  const vn = ve[3].splice(i, 1)[0]
+  const node = getOrCreateNode(vn)
+  // @ts-ignore let it crash if onremove is not function
+  vn[2].onremove?.(node)
+  node.remove()
+  return vn
 }
 
 function updateProp(/**@type {VE}*/ ve, /**@type {string}*/ k, /**@type {unknown}*/ v) {
