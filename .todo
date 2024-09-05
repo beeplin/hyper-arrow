@@ -11,3 +11,5 @@
 ✔ 复用 children 已有元素 @done(24-09-02 01:24)
 ✔ 根据key顺序智能更新children @done(24-09-02 21:07)
 ✔ keep-alive @done(24-09-02 17:56)
+☐ 区分 VNnode RNode
+☐ HChildren 支持非数组

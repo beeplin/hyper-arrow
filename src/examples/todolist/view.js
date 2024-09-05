@@ -27,7 +27,7 @@ export function view(/**@type {ToDoListState}*/ s) {
         ]),
       ],
     ),
-    div(
+    div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
       () => small([() => s.newInput || 'via hyper-arrow']),
       button({
@@ -45,7 +45,7 @@ export function view(/**@type {ToDoListState}*/ s) {
           test(s)
         },
       }),
-    ),
+    ]),
     div({ id: 'input-container' }, [
       input({
         id: 'input',
@@ -126,7 +126,7 @@ export function view(/**@type {ToDoListState}*/ s) {
         onClick: s.model.deleteAllCompleted.bind(s.model),
       }),
     ]),
-    ul({ id: 'list', style: 'padding: 0', cacheChildren: true }, () =>
+    ul({ id: 'list', style: 'padding: 0', cacheRemovedChildren: true }, () =>
       s.getFilteredReversedList().map((_, i) =>
         li({ id: () => 'li-' + item(i).id, class: 'item-container' }, [
           button({
