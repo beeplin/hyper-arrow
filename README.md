@@ -15,7 +15,7 @@ super tiny front-end UI library, for learning purposes
 ```js
 import { deps, isReactive, mount, reactive, tags, watch } from '../../hyper-arrow.js'
 
-const { button, div, input, li, ul } = tags
+const { button, div, input, li, ul } = tags.html
 
 class Model {
   input = ''
