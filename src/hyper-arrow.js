@@ -96,6 +96,11 @@ export function mount(/**@type {string}*/ selector, /**@type {VEl}*/ vel) {
   document.querySelector(selector).append(createREl(vel)[NODE])
 }
 
+function createRNode(/**@type {VNode}*/ vnode) {
+  return vnode[TYPE] === 'text' ? createRText(vnode) : createREl(vnode)
+}
+
+let uid = 0
 const UID = 'uid'
 const ONCREATE = 'oncreate'
 const CACHE_REMOVED_CHILDREN = 'cacheRemovedChildren'
@@ -104,10 +109,9 @@ const ELEMENT_NS = {
   svg: 'http://www.w3.org/2000/svg',
   mathml: 'http://www.w3.org/1998/Math/MathML',
 }
-let uid = 0
 
 function createREl(/**@type {VEl}*/ vel) {
-  // @ts-ignore ok
+  // @ts-ignore ok. guaranteed by ElType & ELEMENT_NS
   const /**@type {El}*/ el = document.createElementNS(ELEMENT_NS[vel[TYPE]], vel[TAG])
   // use uid to track el's identity for debugging purpose
   el.setAttribute(UID, uid++ + '')
@@ -119,10 +123,6 @@ function createREl(/**@type {VEl}*/ vel) {
   return rel
 }
 
-function createRNode(/**@type {VNode}*/ vnode) {
-  return vnode[TYPE] === 'text' ? createRText(vnode) : createREl(vnode)
-}
-
 function createRText(/**@type {VText}*/ vtext) {
   const node = document.createTextNode(vtext[TXT])
   const rtext = convertVNodeToRNode(vtext, node)
@@ -130,7 +130,7 @@ function createRText(/**@type {VText}*/ vtext) {
 }
 
 /**
- * @overload @param {VEl}   vel   @param {El}   el   @returns {REl}
+ * @overload @param {VEl} vel @param {El} el @returns {REl}
  * @overload @param {VText} vtext @param {Text} text @returns {RText}
  */
 function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node) {
@@ -142,6 +142,7 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
   node[BRAND_KEY] = rnode
   return rnode
 }
+
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
  * auto rerun watchFn(), and run effectFn(watchFn()) if effectFn provided
