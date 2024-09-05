@@ -164,7 +164,6 @@ export function reactive(target) {
             if (trigger[0] === t && trigger[1] === p) {
               const [fn, ve, k, effect] = arrow
               const v = fn()
-              console.log({ t, p, oldValue, newValue, el_id: ve?.[4].id, k, v })
               if (!ve) effect?.(v)
               else if (k === null) {
                 for (const vn of ve[3]) removeArrowsInVnFromDeps(vn)
