@@ -229,17 +229,17 @@ function swap(list, a, b) {
   const ia = list.findIndex((i) => i.id === a.id)
   const ib = list.findIndex((i) => i.id === b.id)
 
-  // const t = a
-  // list[ia] = b
-  // list[ib] = t
+  const t = a
+  list[ia] = b
+  list[ib] = t
 
-  if (ib < ia) {
-    list.splice(ia, 1)
-    list.splice(ib, 1, a)
-    list.splice(ia, 0, b)
-  } else {
-    list.splice(ib, 1)
-    list.splice(ia, 1, b)
-    list.splice(ib, 0, a)
-  }
+  // if (ib < ia) {
+  //   list.splice(ia, 1)
+  //   list.splice(ib, 1, a)
+  //   list.splice(ia, 0, b)
+  // } else {
+  //   list.splice(ib, 1)
+  //   list.splice(ia, 1, b)
+  //   list.splice(ib, 0, a)
+  // }
 }

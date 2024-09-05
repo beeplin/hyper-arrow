@@ -164,6 +164,9 @@ export function reactive(target) {
             if (trigger[0] === t && trigger[1] === p) {
               const [fn, ve, k, effect] = arrow
               const v = fn()
+              // console.log('-----')
+              // console.log({ t, p, oldValue, newValue })
+              // console.log({ ...ve, k, v })
               if (!ve) effect?.(v)
               else if (k === null) {
                 for (const vn of ve[3]) removeArrowsInVnFromDeps(vn)
@@ -220,7 +223,7 @@ function updateChildren(/**@type {VE}*/ ve, /**@type {VN[]}*/ vnodes) {
     for (let i = 0; i < newLen || i < oldLen; i++)
       if (i < newLen && i < oldLen) updateChild(ve, i, vnodes[i])
       else if (i >= oldLen) insertChild(ve, i, vnodes[i])
-      else removeChild(ve, i)
+      else removeChild(ve, oldLen + newLen - 1 - i)
   }
 }
 

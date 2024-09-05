@@ -1,3 +1,4 @@
+// @ts-check
 import { deps, isReactive, mount, reactive, tags, watch } from '../../hyper-arrow.js'
 
 const { button, div, input, li, ul } = tags.html
