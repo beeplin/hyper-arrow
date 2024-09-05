@@ -31,6 +31,7 @@ const ELEMENT_NS = {
 }
 
 let /**@type {Arrow?}*/ currentArrow = null
+let uid = 0
 
 export const /**@type {Map<Arrow, Trigger[]>}*/ deps = new Map()
 
@@ -105,13 +106,11 @@ function createElement(/**@type {VE}*/ ve) {
   const [type, tag, props, children] = ve
   // @ts-ignore in fact works
   const /**@type {El}*/ el = document.createElementNS(ELEMENT_NS[type], tag)
-  ve[4] = el
-  el.setAttribute(UID, Math.random().toString().slice(2, 4)) // TODO: 测试用，待删除
+  el.setAttribute(UID, uid++ + '')
   for (const k in props) setProp(el, k, props[k])
   el.append(...children.map(createNode))
-  const ids = getChildIds(children)
-  if (props[CACHE_CHIDLREN] && ids)
-    ve[5] = ids.reduce((acc, id, i) => ({ ...acc, [id]: children[i] }), {})
+  ve[4] = el
+  if (props[CACHE_CHIDLREN] && getChildIds(children)) ve[5] = {}
   // @ts-ignore in fact works
   el[BRAND] = ve
   // @ts-ignore let it crash if oncreate is not function
@@ -165,7 +164,7 @@ export function reactive(target) {
             if (trigger[0] === t && trigger[1] === p) {
               const [fn, ve, k, effect] = arrow
               const v = fn()
-              console.log({ t, p, newValue, el_id: ve?.[4].id, k, v })
+              console.log({ t, p, oldValue, newValue, el_id: ve?.[4].id, k, v })
               if (!ve) effect?.(v)
               else if (k === null) {
                 for (const vn of ve[3]) removeArrowsInVnFromDeps(vn)
@@ -211,6 +210,7 @@ function updateChildren(/**@type {VE}*/ ve, /**@type {VN[]}*/ vnodes) {
       } else if (ve[5]?.[id]) {
         // FIXME: buggy cache when swap with splice
         insertChild(ve, i, ve[5][id])
+        delete ve[5][id]
         updateChild(ve, i, vn)
       } else insertChild(ve, i, vn)
     }
@@ -231,20 +231,7 @@ function updateChild(/**@type {VE}*/ ve, /**@type {number}*/ i, /**@type {VN}*/ 
     // both ve, same tag, change node in place
     // @ts-ignore in fact works, ve has children nodes
     const /**@type {El}*/ el = _vn[4]
-    for (const k in vn[2]) {
-      const oldV = _vn[2][k]
-      const newV = vn[2][k]
-      if (oldV !== newV) {
-        setProp(el, k, newV)
-        // FIXME: buggy cache when swap with splice
-        if (ve[5] && k === 'id') {
-          // @ts-ignore in fact works
-          delete ve[5][oldV]
-          // @ts-ignore in fact works
-          ve[5][newV] = vn
-        }
-      }
-    }
+    for (const k in vn[2]) if (_vn[2][k] !== vn[2][k]) setProp(el, k, vn[2][k])
     for (const k in _vn[2]) if (!(k in vn[2])) unsetProp(el, k)
     if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in vn[2]))
       updateChildren(_vn, vn[3])
@@ -271,6 +258,7 @@ function removeChild(/**@type {VE}*/ ve, /**@type {number}*/ i) {
   // @ts-ignore let it crash if no node
   const /**@type {El}*/ node = vn[4]
   node.remove()
+  if (ve[5] && vn[2].id) ve[5][vn[2].id] = vn
   return vn
 }
 

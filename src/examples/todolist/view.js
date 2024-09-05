@@ -233,16 +233,13 @@ function swap(list, a, b) {
   // list[ia] = b
   // list[ib] = t
 
-  // FIXME: dup children when swap with cach
   if (ib < ia) {
     list.splice(ia, 1)
-    list.splice(ib, 1)
-    list.splice(ib, 0, a)
+    list.splice(ib, 1, a)
     list.splice(ia, 0, b)
   } else {
     list.splice(ib, 1)
-    list.splice(ia, 1)
-    list.splice(ia, 0, b)
+    list.splice(ia, 1, b)
     list.splice(ib, 0, a)
   }
 }
