@@ -4,11 +4,15 @@
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
  * @typedef {{[k: string]: unknown, id?: string}} Props
- * @typedef {{[k: string]: VNode}} Cache
+ * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @typedef {[ElType, tag: string, Props, VNode[], El?, Cache?]} VEl virtal element
- * @typedef {['text', txt: string, Empty, [], Text?]} VText virtual textnode
+ * @typedef {[ElType, tag: string, Props, VNode[]]} VEl virtal element
+ * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
+ * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
+ * @typedef {['text', txt: string, Empty, [], Text]} RText real element
  * @typedef {VEl | VText} VNode virtual node
+ * @typedef {REl | RText} RNode real node
+ * @typedef {VNode | RNode} ANode any node
  */
 const TYPE = 0
 const TAG = 1
@@ -19,12 +23,12 @@ const NODE = 4
 const CACHE = 5
 
 /**
- * @typedef {[Function, VEl, key: ?string|number]} ElArrow
+ * @typedef {[Function, REl, key: ?string|number]} ElArrow
  * @typedef {[Function, null, null, effect?: Function]} WatchArrow
  * @typedef {ElArrow | WatchArrow} Arrow
  */
 const FN = 0
-const VEL = 1
+const REL = 1
 
 /** @typedef {[target: object, prop: string | symbol]} Trigger */
 const TARGET = 0
@@ -62,19 +66,19 @@ export const h = function createVel(name, props, children) {
   // @ts-ignore let it crash if type is not ElType
   if (type !== 'html' && type !== 'svg' && type !== 'mathml')
     throw new Error("tag type must be 'html', 'svg' or 'mathml'")
-  const /**@type {VEl}*/ ve = [type, tag, { __proto__: null }, []]
+  const /**@type {VEl}*/ rel = [type, tag, { __proto__: null }, []]
   if (typeof props !== 'object' || Array.isArray(props)) children = props
   else
     for (const key in props) {
       // on* event handlers, all lowercase, have no arrow, so not evaluted
-      if (key.startsWith('on')) ve[PROPS][key.toLowerCase()] = props[key]
+      if (key.startsWith('on')) rel[PROPS][key.toLowerCase()] = props[key]
       // set currentArrow and run arrow function within it
-      else ve[PROPS][key] = evaluate(props[key], ve, key)
+      else rel[PROPS][key] = evaluate(props[key], rel, key)
     }
-  const /**@type {TagChild[]}*/ childList = evaluate(children, ve, null) ?? []
+  const /**@type {TagChild[]}*/ childList = evaluate(children, rel, null) ?? []
   for (const i in childList)
-    ve[CHILDREN].push(createVnode(evaluate(childList[i], ve, +i)))
-  return ve
+    rel[CHILDREN].push(createVnode(evaluate(childList[i], rel, +i)))
+  return rel
 }
 
 function createVnode(/**@type {VEl | string}*/ x) {
@@ -89,7 +93,7 @@ function createVtext(/**@type {string}*/ txt) {
 /** mount virtual element to DOM */
 export function mount(/**@type {string}*/ selector, /**@type {VEl}*/ vel) {
   // @ts-ignore let it crash if selector not found
-  document.querySelector(selector).append(createElement(vel))
+  document.querySelector(selector).append(createREl(vel)[NODE])
 }
 
 const UID = 'uid'
@@ -102,35 +106,42 @@ const ELEMENT_NS = {
 }
 let uid = 0
 
-function createElement(/**@type {VEl}*/ vel) {
-  const [type, tag, props, children] = vel
+function createREl(/**@type {VEl}*/ vel) {
   // @ts-ignore ok
-  const /**@type {El}*/ el = document.createElementNS(ELEMENT_NS[type], tag)
+  const /**@type {El}*/ el = document.createElementNS(ELEMENT_NS[vel[TYPE]], vel[TAG])
   // use uid to track el's identity for debugging purpose
   el.setAttribute(UID, uid++ + '')
-  for (const key in props) setProp(el, key, props[key])
-  el.append(...children.map(createNode))
-  // @ts-ignore ok
-  el[BRAND_KEY] = vel
-  vel[NODE] = el
-  if (props[CACHE_REMOVED_CHILDREN] && getIds(children)) vel[CACHE] = {}
+  for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
+  el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
+  const rel = convertVNodeToRNode(vel, el)
   // @ts-ignore let it crash if oncreate is not function
-  props[ONCREATE]?.(el)
-  return el
+  rel[PROPS][ONCREATE]?.(el)
+  return rel
 }
 
-function createNode(/**@type {VNode}*/ vnode) {
-  return vnode[TYPE] === 'text' ? createTextNode(vnode) : createElement(vnode)
+function createRNode(/**@type {VNode}*/ vnode) {
+  return vnode[TYPE] === 'text' ? createRText(vnode) : createREl(vnode)
 }
 
-function createTextNode(/**@type {VText}*/ vtext) {
-  const textNode = document.createTextNode(vtext[TXT])
+function createRText(/**@type {VText}*/ vtext) {
+  const node = document.createTextNode(vtext[TXT])
+  const rtext = convertVNodeToRNode(vtext, node)
+  return rtext
+}
+
+/**
+ * @overload @param {VEl}   vel   @param {El}   el   @returns {REl}
+ * @overload @param {VText} vtext @param {Text} text @returns {RText}
+ */
+function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node) {
+  // @ts-ignore trickky type coersion. rnode and vnode point to the same object
+  const /**@type {RNode}*/ rnode = vnode
+  rnode[NODE] = node
+  if (rnode[PROPS][CACHE_REMOVED_CHILDREN] && getIds(rnode[CHILDREN])) rnode[CACHE] = {}
   // @ts-ignore ok
-  textNode[BRAND_KEY] = vtext
-  vtext[NODE] = textNode
-  return textNode
+  node[BRAND_KEY] = rnode
+  return rnode
 }
-
 /**
  * run watchFn() once, and whenever watchFn's dependencies change,
  * auto rerun watchFn(), and run effectFn(watchFn()) if effectFn provided
@@ -148,11 +159,13 @@ export function watch(watchFn, effectFn) {
 
 /**
  * create a new arrow with contextual info and run fn within it, if fn is function
- * @type {(fn: unknown, ve: ?VEl, k: ?string|number, effect?: Function) => any}
+ * @type {(fn: unknown, vel: ?VEl, k: ?string|number, effect?: Function) => any}
  */
-function evaluate(fn, ve, key, effect) {
+function evaluate(fn, vel, key, effect) {
   if (typeof fn !== 'function') return fn
-  currentArrow = ve ? [fn, ve, key] : [fn, null, null, effect]
+  // @ts-ignore tickky type coersion. vel will become rel after createVel()
+  const /**@type {REl}*/ rel = vel
+  currentArrow = vel ? [fn, rel, key] : [fn, null, null, effect]
   const result = fn()
   currentArrow = null
   return result
@@ -191,22 +204,21 @@ export function reactive(target) {
           if (trigger[TARGET] === oldValue) trigger[TARGET] = newValue
           // dependent arrows found! Action!
           if (trigger[TARGET] === target && trigger[PROP] === prop) {
-            const [fn, vel, key, effect] = arrow
+            const [fn, rel, key, effect] = arrow
             const value = fn()
-            // console.log('-----')
+            // console.log('-----set------')
             // console.log({ target, prop, oldValue, newValue })
-            // console.log({ ...ve, k, v })
-            if (!vel) {
+            // console.log({ ...rel, k, v })
+            if (!rel) {
               effect?.(value)
             } else if (key === null) {
-              vel[CHILDREN].map(removeArrowsInVnFromDeps)
-              updateChildren(vel, value.map(createVnode))
+              rel[CHILDREN].map(removeArrowsInRNodeFromDeps)
+              updateChildren(rel, value.map(createVnode))
             } else if (typeof key === 'number') {
-              removeArrowsInVnFromDeps(vel[CHILDREN][key])
-              updateChild(vel, key, createVnode(value))
+              removeArrowsInRNodeFromDeps(rel[CHILDREN][key])
+              updateChild(rel, key, createVnode(value))
             } else {
-              // @ts-ignore ok, now vel has el TODO:
-              setProp(vel[NODE], key, value)
+              setProp(rel[NODE], key, value)
             }
           }
         }
@@ -216,125 +228,116 @@ export function reactive(target) {
   })
 }
 
-// TODO: vel -> rel 之后，用 dom contains 代替
-function removeArrowsInVnFromDeps(/**@type {VNode}*/ vnode) {
-  for (const arrow of deps.keys()) if (contains(vnode, arrow[VEL])) deps.delete(arrow)
+function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
+  for (const arrow of deps.keys())
+    if (arrow[REL] && rnode[NODE].contains(arrow[REL]?.[NODE])) deps.delete(arrow)
 }
 
-/** @returns {boolean} */
-function contains(/**@type {VNode}*/ ancestor, /**@type {?VNode}*/ descendant) {
-  if (!descendant) return false
-  if (ancestor === descendant) return true
-  const result = ancestor[CHILDREN].some((vnode) => contains(vnode, descendant))
-  return result
-}
-
-function updateChildren(/**@type {VEl}*/ vel, /**@type {VNode[]}*/ newVnodes) {
-  const oldIds = getIds(vel[CHILDREN])
-  const newIds = getIds(newVnodes)
+function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
+  const oldIds = getIds(rel[CHILDREN])
+  const newIds = getIds(newVNodes)
   // if both have unique ids, smart update
   if (oldIds && newIds) {
     // remove unmatched. MUST REMOVE FROM TAIL!!! otherwise index would be messed up
     for (let i = oldIds.length - 1; i >= 0; i--) {
-      if (!newIds.includes(oldIds[i])) removeChild(vel, i)
+      if (!newIds.includes(oldIds[i])) removeChild(rel, i)
     }
     // build from head to tail
     for (const [i, id] of newIds.entries()) {
-      const j = vel[CHILDREN].findIndex((vnode) => vnode[PROPS].id === id)
-      const newVnode = newVnodes[i]
+      const j = rel[CHILDREN].findIndex((vnode) => vnode[PROPS].id === id)
+      const newVNode = newVNodes[i]
       if (i === j) {
         // matched in current position, update
-        updateChild(vel, i, newVnode)
-      } else if (vel[CHILDREN][j]) {
+        updateChild(rel, i, newVNode)
+      } else if (rel[CHILDREN][j]) {
         // matched in latter position, bring it up, then update. REMOVE FIRST!!!
-        insertChild(vel, i, removeChild(vel, j)) // ok, j > i always
-        updateChild(vel, i, newVnode)
-      } else if (vel[CACHE]?.[id]) {
+        insertChild(rel, i, removeChild(rel, j)) // ok, j > i always
+        updateChild(rel, i, newVNode)
+      } else if (rel[CACHE]?.[id]) {
         // matched in removed cache, bring it out, then update
-        insertChild(vel, i, vel[CACHE][id])
-        updateChild(vel, i, newVnode)
+        insertChild(rel, i, rel[CACHE][id])
+        updateChild(rel, i, newVNode)
       } else {
         // matched nothing, create and insert
-        insertChild(vel, i, newVnode)
+        insertChild(rel, i, newVNode)
       }
     }
   } else {
     // no unique ids, silly update
-    const newLen = newVnodes.length
-    const oldLen = vel[CHILDREN].length
+    const newLen = newVNodes.length
+    const oldLen = rel[CHILDREN].length
     // build from head to tail
     for (let i = 0; i < newLen || i < oldLen; i++) {
       if (i < newLen && i < oldLen) {
         // update existing ones in place
-        updateChild(vel, i, newVnodes[i])
+        updateChild(rel, i, newVNodes[i])
       } else if (i >= oldLen) {
         // insert new ones in tail
-        insertChild(vel, i, newVnodes[i])
+        insertChild(rel, i, newVNodes[i])
       } else {
         // REMOVE unneeded old ones FROM TAIL!!!
-        removeChild(vel, oldLen + newLen - 1 - i)
+        removeChild(rel, oldLen + newLen - 1 - i)
       }
     }
   }
 }
 
-function getIds(/**@type {VNode[]}*/ vnodes) {
-  const ids = vnodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
-  if (new Set(ids).size !== ids.length) throw new Error(`duplicate children id: ${ids}`)
-  else return ids.length === vnodes.length ? ids : null
-}
-
 function updateChild(
-  /**@type {VEl}*/ vel,
+  /**@type {REl}*/ rel,
   /**@type {number}*/ index,
-  /**@type {VNode}*/ newVnode,
+  /**@type {VNode}*/ newVNode,
 ) {
-  const oldVNode = vel[CHILDREN][index]
+  const oldRNode = rel[CHILDREN][index]
   // if both vel with same tag, patch the existing el
   if (
-    oldVNode[TYPE] !== 'text' &&
-    newVnode[TYPE] !== 'text' &&
-    oldVNode[TAG] === newVnode[TAG]
+    oldRNode[TYPE] !== 'text' &&
+    newVNode[TYPE] !== 'text' &&
+    oldRNode[TAG] === newVNode[TAG]
   ) {
-    // @ts-ignore ok, vel has children nodes TODO:
-    const /**@type {El}*/ el = oldVNode[NODE]
-    for (const key in newVnode[PROPS])
-      if (oldVNode[PROPS][key] !== newVnode[PROPS][key])
-        setProp(el, key, newVnode[PROPS][key])
-    for (const key in oldVNode[PROPS]) if (!(key in newVnode[PROPS])) unsetProp(el, key)
+    const el = oldRNode[NODE]
+    for (const key in newVNode[PROPS])
+      if (oldRNode[PROPS][key] !== newVNode[PROPS][key])
+        setProp(el, key, newVNode[PROPS][key])
+    for (const key in oldRNode[PROPS]) if (!(key in newVNode[PROPS])) unsetProp(el, key)
     // innerText, innerHTML, textContent prop already deals with children, so skip
-    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in newVnode[PROPS]))
-      updateChildren(oldVNode, newVnode[CHILDREN])
-    newVnode[NODE] = oldVNode[NODE]
-    vel[CHILDREN][index] = newVnode
+    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in newVNode[PROPS]))
+      updateChildren(oldRNode, newVNode[CHILDREN])
+    const newRNode = convertVNodeToRNode(newVNode, oldRNode[NODE])
+    rel[CHILDREN][index] = newRNode
   } else {
     // replace whole node. REMOVE FIRST!!!
-    removeChild(vel, index)
-    insertChild(vel, index, newVnode)
+    removeChild(rel, index)
+    insertChild(rel, index, newVNode)
   }
 }
 
 function insertChild(
-  /**@type {VEl}*/ vel,
+  /**@type {REl}*/ rel,
   /**@type {number}*/ index,
-  /**@type {VNode}*/ newVnode, // TODO: VN or VEL
+  /**@type {ANode}*/ newANode,
 ) {
-  // @ts-ignore ok. TODO:
-  const /**@type {El}*/ el = vel[NODE]
-  const node = newVnode[NODE] ?? createNode(newVnode)
+  const el = rel[NODE]
+  // @ts-ignore ok. stupid ts！
+  const /**@type {RNode}*/ newRNode = newANode[NODE] ? newANode : createRNode(newANode)
+  const node = newRNode[NODE]
   el.insertBefore(node, el.childNodes.item(index))
-  vel[CHILDREN].splice(index, 0, newVnode)
+  rel[CHILDREN].splice(index, 0, newRNode)
   // alrady brought out, so remove from cache
-  if (vel[CACHE] && newVnode[PROPS].id) delete vel[CACHE][newVnode[PROPS].id]
+  if (rel[CACHE] && newRNode[PROPS].id) delete rel[CACHE][newRNode[PROPS].id]
 }
 
-function removeChild(/**@type {VEl}*/ vel, /**@type {number}*/ index) {
-  const vnode = vel[CHILDREN].splice(index, 1)[0]
-  // @ts-ignore ok TODO:
-  vnode[NODE].remove()
+function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
+  const rnode = rel[CHILDREN].splice(index, 1)[0]
+  rnode[NODE].remove()
   // put into cache
-  if (vel[CACHE] && vnode[PROPS].id) vel[CACHE][vnode[PROPS].id] = vnode
-  return vnode
+  if (rel[CACHE] && rnode[PROPS].id) rel[CACHE][rnode[PROPS].id] = rnode
+  return rnode
+}
+
+function getIds(/**@type {ANode[]}*/ anodes) {
+  const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
+  if (new Set(ids).size !== ids.length) throw new Error(`duplicate children id: ${ids}`)
+  else return ids.length === anodes.length ? ids : null
 }
 
 function setProp(
@@ -357,18 +360,6 @@ function setProp(
   else el.setAttribute(key, value)
 }
 
-function getPropType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
-  if (!(prop in object)) return []
-  const pd = Object.getOwnPropertyDescriptor(object, prop)
-  if (pd)
-    return Object.entries(pd)
-      .map(([k, v]) => (v ? k : null))
-      .filter((x) => x)
-  const proto = Object.getPrototypeOf(object)
-  if (!proto) return []
-  return getPropType(proto, prop)
-}
-
 const /**@type {{[k:string]: string}}*/ prop2attr = {
     defaultValue: 'value',
     htmlFor: 'for',
@@ -382,7 +373,8 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   if (key.toLowerCase() in el.attributes) el.removeAttribute(key)
   // special cases for IDL prop naming
   else if (key in prop2attr) el.removeAttribute(prop2attr[key])
-  // @ts-ignore ok. TODO: test more cases for how to unset arbitary non-attr props
+  // TODO: test more cases for how to unset arbitary non-attr props
+  // @ts-ignore ok.
   else if (key in el) el[key] = typeof el[key] === 'string' ? '' : undefined
   else {
     const start = key[0]
@@ -391,4 +383,16 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
     else if (start === '$') el.style.removeProperty(remained)
     else throw new Error(`invalid prop '${key}' to unset from <${el.nodeName}>`)
   }
+}
+
+function getPropType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
+  if (!(prop in object)) return []
+  const pd = Object.getOwnPropertyDescriptor(object, prop)
+  if (pd)
+    return Object.entries(pd)
+      .map(([k, v]) => (v ? k : null))
+      .filter((x) => x)
+  const proto = Object.getPrototypeOf(object)
+  if (!proto) return []
+  return getPropType(proto, prop)
 }
