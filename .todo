@@ -12,4 +12,4 @@
 ✔ 根据key顺序智能更新children @done(24-09-02 21:07)
 ✔ keep-alive @done(24-09-02 17:56)
 ✔ 区分 VNnode RNode @done(24-09-05 22:03)
-☐ HChildren 支持非数组
+✔ HChildren 支持非数组 @done(24-09-06 01:28)

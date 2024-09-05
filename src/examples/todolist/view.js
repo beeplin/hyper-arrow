@@ -23,13 +23,14 @@ export function view(/**@type {ToDoListState}*/ s) {
           circle({ cx: '50', cy: '50', r: () => (s.newInput.length + 10).toString() }),
         ]),
         math({ display: 'block' }, [
-          semantics([mfrac([mi(['x']), mn([() => s.newInput.length.toString()])])]),
+          semantics([mfrac([mi(['x']), mn(() => s.newInput.length.toString())])]),
         ]),
       ],
     ),
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
-      () => small([() => s.newInput || 'via hyper-arrow']),
+      // FIXME: ia-xxx
+      () => small(() => s.newInput || 'via hyper-arrow'),
       button({
         id: 'log',
         innerText: 'log deps',

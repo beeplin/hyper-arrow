@@ -44,8 +44,14 @@ export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
 /**
  * @typedef {{[k: string]: unknown}} TagProps
  * @typedef {VEl | string | (() => (VEl | string))} TagChild
- * @typedef {TagChild[] | (() => TagChild[])} TagChildren
- * @typedef {[propsOrChildren?: TagProps|TagChildren, children?: TagChildren]} TagArgs
+ * @typedef {[TagProps, TagChild[]]} TagArgs1
+ * @typedef {[TagProps, () => TagChild[]]} TagArgs2
+ * @typedef {[TagProps, ...TagChild[]]} TagArgs3
+ * @typedef {[TagChild[]]} TagArgs4
+ * @typedef {[() => TagChild[]]} TagArgs5
+ * @typedef {[...TagChild[]]} TagArgs6
+ * @typedef {[]} TagArgs7
+ * @typedef {TagArgs1|TagArgs2|TagArgs3|TagArgs4|TagArgs5|TagArgs6|TagArgs7} TagArgs
  * @type {{[ns: string]: {[tag: string]: (...args: TagArgs) => VEl}}}
  */
 export const tags = new Proxy(
@@ -60,32 +66,47 @@ export const tags = new Proxy(
 )
 
 /** @type {(name: string, ...args: TagArgs) => VEl} */
-export const h = function createVel(name, props, children) {
+export const h = function createVEl(
+  /**@type {string}*/ name,
+  /**@type {any}*/ ...args
+) {
   const [a, b] = name.split(':')
   const [type, tag] = b ? [a, b] : [b, 'html']
   // @ts-ignore let it crash if type is not ElType
   if (type !== 'html' && type !== 'svg' && type !== 'mathml')
     throw new Error("tag type must be 'html', 'svg' or 'mathml'")
+  const hasProps = typeof args[0] === 'object' && !Array.isArray(args[0])
+  const /**@type {[TagProps, unknown]}*/ [props, x] = hasProps
+      ? [args[0], args.slice(1)]
+      : [{ __proto__: null }, args]
+  const childrenIsSingleFnOrInArray =
+    Array.isArray(x) &&
+    x.length === 1 &&
+    (typeof x[0] === 'function' ||
+      (Array.isArray(x[0]) &&
+        !(typeof x[0][2] === 'object' && !Array.isArray(x[0][2]))))
+  const /**@type {TagChild[]}*/ children = childrenIsSingleFnOrInArray ? x[0] : x
+  console.log('props:', props)
+  console.log('children:', children)
   const /**@type {VEl}*/ rel = [type, tag, { __proto__: null }, []]
-  if (typeof props !== 'object' || Array.isArray(props)) children = props
-  else
-    for (const key in props) {
-      // on* event handlers, all lowercase, have no arrow, so not evaluted
-      if (key.startsWith('on')) rel[PROPS][key.toLowerCase()] = props[key]
-      // set currentArrow and run arrow function within it
-      else rel[PROPS][key] = evaluate(props[key], rel, key)
-    }
+  for (const key in props) {
+    // on* event handlers, all lowercase, have no arrow, not evaluted
+    if (key.startsWith('on')) rel[PROPS][key.toLowerCase()] = props[key]
+    // set currentArrow and run arrow function within it
+    else rel[PROPS][key] = evaluate(props[key], rel, key)
+  }
   const /**@type {TagChild[]}*/ childList = evaluate(children, rel, null) ?? []
+  // can't tell tag(() => vn) from tag(() => vn[]), must processed in reactive.set
   for (const i in childList)
-    rel[CHILDREN].push(createVnode(evaluate(childList[i], rel, +i)))
+    rel[CHILDREN].push(createVNode(evaluate(childList[i], rel, +i)))
   return rel
 }
 
-function createVnode(/**@type {VEl | string}*/ x) {
-  return typeof x === 'string' ? createVtext(x) : x
+function createVNode(/**@type {VEl | string}*/ x) {
+  return typeof x === 'string' ? createVText(x) : x
 }
 
-function createVtext(/**@type {string}*/ txt) {
+function createVText(/**@type {string}*/ txt) {
   const /**@type {VText}*/ vtext = ['text', txt, {}, []]
   return vtext
 }
@@ -94,10 +115,6 @@ function createVtext(/**@type {string}*/ txt) {
 export function mount(/**@type {string}*/ selector, /**@type {VEl}*/ vel) {
   // @ts-ignore let it crash if selector not found
   document.querySelector(selector).append(createREl(vel)[NODE])
-}
-
-function createRNode(/**@type {VNode}*/ vnode) {
-  return vnode[TYPE] === 'text' ? createRText(vnode) : createREl(vnode)
 }
 
 let uid = 0
@@ -116,11 +133,16 @@ function createREl(/**@type {VEl}*/ vel) {
   // use uid to track el's identity for debugging purpose
   el.setAttribute(UID, uid++ + '')
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
+  console.log('vel:', vel)
   el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
   const rel = convertVNodeToRNode(vel, el)
   // @ts-ignore let it crash if oncreate is not function
   rel[PROPS][ONCREATE]?.(el)
   return rel
+}
+
+function createRNode(/**@type {VNode}*/ vnode) {
+  return vnode[TYPE] === 'text' ? createRText(vnode) : createREl(vnode)
 }
 
 function createRText(/**@type {VText}*/ vtext) {
@@ -210,14 +232,19 @@ export function reactive(target) {
             // console.log('-----set------')
             // console.log({ target, prop, oldValue, newValue })
             // console.log({ ...rel, k, v })
+            // h can't tell tag(() => vn) from tag(() => vn[]), must processed here
+            const seemsChildrenButIsSingleChild =
+              key === null &&
+              (!Array.isArray(value) ||
+                (typeof value[PROPS] === 'object' && !Array.isArray(value[PROPS])))
             if (!rel) {
               effect?.(value)
+            } else if (typeof key === 'number' || seemsChildrenButIsSingleChild) {
+              removeArrowsInRNodeFromDeps(rel[CHILDREN][key ?? 0])
+              updateChild(rel, key ?? 0, createVNode(value))
             } else if (key === null) {
               rel[CHILDREN].map(removeArrowsInRNodeFromDeps)
-              updateChildren(rel, value.map(createVnode))
-            } else if (typeof key === 'number') {
-              removeArrowsInRNodeFromDeps(rel[CHILDREN][key])
-              updateChild(rel, key, createVnode(value))
+              updateChildren(rel, value.map(createVNode))
             } else {
               setProp(rel[NODE], key, value)
             }
