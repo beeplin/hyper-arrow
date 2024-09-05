@@ -21,7 +21,7 @@
 
 const UID = 'uid'
 const ONCREATE = 'oncreate'
-const CACHE_CHIDLREN = 'cacheChildren'
+const CACHE = 'cacheRemovedChildren'
 const BRAND = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND)
 const ELEMENT_NS = {
@@ -110,7 +110,7 @@ function createElement(/**@type {VE}*/ ve) {
   for (const k in props) setProp(el, k, props[k])
   el.append(...children.map(createNode))
   ve[4] = el
-  if (props[CACHE_CHIDLREN] && getChildIds(children)) ve[5] = {}
+  if (props[CACHE] && getChildIds(children)) ve[5] = {}
   // @ts-ignore in fact works
   el[BRAND] = ve
   // @ts-ignore let it crash if oncreate is not function
@@ -266,7 +266,7 @@ function removeChild(/**@type {VE}*/ ve, /**@type {number}*/ i) {
 
 function setProp(/**@type {El}*/ el, /**@type {string}*/ k, /**@type {unknown}*/ v) {
   // @ts-ignore in fact works after hasSetter check
-  if (hasSetter(el, k) || [ONCREATE, CACHE_CHIDLREN].includes(k)) el[k] = v
+  if (hasSetter(el, k) || [ONCREATE, CACHE].includes(k)) el[k] = v
   else if (typeof v !== 'string')
     throw new Error(`<${el.nodeName}> attribute/style should be string: ${k} = ${v}`)
   // @ts-ignore let it crash if no el.style (not html, svg, mathml)

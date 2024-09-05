@@ -27,7 +27,7 @@ export function view(/**@type {ToDoListState}*/ s) {
         ]),
       ],
     ),
-    div({ id: 'title-container' }, [
+    div(
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
       () => small([() => s.newInput || 'via hyper-arrow']),
       button({
@@ -45,7 +45,7 @@ export function view(/**@type {ToDoListState}*/ s) {
           test(s)
         },
       }),
-    ]),
+    ),
     div({ id: 'input-container' }, [
       input({
         id: 'input',
