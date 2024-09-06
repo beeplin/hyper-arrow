@@ -50,7 +50,11 @@ let /**@type {Arrow?}*/ currentArrow = null
 /** @typedef {[target: object, prop: string | symbol]} Trigger */
 const TARGET = 0
 const PROP = 1
-export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
+
+/** @type {Map<Arrow, Trigger[]>}*/
+export const arrow2trigger = new Map()
+// /** @type {Map<object, Record<string | symbol, Arrow[]>>} */
+// export const trigger2arrow = new Map()
 
 const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
@@ -194,7 +198,12 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
 export function watch(watchFn, effectFn) {
   evaluate(watchFn, null, null, effectFn)
   return () => {
-    for (const arrow of deps.keys()) if (arrow[FN] === watchFn) deps.delete(arrow)
+    for (const arrow of arrow2trigger.keys())
+      if (arrow[FN] === watchFn) arrow2trigger.delete(arrow)
+    // for (const target of trigger2arrow.keys()) {
+    //   const obj = trigger2arrow.get(target)
+    //   if (obj) for (const p in obj) obj[p] = obj[p].filter((a) => a !== watchFn)
+    // }
   }
 }
 
@@ -224,11 +233,23 @@ export function reactive(target) {
       if (typeof target === 'function' && prop === 'prototype') return result
       // collect trigger as dependency of current arrow
       if (currentArrow) {
-        if (!deps.has(currentArrow)) deps.set(currentArrow, [])
-        // @ts-ignore ok, guaranteed by deps.set
-        const /**@type {Trigger[]}*/ triggers = deps.get(currentArrow)
-        if (!triggers.some((t) => t[TARGET] === target && t[PROP] === prop))
+        // if (currentArrow[1]?.[TAG] === 'ul') {
+        // console.log('--get--')
+        // console.log(currentArrow[0], currentArrow[1]?.[TAG], currentArrow[2])
+        // console.log(target, prop)
+        // }
+
+        if (!arrow2trigger.has(currentArrow)) arrow2trigger.set(currentArrow, [])
+        const triggers = arrow2trigger.get(currentArrow)
+        if (triggers && !triggers.some((t) => t[TARGET] === target && t[PROP] === prop))
           triggers.push([target, prop])
+
+        // if (!trigger2arrow.has(target)) trigger2arrow.set(target, Object.create(null))
+        // const obj = trigger2arrow.get(target)
+        // if (obj) {
+        //   if (!(prop in obj)) obj[prop] = []
+        //   if (!obj[prop].includes(currentArrow)) obj[prop].push(currentArrow)
+        // }
       }
       return reactive(result)
     },
@@ -237,18 +258,24 @@ export function reactive(target) {
       const result = REFLECT.set(target, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
       if (oldValue === newValue && prop !== LENGTH) return result
-      for (const [arrow, triggers] of deps.entries()) {
+      for (const [arrow, triggers] of arrow2trigger.entries()) {
         for (const trigger of triggers) {
           // update target in all triggers, so oldValue can be garbage collected
           if (trigger[TARGET] === oldValue) trigger[TARGET] = newValue
           // dependent arrows found! Action!
           if (trigger[TARGET] === target && trigger[PROP] === prop) {
             const [fn, rel, key, effect] = arrow
+            currentArrow = arrow
             const value = fn()
+            currentArrow = null
+
+            // if (rel?.[TAG] === 'ul') {
             console.log('--set--')
             console.log(target, prop, oldValue, newValue)
             console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
             console.log(key, value)
+            // }
+
             if (!rel) {
               effect?.(value)
             } else if (
@@ -275,8 +302,16 @@ export function reactive(target) {
 }
 
 function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-  for (const arrow of deps.keys())
-    if (arrow[REL] && rnode[NODE].contains(arrow[REL]?.[NODE])) deps.delete(arrow)
+  for (const arrow of arrow2trigger.keys())
+    if (arrowInRNode(arrow, rnode)) arrow2trigger.delete(arrow)
+  // for (const target of trigger2arrow.keys()) {
+  //   const obj = trigger2arrow.get(target)
+  //   if (obj) for (const p in obj) obj[p] = obj[p].filter((a) => !arrowInRNode(a, rnode))
+  // }
+}
+
+function arrowInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {
+  return arrow[REL] && rnode[NODE].contains(arrow[REL]?.[NODE])
 }
 
 function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
@@ -384,8 +419,10 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
 
 function getIds(/**@type {ANode[]}*/ anodes) {
   const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
-  if (new Set(ids).size !== ids[LENGTH]) throw ERROR(`duplicate children id: ${ids}`)
-  else return ids[LENGTH] === anodes[LENGTH] ? ids : null
+  // if (new Set(ids).size !== ids[LENGTH]) throw ERROR(`duplicate children id: ${ids}`)
+  return ids[LENGTH] === anodes[LENGTH] && ids[LENGTH] === new Set(ids).size
+    ? ids
+    : null
 }
 
 function setProp(

@@ -1,4 +1,5 @@
-import { deps, tags } from '../../hyper-arrow.js'
+import { arrow2trigger, tags } from '../../hyper-arrow.js'
+import { ToDoItem } from './model.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
@@ -39,7 +40,8 @@ export function view(/**@type {ToDoListState}*/ s) {
         id: 'log',
         innerText: 'log deps',
         onclick() {
-          console.log(deps)
+          console.log(arrow2trigger)
+          // console.log(trigger2arrow)
         },
       }),
       button({
@@ -132,50 +134,46 @@ export function view(/**@type {ToDoListState}*/ s) {
       }),
     ]),
     ul({ id: 'list', style: 'padding: 0', cacheRemovedChildren: true }, () =>
-      s.getFilteredReversedList().map((_, i) =>
-        li({ id: () => 'li-' + item(i).id, class: 'item-container' }, [
+      s.getFilteredReversedList().map((item, i) =>
+        li({ id: () => 'li-' + item.id, class: 'item-container' }, [
           button({
-            id: () => 'up-' + item(i).id,
+            id: () => 'up-' + item.id,
             class: 'item-up',
             innerHTML: '⇧',
             disabled: () => !!s.editingId,
             onClick() {
-              const j = s
-                .getFilteredReversedList()
-                .findIndex((j) => j.id === item(i).id)
+              const j = s.getFilteredReversedList().findIndex((j) => j.id === item.id)
               if (j === 0) return
               const prevItem = s.getFilteredReversedList()[j - 1]
-              swap(s.model.list, item(i), prevItem)
+              swap(s.model.list, item, prevItem)
             },
           }),
           button({
-            id: () => 'down-' + item(i).id,
+            id: () => 'down-' + item.id,
             class: 'item-down',
             innerHTML: '⇩',
             disabled: () => !!s.editingId,
             onClick() {
-              const j = s
-                .getFilteredReversedList()
-                .findIndex((j) => j.id === item(i).id)
+              const j = s.getFilteredReversedList().findIndex((j) => j.id === item.id)
               if (j === s.getFilteredReversedList().length - 1) return
               const nextItem = s.getFilteredReversedList()[j + 1]
-              swap(s.model.list, item(i), nextItem)
+              swap(s.model.list, item, nextItem)
             },
           }),
           input({
-            id: () => 'checkbox-' + item(i).id,
+            id: () => 'checkbox-' + item.id,
             class: 'checkbox',
             type: 'checkbox',
-            checked: () => item(i).done,
+            checked: () => item.done,
             disabled: () => !!s.editingId,
             onInput() {
-              s.model.toggle(item(i).id)
+              s.model.toggle(item.id)
             },
           }),
           () =>
-            s.isEditing(item(i).id)
+            s.isEditing(item.id)
               ? input({
-                  id: () => 'edit-' + item(i).id,
+                  id: () => 'edit-' + item.id,
                   class: 'item-input',
                   type: 'text',
                   value: () => s.editInput,
@@ -183,41 +181,40 @@ export function view(/**@type {ToDoListState}*/ s) {
                     s.editInput = e.target.value
                   },
                   onKeyDown(/**@type {any}*/ e) {
-                    if (e.keyCode === 13) s.update(item(i).id, s.editInput)
+                    if (e.keyCode === 13) s.update(item.id, s.editInput)
                   },
                   onCreate(/**@type {any}*/ el) {
                     requestAnimationFrame(() => el.select())
                   },
                 })
               : label({
-                  id: () => 'label-' + item(i).id,
-                  class: () => 'item-label' + (item(i).done ? ' done' : ''),
-                  for: () => 'checkbox-' + item(i).id,
-                  innerText: () => item(i).text,
+                  id: () => 'label-' + item.id,
+                  class: () => 'item-label' + (item.done ? ' done' : ''),
+                  for: () => 'checkbox-' + item.id,
+                  innerText: () => item.text,
                   $minWidth: '150px',
                 }),
           button({
-            id: () => (s.isEditing(item(i).id) ? 'ok' : 'edit') + '-' + item(i).id,
-            class: () => (s.isEditing(item(i).id) ? 'item-ok' : 'item-edit'),
-            innerText: () => (s.isEditing(item(i).id) ? '✓' : '🖉'),
-            disabled: () => !!s.editingId && s.editingId !== item(i).id,
+            id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
+            class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
+            innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
+            disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
-              if (s.editingId === item(i).id) s.update(item(i).id, s.editInput)
+              if (s.editingId === item.id) s.update(item.id, s.editInput)
               else {
-                s.editingId = item(i).id
-                s.editInput = item(i).text
+                s.editingId = item.id
+                s.editInput = item.text
               }
             },
           }),
           button({
-            id: () =>
-              (s.isEditing(item(i).id) ? 'cancel' : 'delete') + '-' + item(i).id,
-            class: () => (s.isEditing(item(i).id) ? 'item-cancel' : 'item-delete'),
-            innerText: () => (s.isEditing(item(i).id) ? '✗' : '🗑'),
-            disabled: () => !!s.editingId && s.editingId !== item(i).id,
+            id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
+            class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
+            innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
+            disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
-              if (s.editingId === item(i).id) s.editingId = null
-              else s.model.delete(item(i).id)
+              if (s.editingId === item.id) s.editingId = null
+              else s.model.delete(item.id)
             },
           }),
         ]),
@@ -226,14 +223,24 @@ export function view(/**@type {ToDoListState}*/ s) {
   ])
 }
 
-/** @type {<T extends {id: unknown}>(list: T[], a: T, b: T) => void} */
-function swap(list, a, b) {
+function swap(
+  /**@type {ToDoItem[]}*/ list,
+  /**@type {ToDoItem}*/ a,
+  /**@type {ToDoItem}*/ b,
+) {
   const ia = list.findIndex((i) => i.id === a.id)
   const ib = list.findIndex((i) => i.id === b.id)
 
-  const t = a
+  // let x = new ToDoItem(-1, '', false)
+  // let y = a
+  // list[ia] = x
+  // x = b
+  // list[ib] = a
+  // list[ia] = b
+
+  let x = a
   list[ia] = b
-  list[ib] = t
+  list[ib] = x
 
   // if (ib < ia) {
   //   list.splice(ia, 1)

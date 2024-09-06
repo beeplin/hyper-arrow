@@ -1,5 +1,12 @@
 // @ts-nocheck
-import { deps, isReactive, mount, reactive, tags, watch } from '../../hyper-arrow.js'
+import {
+  arrow2trigger,
+  isReactive,
+  mount,
+  reactive,
+  tags,
+  watch,
+} from '../../hyper-arrow.js'
 
 const { button, div, input, li, ul } = tags.html
 
@@ -93,4 +100,4 @@ setTimeout(() => {
 }, 30000)
 
 // check dependencies as a Map from context to getters
-console.log(deps)
+console.log(arrow2trigger)
