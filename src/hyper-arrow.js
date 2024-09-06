@@ -3,7 +3,7 @@
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
- * @typedef {{[k: string]: unknown, id?: string}} Props
+ * @typedef {{[k: string]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
  * @typedef {[ElType, tag: string, Props, VNode[]]} VEl virtal element
@@ -42,14 +42,14 @@ let /**@type {Arrow?}*/ currentArrow = null
 export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
 
 /**
- * @typedef {{[k: string]: unknown}} TagProps
- * @typedef {VEl | string | (() => (VEl | string))} TagChild
- * @typedef {[TagProps, TagChild[]]} TagArgs1
- * @typedef {[TagProps, () => TagChild[]]} TagArgs2
- * @typedef {[TagProps, ...TagChild[]]} TagArgs3
- * @typedef {[TagChild[]]} TagArgs4
- * @typedef {[() => TagChild[]]} TagArgs5
- * @typedef {[...TagChild[]]} TagArgs6
+ * @typedef {VEl | string | (() => (VEl | string))} Child
+ * @typedef {Child[] | (() => Child[])} Children
+ * @typedef {[Props, Child[]]} TagArgs1
+ * @typedef {[Props, () => Child[]]} TagArgs2
+ * @typedef {[Props, ...Child[]]} TagArgs3
+ * @typedef {[Child[]]} TagArgs4
+ * @typedef {[() => Child[]]} TagArgs5
+ * @typedef {[...Child[]]} TagArgs6
  * @typedef {[]} TagArgs7
  * @typedef {TagArgs1|TagArgs2|TagArgs3|TagArgs4|TagArgs5|TagArgs6|TagArgs7} TagArgs
  * @type {{[ns: string]: {[tag: string]: (...args: TagArgs) => VEl}}}
@@ -65,6 +65,19 @@ export const tags = new Proxy(
   },
 )
 
+const VEL_PROTO = { __proto__: null }
+
+/** @type {(type: ElType, tag: string, props: Props, children: VNode[]) => VEl} */
+function newVEl(type, tag, props, children) {
+  const /**@type {VEl}*/ vel = [type, tag, props, children]
+  Object.setPrototypeOf(vel, VEL_PROTO)
+  return vel
+}
+
+function isVEl(/**@type {unknown}*/ x) {
+  return Object.getPrototypeOf(x) === VEL_PROTO
+}
+
 /** @type {(name: string, ...args: TagArgs) => VEl} */
 export const h = function createVEl(
   /**@type {string}*/ name,
@@ -76,30 +89,27 @@ export const h = function createVEl(
   if (type !== 'html' && type !== 'svg' && type !== 'mathml')
     throw new Error("tag type must be 'html', 'svg' or 'mathml'")
   const hasProps = typeof args[0] === 'object' && !Array.isArray(args[0])
-  const /**@type {[TagProps, unknown]}*/ [props, x] = hasProps
+  const /**@type {[Props, unknown]}*/ [props, x] = hasProps
       ? [args[0], args.slice(1)]
-      : [{ __proto__: null }, args]
-  const childrenIsSingleFnOrInArray =
+      : [{}, args]
+  const childrenIsFunctionOrArray =
     Array.isArray(x) &&
     x.length === 1 &&
-    (typeof x[0] === 'function' ||
-      (Array.isArray(x[0]) &&
-        !(typeof x[0][2] === 'object' && !Array.isArray(x[0][2]))))
-  const /**@type {TagChild[]}*/ children = childrenIsSingleFnOrInArray ? x[0] : x
-  console.log('props:', props)
-  console.log('children:', children)
-  const /**@type {VEl}*/ rel = [type, tag, { __proto__: null }, []]
-  for (const key in props) {
+    (typeof x[0] === 'function' || (Array.isArray(x[0]) && !isVEl(x[0])))
+  const /**@type {Children}*/ children = childrenIsFunctionOrArray ? x[0] : x
+  const vel = newVEl(type, tag, { __proto__: null }, [])
+  for (const key of Object.keys(props)) {
     // on* event handlers, all lowercase, have no arrow, not evaluted
-    if (key.startsWith('on')) rel[PROPS][key.toLowerCase()] = props[key]
+    if (key.startsWith('on')) vel[PROPS][key.toLowerCase()] = props[key]
     // set currentArrow and run arrow function within it
-    else rel[PROPS][key] = evaluate(props[key], rel, key)
+    else vel[PROPS][key] = evaluate(props[key], vel, key)
   }
-  const /**@type {TagChild[]}*/ childList = evaluate(children, rel, null) ?? []
-  // can't tell tag(() => vn) from tag(() => vn[]), must processed in reactive.set
-  for (const i in childList)
-    rel[CHILDREN].push(createVNode(evaluate(childList[i], rel, +i)))
-  return rel
+  // can't tell tag(() => vn) from tag(() => vn[]) here, must handle in reactive's set
+  const /**@type {Child[] | Child}*/ y = evaluate(children, vel, null) ?? []
+  // check if tag(() => string)
+  if (typeof y === 'string' || isVEl(y)) vel[CHILDREN].push(createVNode(y))
+  else for (const i in y) vel[CHILDREN].push(createVNode(evaluate(y[i], vel, +i)))
+  return vel
 }
 
 function createVNode(/**@type {VEl | string}*/ x) {
@@ -229,14 +239,14 @@ export function reactive(target) {
           if (trigger[TARGET] === target && trigger[PROP] === prop) {
             const [fn, rel, key, effect] = arrow
             const value = fn()
-            // console.log('-----set------')
-            // console.log({ target, prop, oldValue, newValue })
-            // console.log({ ...rel, k, v })
-            // h can't tell tag(() => vn) from tag(() => vn[]), must processed here
+            // h can't tell tag(() => vn) from tag(() => vn[]), must handle here
             const seemsChildrenButIsSingleChild =
               key === null &&
               (!Array.isArray(value) ||
                 (typeof value[PROPS] === 'object' && !Array.isArray(value[PROPS])))
+            // console.log('-----set------')
+            // console.log({ target, prop, oldValue, newValue })
+            // console.log({ ...rel, key, value, seemsChildrenButIsSingleChild })
             if (!rel) {
               effect?.(value)
             } else if (typeof key === 'number' || seemsChildrenButIsSingleChild) {
@@ -350,15 +360,17 @@ function insertChild(
   const node = newRNode[NODE]
   el.insertBefore(node, el.childNodes.item(index))
   rel[CHILDREN].splice(index, 0, newRNode)
-  // alrady brought out, so remove from cache
-  if (rel[CACHE] && newRNode[PROPS].id) delete rel[CACHE][newRNode[PROPS].id]
+  // already brought out, so remove from cache
+  if (rel[CACHE] && typeof newRNode[PROPS].id === 'string')
+    delete rel[CACHE][newRNode[PROPS].id]
 }
 
 function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
   // put into cache
-  if (rel[CACHE] && rnode[PROPS].id) rel[CACHE][rnode[PROPS].id] = rnode
+  if (rel[CACHE] && typeof rnode[PROPS].id === 'string')
+    rel[CACHE][rnode[PROPS].id] = rnode
   return rnode
 }
 
