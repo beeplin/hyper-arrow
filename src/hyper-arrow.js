@@ -245,9 +245,10 @@ export function reactive(target) {
           if (trigger[TARGET] === target && trigger[PROP] === prop) {
             const [fn, rel, key, effect] = arrow
             const value = fn()
-            // console.log('set')
-            // console.log({ target, prop, oldValue, newValue })
-            // console.log({ ...rel, key, value })
+            console.log('--set--')
+            console.log(target, prop, oldValue, newValue)
+            console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
+            console.log(key, value)
             if (!rel) {
               effect?.(value)
             } else if (
