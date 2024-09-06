@@ -298,6 +298,17 @@ export function reactive(target) {
       }
       return result
     },
+    deleteProperty(target, prop) {
+      console.log('--delete--')
+      console.log(target, prop)
+      for (const [arrow, triggers] of arrow2trigger.entries())
+        for (const [index, trigger] of triggers.entries())
+          if (trigger[TARGET] === target && trigger[PROP] === prop)
+            triggers.splice(index, 1)
+      // FIXME: recursive delete triggers
+      const result = REFLECT.deleteProperty(target, prop)
+      return result
+    },
   })
 }
 
