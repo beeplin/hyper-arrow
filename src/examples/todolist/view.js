@@ -4,7 +4,7 @@ import { test } from './test.js'
 
 const { button, div, input, label, li, small, ul } = tags.html
 const { svg, circle } = tags.svg
-const { math, semantics, mfrac, mi, mo, mn, mrow } = tags.mathml
+const { math, semantics, mfrac, mi, mn } = tags.mathml
 
 export function view(/**@type {ToDoListState}*/ s) {
   function item(/**@type {number}*/ i) {
@@ -23,13 +23,17 @@ export function view(/**@type {ToDoListState}*/ s) {
           circle({ cx: '50', cy: '50', r: () => (s.newInput.length + 10).toString() }),
         ]),
         math({ display: 'block' }, [
-          semantics([mfrac([mi(['x']), mn(() => s.newInput.length.toString())])]),
+          semantics(
+            mfrac(
+              mi('x'),
+              mn(() => s.newInput.length.toString()),
+            ),
+          ),
         ]),
       ],
     ),
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
-      // FIXME: ia-xxx
       () => small(() => s.newInput || 'via hyper-arrow'),
       button({
         id: 'log',
@@ -185,16 +189,13 @@ export function view(/**@type {ToDoListState}*/ s) {
                     requestAnimationFrame(() => el.select())
                   },
                 })
-              : label(
-                  {
-                    id: () => 'label-' + item(i).id,
-                    class: () => 'item-label' + (item(i).done ? ' done' : ''),
-                    for: () => 'checkbox-' + item(i).id,
-                    // innerText: () => item(i).text,
-                    $minWidth: '150px',
-                  },
-                  [() => item(i).text],
-                ),
+              : label({
+                  id: () => 'label-' + item(i).id,
+                  class: () => 'item-label' + (item(i).done ? ' done' : ''),
+                  for: () => 'checkbox-' + item(i).id,
+                  innerText: () => item(i).text,
+                  $minWidth: '150px',
+                }),
           button({
             id: () => (s.isEditing(item(i).id) ? 'ok' : 'edit') + '-' + item(i).id,
             class: () => (s.isEditing(item(i).id) ? 'item-ok' : 'item-edit'),
