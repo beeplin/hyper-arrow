@@ -3,10 +3,12 @@
 // these are for better minification
 const LENGTH = 'length'
 const OBJECT = Object
-const PROXY = Proxy
 const ERROR = Error
+const PROXY = Proxy
+const REFLECT = Reflect
 const DOCUMENT = document
 const isArray = Array.isArray
+// const createElementNS = DOCUMENT.createElementNS.bind(DOCUMENT)
 const removeFirst = (/**@type {any}*/ x) => x.slice(1)
 const toLowerCase = (/**@type {string}*/ str) => str.toLowerCase()
 /** @type {(el: El, k: string, v: string) => void} */
@@ -20,7 +22,7 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
  * @typedef {{[k: string]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @typedef {[ElType, tag: string, Props, VNode[]]} VEl virtual element
+ * @xxxxxxx {[ElType, tag: string, Props, VNode[]]} VEl defined by function VEl below
  * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
  * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
  * @typedef {['text', txt: string, Empty, [], Text]} RText real element
@@ -58,11 +60,6 @@ let uid = 0
 const UID = 'uid'
 const ONCREATE = 'oncreate'
 const CACHE_REMOVED_CHILDREN = 'cacheRemovedChildren'
-const ELEMENT_NS = {
-  html: 'http://www.w3.org/1999/xhtml',
-  svg: 'http://www.w3.org/2000/svg',
-  mathml: 'http://www.w3.org/1998/Math/MathML',
-}
 
 const /**@type {{[k:string]: string}}*/ prop2attr = {
     defaultValue: 'value',
@@ -79,29 +76,37 @@ const /**@type {{[k:string]: string}}*/ prop2attr = {
 export const tags = new PROXY(
   {},
   {
-    get: (_, /**@type {string}*/ type) =>
+    get: (_, /**@type {ElType}*/ type) =>
       new PROXY(
         {},
-        { get: (_, /**@type {string}*/ tag) => createVEl.bind(null, type + ':' + tag) },
+        { get: (_, /**@type {string}*/ tag) => createVEl.bind(null, type, tag) },
       ),
   },
 )
 
-function VEl() {}
+/** virtual element @constructor */
+export function VEl(
+  /**@type {ElType}*/ type,
+  /**@type {string}*/ tag,
+  /**@type {Props}*/ props,
+  /**@type {VNode[]}*/ children,
+) {
+  this[TYPE] = type
+  this[TAG] = tag
+  this[PROPS] = props
+  this[CHILDREN] = children
+}
 
-export { createVEl as h }
-
-/** @type {(name: string, ...args: Args) => VEl} */
-function createVEl(/**@type {string}*/ name, /**@type {any}*/ ...args) {
-  const [a, b] = name.split(':')
-  const [type, tag] = b ? [a, b] : [b, 'html']
-  if (type !== 'html' && type !== 'svg' && type !== 'mathml')
-    throw ERROR(`wrong tag type '${type}'. 'html', 'svg' or 'mathml' required`)
-  const /**@type {VEl}*/ vel = [type, tag, OBJECT.create(null), []]
-  OBJECT.setPrototypeOf(vel, VEl.prototype)
-  const hasProps = typeof args[0] === 'object' && !isArray(args[0])
-  /**@type {[Props, [Children] | Child[]]}*/
-  const [props, x] = hasProps ? [args[0], removeFirst(args)] : [{}, args]
+function createVEl(
+  /**@type {ElType}*/ type,
+  /**@type {string}*/ tag,
+  /**@type {Args}*/ ...args
+) {
+  const vel = new VEl(type, tag, OBJECT.create(null), [])
+  const [props, x] =
+    typeof args[0] === 'object' && !isArray(args[0]) && !(args[0] instanceof VEl)
+      ? [args[0], removeFirst(args)]
+      : [{}, args]
   for (const key in props) {
     // on* event handlers, all lowercase, have no arrow, not evaluted
     if (key.startsWith('on')) vel[PROPS][toLowerCase(key)] = props[key]
@@ -110,10 +115,11 @@ function createVEl(/**@type {string}*/ name, /**@type {any}*/ ...args) {
   // NOTE: args may be tag(() => VEl), not tag(() => VEl[]).
   // in this case arrow key should be 0, not null.
   // but cannot foresee whether fn returns VEl or VEl[] before it's actually evaluted
-  // so the wrong arrow key (null) must be handled in reactive [see reactive/set below]
-  const childrenIsAFunctionOrAnArray =
+  // so the wrong arrow key (null) must be handled later in reactive/set
+  const children =
     isArray(x) && x[LENGTH] === 1 && (typeof x[0] === 'function' || isArray(x[0]))
-  const children = childrenIsAFunctionOrAnArray ? x[0] : x
+      ? x[0]
+      : x
   const /**@type {Child[] | Child}*/ y = evaluate(children, vel, null)
   if (typeof y === 'function' || typeof y === 'string' || y instanceof VEl)
     vel[CHILDREN].push(createVNode(evaluate(y, vel, 0)))
@@ -137,8 +143,12 @@ export function mount(/**@type {string}*/ selector, /**@type {VEl}*/ vel) {
 }
 
 function createREl(/**@type {VEl}*/ vel) {
-  // @ts-ignore ok. guaranteed by ElType & ELEMENT_NS
-  const /**@type {El}*/ el = DOCUMENT.createElementNS(ELEMENT_NS[vel[TYPE]], vel[TAG])
+  const el =
+    vel[TYPE] === 'html'
+      ? DOCUMENT.createElement(vel[TAG])
+      : vel[TYPE] === 'svg'
+      ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
+      : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
   // use uid to track el's identity for debugging purpose
   setAttribute(el, UID, uid++ + '')
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
@@ -164,7 +174,7 @@ function createRText(/**@type {VText}*/ vtext) {
  * @overload @param {VText} vtext @param {Text} text @returns {RText}
  */
 function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node) {
-  // @ts-ignore trickky type coersion. rnode and vnode point to the same object
+  // @ts-ignore ok. trickky type coersion. rnode and vnode point to the same object
   const /**@type {RNode}*/ rnode = vnode
   rnode[NODE] = node
   if (rnode[PROPS][CACHE_REMOVED_CHILDREN] && getIds(rnode[CHILDREN])) rnode[CACHE] = {}
@@ -194,7 +204,7 @@ export function watch(watchFn, effectFn) {
  */
 function evaluate(fn, vel, key, effect) {
   if (typeof fn !== 'function') return fn
-  // @ts-ignore tickky type coersion. vel will become rel after createVel()
+  // @ts-ignore ok. tickky type coersion. vel will become rel after createVEl()
   const /**@type {REl}*/ rel = vel
   currentArrow = vel ? [fn, rel, key] : [fn, null, null, effect]
   const result = fn()
@@ -209,13 +219,13 @@ export function reactive(target) {
     get(target, prop) {
       // this is how isReactive() works
       if (prop === BRAND_SYMBOL) return true
-      const result = Reflect.get(target, prop)
+      const result = REFLECT.get(target, prop)
       // function.prototype cannot be proxied, so skip it
       if (typeof target === 'function' && prop === 'prototype') return result
       // collect trigger as dependency of current arrow
       if (currentArrow) {
         if (!deps.has(currentArrow)) deps.set(currentArrow, [])
-        // @ts-ignore ok, map key checked above
+        // @ts-ignore ok, guaranteed by deps.set
         const /**@type {Trigger[]}*/ triggers = deps.get(currentArrow)
         if (!triggers.some((t) => t[TARGET] === target && t[PROP] === prop))
           triggers.push([target, prop])
@@ -223,8 +233,8 @@ export function reactive(target) {
       return reactive(result)
     },
     set(target, prop, newValue) {
-      const oldValue = Reflect.get(target, prop)
-      const result = Reflect.set(target, prop, newValue)
+      const oldValue = REFLECT.get(target, prop)
+      const result = REFLECT.set(target, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
       if (oldValue === newValue && prop !== LENGTH) return result
       for (const [arrow, triggers] of deps.entries()) {
@@ -242,7 +252,7 @@ export function reactive(target) {
               effect?.(value)
             } else if (
               typeof key === 'number' ||
-              // NOTE: h can't tell tag(() => VEl) from tag(() => VEl[]). [see h above]
+              // NOTE: createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
               // so key may be wrongly null. this special case is handled here
               (key === null && (typeof value === 'string' || value instanceof VEl))
             ) {
@@ -388,8 +398,8 @@ function setProp(
   // getter/setter: on* aria* autofocus id className classList style innerHTML ...
   // getter only: client* scrollTop tagName dataset attributes children firstChild ...
   // plain value: blur() focus() after() append() ... (all methods)
-  // @ts-ignore ok, getPropType has 'set'
-  if (getPropType(el, key).includes('set')) el[key] = value
+  // @ts-ignore ok, guaranteed by getObjectPropertyType has 'set'
+  if (getObjectPropertyType(el, key).includes('set')) el[key] = value
   else if (typeof value !== 'string')
     throw ERROR(`<${el.nodeName}> attr/style must be string: ${key} = ${value}`)
   else if (key[0] === '$') el.style.setProperty(removeFirst(key), value)
@@ -403,18 +413,18 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   // special cases for IDL prop naming
   else if (key in prop2attr) removeAttribute(el, prop2attr[key])
   // TODO: test more cases for how to unset arbitary non-attr props
-  // @ts-ignore ok.
+  // @ts-ignore ok. guaranteed by key in el
   else if (key in el) el[key] = typeof el[key] === 'string' ? '' : undefined
   else {
     const start = key[0]
     const remained = removeFirst(key)
     if (start === '_') removeAttribute(el, remained)
     else if (start === '$') el.style.removeProperty(remained)
-    else throw ERROR(`invalid prop '${key}' to unset from <${el.nodeName}>`)
+    else throw ERROR(`unset invalid prop '${key}' from <${el.nodeName}>`)
   }
 }
 
-function getPropType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
+function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
   if (!(prop in object)) return []
   const pd = OBJECT.getOwnPropertyDescriptor(object, prop)
   if (pd)
@@ -423,5 +433,5 @@ function getPropType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
       .filter((x) => x)
   const proto = OBJECT.getPrototypeOf(object)
   if (!proto) return []
-  return getPropType(proto, prop)
+  return getObjectPropertyType(proto, prop)
 }
