@@ -116,7 +116,7 @@ function createVEl(
     if (key.startsWith('on')) vel[PROPS][toLowerCase(key)] = props[key]
     else vel[PROPS][key] = evaluate(props[key], vel, key)
   }
-  // NOTE: args may be tag(() => VEl), not tag(() => VEl[]).
+  // args may be tag(() => VEl), not tag(() => VEl[]).
   // in this case arrow key should be 0, not null.
   // but cannot foresee whether fn returns VEl or VEl[] before it's actually evaluted
   // so the wrong arrow key (null) must be handled later in reactive/set
@@ -280,7 +280,7 @@ export function reactive(target) {
               effect?.(value)
             } else if (
               typeof key === 'number' ||
-              // NOTE: createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
+              // createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
               // so key may be wrongly null. this special case is handled here
               (key === null && (typeof value === 'string' || value instanceof VEl))
             ) {
