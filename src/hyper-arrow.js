@@ -6,7 +6,6 @@
  * @typedef {{[k: string]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @typedef {[ElType, tag: string, Props, VNode[]]} VEl virtal element
  * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
  * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
  * @typedef {['text', txt: string, Empty, [], Text]} RText real element
@@ -21,6 +20,19 @@ const PROPS = 2
 const CHILDREN = 3
 const NODE = 4
 const CACHE = 5
+
+/** virtual element @constructor */
+function VEl(
+  /**@type {ElType}*/ type,
+  /**@type {string}*/ tag,
+  /**@type {Props}*/ props,
+  /**@type {VNode[]}*/ children,
+) {
+  this[TYPE] = type
+  this[TAG] = tag
+  this[PROPS] = props
+  this[CHILDREN] = children
+}
 
 /**
  * @typedef {[Function, REl, key: ?string|number]} ElArrow
@@ -44,15 +56,8 @@ export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
- * @typedef {[Props, Child[]]} TagArgs1
- * @typedef {[Props, () => Child[]]} TagArgs2
- * @typedef {[Props, ...Child[]]} TagArgs3
- * @typedef {[Child[]]} TagArgs4
- * @typedef {[() => Child[]]} TagArgs5
- * @typedef {[...Child[]]} TagArgs6
- * @typedef {[]} TagArgs7
- * @typedef {TagArgs1|TagArgs2|TagArgs3|TagArgs4|TagArgs5|TagArgs6|TagArgs7} TagArgs
- * @type {{[ns: string]: {[tag: string]: (...args: TagArgs) => VEl}}}
+ * @typedef {[Props, Children] | [Props, ...Child[]] | [Children] | Child[]} Args
+ * @type {{[ns: string]: {[tag: string]: (...args: Args) => VEl}}}
  */
 export const tags = new Proxy(
   {},
@@ -65,49 +70,36 @@ export const tags = new Proxy(
   },
 )
 
-const VEL_PROTO = { __proto__: null }
-
-/** @type {(type: ElType, tag: string, props: Props, children: VNode[]) => VEl} */
-function newVEl(type, tag, props, children) {
-  const /**@type {VEl}*/ vel = [type, tag, props, children]
-  Object.setPrototypeOf(vel, VEL_PROTO)
-  return vel
-}
-
-function isVEl(/**@type {unknown}*/ x) {
-  return Object.getPrototypeOf(x) === VEL_PROTO
-}
-
-/** @type {(name: string, ...args: TagArgs) => VEl} */
+/** @type {(name: string, ...args: Args) => VEl} */
 export const h = function createVEl(
   /**@type {string}*/ name,
   /**@type {any}*/ ...args
 ) {
   const [a, b] = name.split(':')
   const [type, tag] = b ? [a, b] : [b, 'html']
-  // @ts-ignore let it crash if type is not ElType
   if (type !== 'html' && type !== 'svg' && type !== 'mathml')
-    throw new Error("tag type must be 'html', 'svg' or 'mathml'")
+    throw new Error(`wrong tag type '${type}'. 'html', 'svg' or 'mathml' required`)
+  const vel = new VEl(type, tag, { __proto__: null }, [])
   const hasProps = typeof args[0] === 'object' && !Array.isArray(args[0])
-  const /**@type {[Props, unknown]}*/ [props, x] = hasProps
-      ? [args[0], args.slice(1)]
-      : [{}, args]
-  const childrenIsFunctionOrArray =
-    Array.isArray(x) &&
-    x.length === 1 &&
-    (typeof x[0] === 'function' || (Array.isArray(x[0]) && !isVEl(x[0])))
-  const /**@type {Children}*/ children = childrenIsFunctionOrArray ? x[0] : x
-  const vel = newVEl(type, tag, { __proto__: null }, [])
-  for (const key of Object.keys(props)) {
+  /**@type {[Props, [Children] | Child[]]}*/
+  const [props, x] = hasProps ? [args[0], args.slice(1)] : [{}, args]
+  for (const key in props) {
     // on* event handlers, all lowercase, have no arrow, not evaluted
     if (key.startsWith('on')) vel[PROPS][key.toLowerCase()] = props[key]
-    // set currentArrow and run arrow function within it
     else vel[PROPS][key] = evaluate(props[key], vel, key)
   }
-  // can't tell tag(() => vn) from tag(() => vn[]) here, must handle in reactive's set
-  const /**@type {Child[] | Child}*/ y = evaluate(children, vel, null) ?? []
-  // check if tag(() => string)
-  if (typeof y === 'string' || isVEl(y)) vel[CHILDREN].push(createVNode(y))
+  // NOTE: args may be tag(() => VEl), not tag(() => VEl[]).
+  // in this case arrow key should be 0, not null.
+  // but cannot foresee whether fn returns VEl or VEl[] before it's actually evaluted
+  // so the wrong arrow key (null) must be handled in reactive [see reactive/set below]
+  const childrenIsAFunctionOrAnArray =
+    Array.isArray(x) &&
+    x.length === 1 &&
+    (typeof x[0] === 'function' || Array.isArray(x[0]))
+  const children = childrenIsAFunctionOrAnArray ? x[0] : x
+  const /**@type {Child[] | Child}*/ y = evaluate(children, vel, null)
+  if (typeof y === 'function' || typeof y === 'string' || y instanceof VEl)
+    vel[CHILDREN].push(createVNode(evaluate(y, vel, 0)))
   else for (const i in y) vel[CHILDREN].push(createVNode(evaluate(y[i], vel, +i)))
   return vel
 }
@@ -233,25 +225,26 @@ export function reactive(target) {
       if (oldValue === newValue && prop !== 'length') return result
       for (const [arrow, triggers] of deps.entries()) {
         for (const trigger of triggers) {
-          // update target object in all related triggers in deps
+          // update target in all triggers, so oldValue can be garbage collected
           if (trigger[TARGET] === oldValue) trigger[TARGET] = newValue
           // dependent arrows found! Action!
           if (trigger[TARGET] === target && trigger[PROP] === prop) {
             const [fn, rel, key, effect] = arrow
             const value = fn()
-            // h can't tell tag(() => vn) from tag(() => vn[]), must handle here
-            const seemsChildrenButIsSingleChild =
-              key === null &&
-              (!Array.isArray(value) ||
-                (typeof value[PROPS] === 'object' && !Array.isArray(value[PROPS])))
-            // console.log('-----set------')
+            // console.log('set')
             // console.log({ target, prop, oldValue, newValue })
-            // console.log({ ...rel, key, value, seemsChildrenButIsSingleChild })
+            // console.log({ ...rel, key, value })
             if (!rel) {
               effect?.(value)
-            } else if (typeof key === 'number' || seemsChildrenButIsSingleChild) {
-              removeArrowsInRNodeFromDeps(rel[CHILDREN][key ?? 0])
-              updateChild(rel, key ?? 0, createVNode(value))
+            } else if (
+              typeof key === 'number' ||
+              // NOTE: h can't tell tag(() => VEl) from tag(() => VEl[]). [see h above]
+              // so key may be wrongly null. this special case is handled here
+              (key === null && (typeof value === 'string' || value instanceof VEl))
+            ) {
+              const index = key ?? 0
+              removeArrowsInRNodeFromDeps(rel[CHILDREN][index])
+              updateChild(rel, index, createVNode(value))
             } else if (key === null) {
               rel[CHILDREN].map(removeArrowsInRNodeFromDeps)
               updateChildren(rel, value.map(createVNode))
