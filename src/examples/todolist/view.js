@@ -1,4 +1,4 @@
-import { deps, tags } from '../../hyper-arrow.js'
+import { deps, tags } from '../../../dist/hyper-arrow.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 

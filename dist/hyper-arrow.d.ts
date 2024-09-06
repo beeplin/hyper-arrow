@@ -1,3 +1,13 @@
+/** virtual element @constructor */
+export function VEl(type: ElType, tag: string, props: Props, children: VNode[]): void;
+export class VEl {
+    /** virtual element @constructor */
+    constructor(type: ElType, tag: string, props: Props, children: VNode[]);
+    0: ElType;
+    1: string;
+    2: Props;
+    3: VNode[];
+}
 /** mount virtual element to DOM */
 export function mount(selector: string, vel: VEl): void;
 /**
@@ -12,52 +22,59 @@ export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: 
 export function reactive<T extends object>(target: T): T;
 export const deps: Map<Arrow, Trigger[]>;
 /**
- * @typedef {{[k: string]: unknown}} TagProps
- * @typedef {VEl | string | (() => (VEl | string))} TagChild
- * @typedef {TagChild[] | (() => TagChild[])} TagChildren
- * @typedef {[propsOrChildren?: TagProps|TagChildren, children?: TagChildren]} TagArgs
- * @type {{[ns: string]: {[tag: string]: (...args: TagArgs) => VEl}}}
+ * @typedef {VEl | string | (() => (VEl | string))} Child
+ * @typedef {Child[] | (() => Child[])} Children
+ * @typedef {[Props, Children] | [Props, ...Child[]] | [Children] | Child[]} Args
+ * @type {{[ns: string]: {[tag: string]: (...args: Args) => VEl}}}
  */
 export const tags: {
     [ns: string]: {
-        [tag: string]: (...args: TagArgs) => VEl;
+        [tag: string]: (...args: Args) => VEl;
     };
 };
-/** @type {(name: string, ...args: TagArgs) => VEl} */
-export const h: (name: string, ...args: TagArgs) => VEl;
+/** @type {(name: string, ...args: Args) => VEl} */
+export const h: (name: string, ...args: Args) => VEl;
 export function isReactive(x: any): boolean;
 export type ElType = "html" | "svg" | "mathml";
 export type El = HTMLElement | SVGElement | MathMLElement;
 export type Props = {
     [k: string]: unknown;
-    id?: string;
 };
 export type Cache = {
-    [k: string]: VNode;
+    [k: string]: RNode;
 };
 export type Empty = {
     [k: string]: never;
 };
 /**
- * virtal element
+ * real element
  */
-export type VEl = [ElType, tag: string, Props, VNode[], El?, Cache?];
+export type REl = [ElType, tag: string, Props, RNode[], El, Cache?];
 /**
  * virtual textnode
  */
-export type VText = ["text", txt: string, Empty, [], Text?];
+export type VText = ["text", txt: string, Empty, []];
+/**
+ * real element
+ */
+export type RText = ["text", txt: string, Empty, [], Text];
 /**
  * virtual node
  */
 export type VNode = VEl | VText;
-export type ElArrow = [Function, VEl, key: (string | number) | null];
+/**
+ * real node
+ */
+export type RNode = REl | RText;
+/**
+ * any node
+ */
+export type ANode = VNode | RNode;
+export type ElArrow = [Function, REl, key: (string | number) | null];
 export type WatchArrow = [Function, null, null, effect?: Function];
 export type Arrow = ElArrow | WatchArrow;
 export type Trigger = [target: object, prop: string | symbol];
-export type TagProps = {
-    [k: string]: unknown;
-};
-export type TagChild = VEl | string | (() => (VEl | string));
-export type TagChildren = TagChild[] | (() => TagChild[]);
-export type TagArgs = [propsOrChildren?: TagProps | TagChildren, children?: TagChildren];
+export type Child = VEl | string | (() => (VEl | string));
+export type Children = Child[] | (() => Child[]);
+export type Args = [Props, Children] | [Props, ...Child[]] | [Children] | Child[];
 //# sourceMappingURL=hyper-arrow.d.ts.map

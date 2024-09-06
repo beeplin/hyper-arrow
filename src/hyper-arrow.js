@@ -22,7 +22,7 @@ const NODE = 4
 const CACHE = 5
 
 /** virtual element @constructor */
-function VEl(
+export function VEl(
   /**@type {ElType}*/ type,
   /**@type {string}*/ tag,
   /**@type {Props}*/ props,
