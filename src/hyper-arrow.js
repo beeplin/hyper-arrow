@@ -1,11 +1,26 @@
 // @ts-check
 
+// these are for better minification
+const LENGTH = 'length'
+const OBJECT = Object
+const PROXY = Proxy
+const ERROR = Error
+const DOCUMENT = document
+const isArray = Array.isArray
+const removeFirst = (/**@type {any}*/ x) => x.slice(1)
+const toLowerCase = (/**@type {string}*/ str) => str.toLowerCase()
+/** @type {(el: El, k: string, v: string) => void} */
+const setAttribute = (el, k, v) => el.setAttribute(k, v)
+/** @type {(el: El, k: string) => void} */
+const removeAttribute = (el, k) => el.removeAttribute(k)
+
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
  * @typedef {{[k: string]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
+ * @typedef {[ElType, tag: string, Props, VNode[]]} VEl virtual element
  * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
  * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
  * @typedef {['text', txt: string, Empty, [], Text]} RText real element
@@ -21,19 +36,6 @@ const CHILDREN = 3
 const NODE = 4
 const CACHE = 5
 
-/** virtual element @constructor */
-export function VEl(
-  /**@type {ElType}*/ type,
-  /**@type {string}*/ tag,
-  /**@type {Props}*/ props,
-  /**@type {VNode[]}*/ children,
-) {
-  this[TYPE] = type
-  this[TAG] = tag
-  this[PROPS] = props
-  this[CHILDREN] = children
-}
-
 /**
  * @typedef {[Function, REl, key: ?string|number]} ElArrow
  * @typedef {[Function, null, null, effect?: Function]} WatchArrow
@@ -41,17 +43,32 @@ export function VEl(
  */
 const FN = 0
 const REL = 1
+let /**@type {Arrow?}*/ currentArrow = null
 
 /** @typedef {[target: object, prop: string | symbol]} Trigger */
 const TARGET = 0
 const PROP = 1
+export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
 
 const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
+export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
 
-let /**@type {Arrow?}*/ currentArrow = null
+let uid = 0
+const UID = 'uid'
+const ONCREATE = 'oncreate'
+const CACHE_REMOVED_CHILDREN = 'cacheRemovedChildren'
+const ELEMENT_NS = {
+  html: 'http://www.w3.org/1999/xhtml',
+  svg: 'http://www.w3.org/2000/svg',
+  mathml: 'http://www.w3.org/1998/Math/MathML',
+}
 
-export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
+const /**@type {{[k:string]: string}}*/ prop2attr = {
+    defaultValue: 'value',
+    htmlFor: 'for',
+    className: 'class',
+  }
 
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
@@ -59,33 +76,35 @@ export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map()
  * @typedef {[Props, Children] | [Props, ...Child[]] | [Children] | Child[]} Args
  * @type {{[ns: string]: {[tag: string]: (...args: Args) => VEl}}}
  */
-export const tags = new Proxy(
+export const tags = new PROXY(
   {},
   {
     get: (_, /**@type {string}*/ type) =>
-      new Proxy(
+      new PROXY(
         {},
-        { get: (_, /**@type {string}*/ tag) => h.bind(null, type + ':' + tag) },
+        { get: (_, /**@type {string}*/ tag) => createVEl.bind(null, type + ':' + tag) },
       ),
   },
 )
 
+function VEl() {}
+
+export { createVEl as h }
+
 /** @type {(name: string, ...args: Args) => VEl} */
-export const h = function createVEl(
-  /**@type {string}*/ name,
-  /**@type {any}*/ ...args
-) {
+function createVEl(/**@type {string}*/ name, /**@type {any}*/ ...args) {
   const [a, b] = name.split(':')
   const [type, tag] = b ? [a, b] : [b, 'html']
   if (type !== 'html' && type !== 'svg' && type !== 'mathml')
-    throw new Error(`wrong tag type '${type}'. 'html', 'svg' or 'mathml' required`)
-  const vel = new VEl(type, tag, { __proto__: null }, [])
-  const hasProps = typeof args[0] === 'object' && !Array.isArray(args[0])
+    throw ERROR(`wrong tag type '${type}'. 'html', 'svg' or 'mathml' required`)
+  const /**@type {VEl}*/ vel = [type, tag, OBJECT.create(null), []]
+  OBJECT.setPrototypeOf(vel, VEl.prototype)
+  const hasProps = typeof args[0] === 'object' && !isArray(args[0])
   /**@type {[Props, [Children] | Child[]]}*/
-  const [props, x] = hasProps ? [args[0], args.slice(1)] : [{}, args]
+  const [props, x] = hasProps ? [args[0], removeFirst(args)] : [{}, args]
   for (const key in props) {
     // on* event handlers, all lowercase, have no arrow, not evaluted
-    if (key.startsWith('on')) vel[PROPS][key.toLowerCase()] = props[key]
+    if (key.startsWith('on')) vel[PROPS][toLowerCase(key)] = props[key]
     else vel[PROPS][key] = evaluate(props[key], vel, key)
   }
   // NOTE: args may be tag(() => VEl), not tag(() => VEl[]).
@@ -93,9 +112,7 @@ export const h = function createVEl(
   // but cannot foresee whether fn returns VEl or VEl[] before it's actually evaluted
   // so the wrong arrow key (null) must be handled in reactive [see reactive/set below]
   const childrenIsAFunctionOrAnArray =
-    Array.isArray(x) &&
-    x.length === 1 &&
-    (typeof x[0] === 'function' || Array.isArray(x[0]))
+    isArray(x) && x[LENGTH] === 1 && (typeof x[0] === 'function' || isArray(x[0]))
   const children = childrenIsAFunctionOrAnArray ? x[0] : x
   const /**@type {Child[] | Child}*/ y = evaluate(children, vel, null)
   if (typeof y === 'function' || typeof y === 'string' || y instanceof VEl)
@@ -116,26 +133,15 @@ function createVText(/**@type {string}*/ txt) {
 /** mount virtual element to DOM */
 export function mount(/**@type {string}*/ selector, /**@type {VEl}*/ vel) {
   // @ts-ignore let it crash if selector not found
-  document.querySelector(selector).append(createREl(vel)[NODE])
-}
-
-let uid = 0
-const UID = 'uid'
-const ONCREATE = 'oncreate'
-const CACHE_REMOVED_CHILDREN = 'cacheRemovedChildren'
-const ELEMENT_NS = {
-  html: 'http://www.w3.org/1999/xhtml',
-  svg: 'http://www.w3.org/2000/svg',
-  mathml: 'http://www.w3.org/1998/Math/MathML',
+  DOCUMENT.querySelector(selector).append(createREl(vel)[NODE])
 }
 
 function createREl(/**@type {VEl}*/ vel) {
   // @ts-ignore ok. guaranteed by ElType & ELEMENT_NS
-  const /**@type {El}*/ el = document.createElementNS(ELEMENT_NS[vel[TYPE]], vel[TAG])
+  const /**@type {El}*/ el = DOCUMENT.createElementNS(ELEMENT_NS[vel[TYPE]], vel[TAG])
   // use uid to track el's identity for debugging purpose
-  el.setAttribute(UID, uid++ + '')
+  setAttribute(el, UID, uid++ + '')
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
-  console.log('vel:', vel)
   el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
   const rel = convertVNodeToRNode(vel, el)
   // @ts-ignore let it crash if oncreate is not function
@@ -148,7 +154,7 @@ function createRNode(/**@type {VNode}*/ vnode) {
 }
 
 function createRText(/**@type {VText}*/ vtext) {
-  const node = document.createTextNode(vtext[TXT])
+  const node = DOCUMENT.createTextNode(vtext[TXT])
   const rtext = convertVNodeToRNode(vtext, node)
   return rtext
 }
@@ -196,12 +202,10 @@ function evaluate(fn, vel, key, effect) {
   return result
 }
 
-export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
-
 /** create a reactive proxy @type {<T extends object>(target: T) => T} */
 export function reactive(target) {
-  if (target !== Object(target) || isReactive(target)) return target
-  return new Proxy(target, {
+  if (target !== OBJECT(target) || isReactive(target)) return target
+  return new PROXY(target, {
     get(target, prop) {
       // this is how isReactive() works
       if (prop === BRAND_SYMBOL) return true
@@ -221,8 +225,8 @@ export function reactive(target) {
     set(target, prop, newValue) {
       const oldValue = Reflect.get(target, prop)
       const result = Reflect.set(target, prop, newValue)
-      // skip meaningless change, unless touching array.length inside array.push() etc.
-      if (oldValue === newValue && prop !== 'length') return result
+      // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
+      if (oldValue === newValue && prop !== LENGTH) return result
       for (const [arrow, triggers] of deps.entries()) {
         for (const trigger of triggers) {
           // update target in all triggers, so oldValue can be garbage collected
@@ -270,7 +274,7 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
   // if both have unique ids, smart update
   if (oldIds && newIds) {
     // remove unmatched. MUST REMOVE FROM TAIL!!! otherwise index would be messed up
-    for (let i = oldIds.length - 1; i >= 0; i--) {
+    for (let i = oldIds[LENGTH] - 1; i >= 0; i--) {
       if (!newIds.includes(oldIds[i])) removeChild(rel, i)
     }
     // build from head to tail
@@ -295,8 +299,8 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
     }
   } else {
     // no unique ids, silly update
-    const newLen = newVNodes.length
-    const oldLen = rel[CHILDREN].length
+    const newLen = newVNodes[LENGTH]
+    const oldLen = rel[CHILDREN][LENGTH]
     // build from head to tail
     for (let i = 0; i < newLen || i < oldLen; i++) {
       if (i < newLen && i < oldLen) {
@@ -369,8 +373,8 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
 
 function getIds(/**@type {ANode[]}*/ anodes) {
   const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
-  if (new Set(ids).size !== ids.length) throw new Error(`duplicate children id: ${ids}`)
-  else return ids.length === anodes.length ? ids : null
+  if (new Set(ids).size !== ids[LENGTH]) throw ERROR(`duplicate children id: ${ids}`)
+  else return ids[LENGTH] === anodes[LENGTH] ? ids : null
 }
 
 function setProp(
@@ -387,45 +391,37 @@ function setProp(
   // @ts-ignore ok, getPropType has 'set'
   if (getPropType(el, key).includes('set')) el[key] = value
   else if (typeof value !== 'string')
-    throw new Error(`<${el.nodeName}> attr/style must be string: ${key} = ${value}`)
-  else if (key[0] === '$') el.style.setProperty(key.slice(1), value)
-  else if (key[0] === '_') el.setAttribute(key.slice(1), value)
-  else el.setAttribute(key, value)
+    throw ERROR(`<${el.nodeName}> attr/style must be string: ${key} = ${value}`)
+  else if (key[0] === '$') el.style.setProperty(removeFirst(key), value)
+  else if (key[0] === '_') setAttribute(el, removeFirst(key), value)
+  else setAttribute(el, key, value)
 }
-
-const /**@type {{[k:string]: string}}*/ prop2attr = {
-    defaultValue: 'value',
-    htmlFor: 'for',
-    className: 'class',
-    // @ts-ignore ok. __proto__ is special. dumb TS!!
-    __proto__: null,
-  }
 
 function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   // remove attr and IDL prop. most IDL props can also be unset by lowercasing into attr
-  if (key.toLowerCase() in el.attributes) el.removeAttribute(key)
+  if (toLowerCase(key) in el.attributes) removeAttribute(el, key)
   // special cases for IDL prop naming
-  else if (key in prop2attr) el.removeAttribute(prop2attr[key])
+  else if (key in prop2attr) removeAttribute(el, prop2attr[key])
   // TODO: test more cases for how to unset arbitary non-attr props
   // @ts-ignore ok.
   else if (key in el) el[key] = typeof el[key] === 'string' ? '' : undefined
   else {
     const start = key[0]
-    const remained = key.slice(1)
-    if (start === '_') el.removeAttribute(remained)
+    const remained = removeFirst(key)
+    if (start === '_') removeAttribute(el, remained)
     else if (start === '$') el.style.removeProperty(remained)
-    else throw new Error(`invalid prop '${key}' to unset from <${el.nodeName}>`)
+    else throw ERROR(`invalid prop '${key}' to unset from <${el.nodeName}>`)
   }
 }
 
 function getPropType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
   if (!(prop in object)) return []
-  const pd = Object.getOwnPropertyDescriptor(object, prop)
+  const pd = OBJECT.getOwnPropertyDescriptor(object, prop)
   if (pd)
-    return Object.entries(pd)
+    return OBJECT.entries(pd)
       .map(([k, v]) => (v ? k : null))
       .filter((x) => x)
-  const proto = Object.getPrototypeOf(object)
+  const proto = OBJECT.getPrototypeOf(object)
   if (!proto) return []
   return getPropType(proto, prop)
 }

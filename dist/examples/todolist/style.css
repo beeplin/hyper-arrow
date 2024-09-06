@@ -1,0 +1,58 @@
+html {
+  color: #abb2bf;
+  background-color: #282c34;
+}
+body {
+  display: flex;
+  justify-content: center;
+}
+#root {
+  width: 450px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5em;
+}
+#title-container,
+#input-container,
+#filter-container,
+#filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+#title {
+  flex-grow: 1;
+}
+#log,
+#test {
+  width: 6em;
+}
+#input {
+  flex-grow: 1;
+}
+#delete-all-completed {
+  width: 12.5em;
+  margin-left: auto;
+}
+.item-container {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin: 4px;
+}
+.item-input,
+.item-label {
+  flex-grow: 1;
+}
+.item-up,
+.item-down,
+.item-edit,
+.item-delete {
+  background: none;
+  border: 2px solid transparent;
+  color: #abb2bf;
+}
+.done {
+  color: #5c6370;
+}

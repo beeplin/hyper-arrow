@@ -1,13 +1,3 @@
-/** virtual element @constructor */
-export function VEl(type: ElType, tag: string, props: Props, children: VNode[]): void;
-export class VEl {
-    /** virtual element @constructor */
-    constructor(type: ElType, tag: string, props: Props, children: VNode[]);
-    0: ElType;
-    1: string;
-    2: Props;
-    3: VNode[];
-}
 /** mount virtual element to DOM */
 export function mount(selector: string, vel: VEl): void;
 /**
@@ -21,6 +11,7 @@ export function mount(selector: string, vel: VEl): void;
 export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: ((a: ReturnType<F extends (() => any) ? F : never>) => any) | undefined): () => void;
 export function reactive<T extends object>(target: T): T;
 export const deps: Map<Arrow, Trigger[]>;
+export function isReactive(x: any): boolean;
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -32,9 +23,7 @@ export const tags: {
         [tag: string]: (...args: Args) => VEl;
     };
 };
-/** @type {(name: string, ...args: Args) => VEl} */
-export const h: (name: string, ...args: Args) => VEl;
-export function isReactive(x: any): boolean;
+export { createVEl as h };
 export type ElType = "html" | "svg" | "mathml";
 export type El = HTMLElement | SVGElement | MathMLElement;
 export type Props = {
@@ -46,6 +35,10 @@ export type Cache = {
 export type Empty = {
     [k: string]: never;
 };
+/**
+ * virtual element
+ */
+export type VEl = [ElType, tag: string, Props, VNode[]];
 /**
  * real element
  */
@@ -77,4 +70,5 @@ export type Trigger = [target: object, prop: string | symbol];
 export type Child = VEl | string | (() => (VEl | string));
 export type Children = Child[] | (() => Child[]);
 export type Args = [Props, Children] | [Props, ...Child[]] | [Children] | Child[];
+declare function createVEl(name: string, ...args: Args): VEl;
 //# sourceMappingURL=hyper-arrow.d.ts.map
