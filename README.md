@@ -9,7 +9,7 @@ super tiny front-end UI library, for educational purposes
 - No templates or JSX. Tag functions `div`, `button` and etc. work like [`h` in hyperscript](https://github.com/hyperhype/hyperscript) or [`h` in Vue 3](https://vuejs.org/api/render-function.html#h)
 - `=>` arrow functions within tag functions provide reactivity (that's where the name comes ;))
 
-## Usage
+## Get started
 
 ```js
 import { mount, reactive, tags } from '../../hyper-arrow.js'
@@ -94,10 +94,6 @@ See `src/examples` for more.
 
 Create a reactive proxy for any `object`, and then it can be used in tag functions.
 
-### `isReactive(object)`
-
-Check if an `object` is a reactive proxy.
-
 ### `tags`
 
 All HTML tag functions are in `tags.html`. `tags.svg` has SVG tag functions, and `tags.mathml` has MathML tag functions.
@@ -136,7 +132,7 @@ const view = div({ id: 'root' }, [
 mount('#app', view)
 ```
 
-## `mount(element_selector, view)`
+### `mount(element_selector, view)`
 
 Mount the view onto DOM.
 
@@ -204,7 +200,11 @@ mount('#app', view)
 
 NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element keeps alive forever and keeps removing more and more new children into cache, the removed children cannot be garbage collected.
 
-## `watch(fn, [effectFn])`
+### `isReactive(object)`
+
+Check if an `object` is a reactive proxy.
+
+### `watch(fn, [effectFn])`
 
 Run `fn()` once, and whenever `fn`'s dependencies (all **reactive-object-property-access**, or **ROPA**s, happened within `fn`) change, automatically rerun `fn()`, or, if `effectFn` provided, run `effectFn(fn())`.
 
