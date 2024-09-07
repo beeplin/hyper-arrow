@@ -19,10 +19,10 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
- * @typedef {{[k: string]: unknown}} Props
+ * @typedef {{[k: string | symbol]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @xxxxxxx {[ElType, tag: string, Props, VNode[]]} VEl defined as constructor below
+ * @_______ {[ElType, tag: string, Props, VNode[]]} VEl is a class, can use instanceof
  * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
  * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
  * @typedef {['text', txt: string, Empty, [], Text]} RText real element
@@ -45,8 +45,8 @@ const CACHE = 5
  */
 const FN = 0
 const REL = 1
-let /**@type {Arrow?}*/ currentArrow = null
-
+/** @type {Arrow?} */
+let currentArrow = null
 /** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
 export const deps = new Map()
 /** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
@@ -56,11 +56,11 @@ const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
 export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
 
+export const ON_CREATE = Symbol()
+export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK = Symbol()
+
 let uid = 0
 const UID = 'uid'
-const ONCREATE = 'oncreate'
-const CACHE_REMOVED_CHILDREN = 'cacheRemovedChildren'
-
 const /**@type {{[k:string]: string}}*/ prop2attr = {
     defaultValue: 'value',
     htmlFor: 'for',
@@ -107,6 +107,7 @@ function createVEl(
     typeof args[0] === 'object' && !isArray(args[0]) && !(args[0] instanceof VEl)
       ? [args[0], removeFirst(args)]
       : [{}, args]
+  for (const key of OBJECT.getOwnPropertySymbols(props)) vel[PROPS][key] = props[key]
   for (const key in props) {
     // on* event handlers, all lowercase, have no arrow, not evaluted
     if (key.startsWith('on')) vel[PROPS][toLowerCase(key)] = props[key]
@@ -155,7 +156,7 @@ function createREl(/**@type {VEl}*/ vel) {
   el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
   const rel = convertVNodeToRNode(vel, el)
   // @ts-ignore let it crash if oncreate is not function
-  rel[PROPS][ONCREATE]?.(el)
+  rel[PROPS][ON_CREATE]?.(el)
   return rel
 }
 
@@ -177,7 +178,11 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
   // @ts-ignore ok. trickky type coersion. rnode and vnode point to the same object
   const /**@type {RNode}*/ rnode = vnode
   rnode[NODE] = node
-  if (rnode[PROPS][CACHE_REMOVED_CHILDREN] && getFullUniqueIds(rnode[CHILDREN]))
+  if (
+    rnode instanceof VEl &&
+    rnode[PROPS][CACHE_REMOVED_CHILDREN_AND_MAY_LEAK] &&
+    getFullUniqueIds(rnode[CHILDREN])
+  )
     rnode[CACHE] = {}
   // @ts-ignore ok
   node[BRAND_KEY] = rnode
@@ -414,8 +419,6 @@ function setProp(
   /**@type {string}*/ key,
   /**@type {unknown}*/ value,
 ) {
-  // special keys only goes into Vel, not el
-  if ([ONCREATE, CACHE_REMOVED_CHILDREN].includes(key)) return
   // IDL properties are getter/setters, proxies of attributes. For example:
   // getter/setter: on* aria* autofocus id className classList style innerHTML ...
   // getter only: client* scrollTop tagName dataset attributes children firstChild ...
