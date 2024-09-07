@@ -1,4 +1,4 @@
-import { CACHE_REMOVED_CHILDREN_AND_MAY_LEAK, deps, ON_CREATE, reverseDeps, tags, } from '../../hyper-arrow.js';
+import { arrow2ropa, CACHE_REMOVED_CHILDREN_AND_MAY_LEAK, ON_CREATE, ropa2arrow, tags, } from '../../hyper-arrow.js';
 import { ToDoListState } from './state.js';
 import { test } from './test.js';
 const { button, div, input, label, li, small, ul } = tags.html;
@@ -11,8 +11,8 @@ export function view(/**@type {ToDoListState}*/ s) {
                 id: 'log',
                 innerText: 'log deps',
                 onclick() {
-                    console.log(deps);
-                    console.log(reverseDeps);
+                    console.log(arrow2ropa);
+                    console.log(ropa2arrow);
                 },
             }),
             button({
