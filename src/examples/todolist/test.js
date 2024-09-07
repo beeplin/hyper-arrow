@@ -27,7 +27,7 @@ export async function test(/** @type {ToDoListState}  */ s) {
     if (i % 3) {
       s.editingId = item.id
       await raf()
-      s.update(item.id, item.text + ' edited!')
+      s.updateItemText(item.id, item.text + ' edited!')
     }
   }
   await pause()
