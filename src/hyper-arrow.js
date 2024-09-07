@@ -45,7 +45,8 @@ const REL = 0
 const FN = 2
 /** @type {Arrow?} */
 let currentArrow = null
-// ROPA: reactive object property access
+
+// ROPA: Reactive Object Property Access
 /** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
 export const arrow2ropa = new Map()
 /** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
