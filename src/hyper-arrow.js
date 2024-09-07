@@ -252,9 +252,8 @@ export function reactive(obj) {
       const result = REFLECT.set(obj, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) return result
-      for (const [arrow, ropaMap] of arrow2ropa.entries()) {
-        const propSet = ropaMap.get(obj)
-        if (propSet?.has(prop)) {
+      for (const [arrow, ropaMap] of arrow2ropa.entries())
+        if (ropaMap.get(obj)?.has(prop)) {
           const [rel, key, fn, effect] = arrow
           currentArrow = arrow
           const value = fn()
@@ -267,7 +266,7 @@ export function reactive(obj) {
             effect?.(value)
           } else if (
             typeof key === 'number' ||
-            // createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
+            // createVEl can't tell tag(() => VEl) from tag(() => VEl[]),
             // so key may be wrongly null. this special case is handled here
             (key === null && (typeof value === 'string' || value instanceof VEl))
           ) {
@@ -281,7 +280,6 @@ export function reactive(obj) {
             setProp(rel[NODE], key, value)
           }
         }
-      }
       return result
     },
     deleteProperty(obj, prop) {
