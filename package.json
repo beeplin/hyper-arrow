@@ -1,6 +1,6 @@
 {
   "name": "hyper-arrow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "super tiny front-end UI framework",
   "main": "dist/hyper-arrow.js",
   "module": "dist/hyper-arrow.js",
