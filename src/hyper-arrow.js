@@ -45,10 +45,11 @@ const REL = 0
 const FN = 2
 /** @type {Arrow?} */
 let currentArrow = null
+// ROPA: reactive object property access
 /** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
-export const deps = new Map()
+export const arrow2ropa = new Map()
 /** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
-export const reverseDeps = new WeakMap()
+export const ropa2arrow = new WeakMap()
 
 const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
@@ -188,7 +189,7 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
 }
 
 /**
- * run watchFn() once, and whenever watchFn's dependencies change,
+ * run watchFn() once, and whenever watchFn's ROPAs change,
  * auto rerun watchFn(), and run effectFn(watchFn()) if effectFn provided
  * @template F
  * @param {F extends (() => any) ? F : never} watchFn
@@ -198,7 +199,8 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
 export function watch(watchFn, effectFn) {
   evaluate(watchFn, null, null, effectFn)
   return () => {
-    for (const arrow of deps.keys()) if (arrow[FN] === watchFn) deps.delete(arrow)
+    for (const arrow of arrow2ropa.keys())
+      if (arrow[FN] === watchFn) arrow2ropa.delete(arrow)
   }
 }
 
@@ -216,28 +218,28 @@ function evaluate(fn, vel, key, effect) {
   return result
 }
 
-/** create a reactive proxy @type {<T extends object>(target: T) => T} */
-export function reactive(target) {
-  if (target !== OBJECT(target) || isReactive(target)) return target
-  return new PROXY(target, {
-    get(target, prop) {
+/** create a reactive proxy @type {<T extends object>(obj: T) => T} */
+export function reactive(obj) {
+  if (obj !== OBJECT(obj) || isReactive(obj)) return obj
+  return new PROXY(obj, {
+    get(obj, prop) {
       // this is how isReactive() works
       if (prop === BRAND_SYMBOL) return true
-      const result = REFLECT.get(target, prop)
+      const result = REFLECT.get(obj, prop)
       // would throw if proxying function.prototype, so skip it
-      if (typeof target === 'function' && prop === 'prototype') return result
-      // collect dependencies of current arrow
+      if (typeof obj === 'function' && prop === 'prototype') return result
+      // collect ROPAs of current arrow
       if (currentArrow) {
         // console.log('--get--')
-        // console.log(currentArrow[0], currentArrow[1]?.[TAG], currentArrow[2])
-        // console.log(target, prop)
-        if (!deps.has(currentArrow)) deps.set(currentArrow, new WeakMap())
-        const targetMap = deps.get(currentArrow)
-        if (!targetMap?.has(target)) targetMap?.set(target, new Set())
-        targetMap?.get(target)?.add(prop)
+        // console.log(currentArrow[2], currentArrow[0]?.[TAG], currentArrow[1])
+        // console.log(obj, prop)
+        if (!arrow2ropa.has(currentArrow)) arrow2ropa.set(currentArrow, new WeakMap())
+        const ropaMap = arrow2ropa.get(currentArrow)
+        if (!ropaMap?.has(obj)) ropaMap?.set(obj, new Set())
+        ropaMap?.get(obj)?.add(prop)
         // build reverse deps for debugging purpose
-        if (!reverseDeps.has(target)) reverseDeps.set(target, Object.create(null))
-        const propRecord = reverseDeps.get(target)
+        if (!ropa2arrow.has(obj)) ropa2arrow.set(obj, OBJECT.create(null))
+        const propRecord = ropa2arrow.get(obj)
         if (propRecord) {
           if (!(prop in propRecord)) propRecord[prop] = new WeakSet()
           propRecord[prop].add(currentArrow)
@@ -245,20 +247,20 @@ export function reactive(target) {
       }
       return reactive(result)
     },
-    set(target, prop, newValue) {
-      const oldValue = REFLECT.get(target, prop)
-      const result = REFLECT.set(target, prop, newValue)
+    set(obj, prop, newValue) {
+      const oldValue = REFLECT.get(obj, prop)
+      const result = REFLECT.set(obj, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
-      if (oldValue === newValue && !(isArray(target) && prop === LENGTH)) return result
-      for (const [arrow, targetMap] of deps.entries()) {
-        const propSet = targetMap.get(target)
+      if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) return result
+      for (const [arrow, ropaMap] of arrow2ropa.entries()) {
+        const propSet = ropaMap.get(obj)
         if (propSet?.has(prop)) {
           const [rel, key, fn, effect] = arrow
           currentArrow = arrow
           const value = fn()
           currentArrow = null
           // console.log('--set--')
-          // console.log(target, prop, oldValue, newValue)
+          // console.log(obj, prop, oldValue, newValue)
           // console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
           // console.log(key, value)
           if (!rel) {
@@ -282,19 +284,20 @@ export function reactive(target) {
       }
       return result
     },
-    deleteProperty(target, prop) {
-      const result = REFLECT.deleteProperty(target, prop)
+    deleteProperty(obj, prop) {
+      const result = REFLECT.deleteProperty(obj, prop)
       // console.log('--delete--')
-      // console.log(target, prop)
-      for (const targetMap of deps.values()) targetMap.get(target)?.delete(prop)
-      delete reverseDeps.get(target)?.[prop]
+      // console.log(obj, prop)
+      for (const ropaMap of arrow2ropa.values()) ropaMap.get(obj)?.delete(prop)
+      delete ropa2arrow.get(obj)?.[prop]
       return result
     },
   })
 }
 
 function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-  for (const arrow of deps.keys()) if (arrowIsInRNode(arrow, rnode)) deps.delete(arrow)
+  for (const arrow of arrow2ropa.keys())
+    if (arrowIsInRNode(arrow, rnode)) arrow2ropa.delete(arrow)
 }
 
 function arrowIsInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {

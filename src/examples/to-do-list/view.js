@@ -1,38 +1,17 @@
 import {
+  arrow2ropa,
   CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
-  deps,
   ON_CREATE,
-  reverseDeps,
+  ropa2arrow,
   tags,
 } from '../../hyper-arrow.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
 
 const { button, div, input, label, li, small, ul } = tags.html
-const { svg, circle } = tags.svg
-const { math, semantics, mfrac, mi, mn } = tags.mathml
 
 export function view(/**@type {ToDoListState}*/ s) {
   return div({ id: 'root' }, [
-    div(
-      {
-        $height: '100px',
-        $display: 'flex',
-        $flexDirection: 'row',
-        $alignItems: 'baseline',
-      },
-      svg({ xmlns: 'http://www.w3.org/2000/svg', stroke: 'red', fill: 'grey' }, [
-        circle({ cx: '50', cy: '50', r: () => (s.newInput.length + 10).toString() }),
-      ]),
-      math({ display: 'block' }, [
-        semantics(
-          mfrac(
-            mi('x'),
-            mn(() => s.newInput.length.toString()),
-          ),
-        ),
-      ]),
-    ),
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
       () => small(() => s.newInput || 'via hyper-arrow'),
@@ -40,8 +19,8 @@ export function view(/**@type {ToDoListState}*/ s) {
         id: 'log',
         innerText: 'log deps',
         onclick() {
-          console.log(deps)
-          console.log(reverseDeps)
+          console.log(arrow2ropa)
+          console.log(ropa2arrow)
         },
       }),
       button({
@@ -135,8 +114,8 @@ export function view(/**@type {ToDoListState}*/ s) {
     ]),
     ul(
       { id: 'list', style: 'padding: 0', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true },
-      () => {
-        return s.getShownList().map((item, i) =>
+      () =>
+        s.getShownList().map((item, i) =>
           li({ id: () => 'li-' + item.id, class: 'item-container' }, [
             button({
               id: () => 'up-' + item.id,
@@ -214,8 +193,7 @@ export function view(/**@type {ToDoListState}*/ s) {
               },
             }),
           ]),
-        )
-      },
+        ),
     ),
   ])
 }

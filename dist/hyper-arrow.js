@@ -2,12 +2,10 @@
 // reassign built-in objects and methods for better minification
 const LENGTH = 'length';
 const OBJECT = Object;
-// const ERROR = Error
 const PROXY = Proxy;
 const REFLECT = Reflect;
 const DOCUMENT = document;
 const isArray = Array.isArray;
-// const createElementNS = DOCUMENT.createElementNS.bind(DOCUMENT)
 const removeFirst = (/**@type {any}*/ x) => x.slice(1);
 const toLowerCase = (/**@type {string}*/ str) => str.toLowerCase();
 /** @type {(el: El, k: string, v: string) => void} */
@@ -222,7 +220,7 @@ export function reactive(target) {
                 (_a = targetMap === null || targetMap === void 0 ? void 0 : targetMap.get(target)) === null || _a === void 0 ? void 0 : _a.add(prop);
                 // build reverse deps for debugging purpose
                 if (!reverseDeps.has(target))
-                    reverseDeps.set(target, Object.create(null));
+                    reverseDeps.set(target, OBJECT.create(null));
                 const propRecord = reverseDeps.get(target);
                 if (propRecord) {
                     if (!(prop in propRecord))
@@ -433,7 +431,6 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
     // special cases for IDL prop naming
     else if (key in prop2attr)
         removeAttribute(el, prop2attr[key]);
-    // TODO: test more cases for how to unset arbitary non-attr props
     // @ts-ignore ok. guaranteed by key in el
     else if (key in el)
         el[key] = typeof el[key] === 'string' ? '' : undefined;
@@ -441,6 +438,7 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
         removeAttribute(el, removeFirst(key));
     else if (key[0] === '$')
         el.style.removeProperty(removeFirst(key));
+    // TODO: test more cases for how to unset arbitary non-attr props
     else
         throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`);
 }

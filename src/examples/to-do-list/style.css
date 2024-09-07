@@ -52,6 +52,9 @@ body {
   background: none;
   border: 2px solid transparent;
   color: #abb2bf;
+  &[disabled] {
+    color: #4b5263;
+  }
 }
 .done {
   color: #5c6370;

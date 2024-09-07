@@ -31,7 +31,7 @@ export function test(/** @type {ToDoListState}  */ s) {
             if (i % 3) {
                 s.editingId = item.id;
                 yield raf();
-                s.update(item.id, item.text + ' edited!');
+                s.updateItemText(item.id, item.text + ' edited!');
             }
         }
         yield pause();

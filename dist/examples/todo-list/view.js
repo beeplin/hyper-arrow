@@ -1,28 +1,9 @@
 import { CACHE_REMOVED_CHILDREN_AND_MAY_LEAK, deps, ON_CREATE, reverseDeps, tags, } from '../../hyper-arrow.js';
-import { ToDoItem } from './model.js';
 import { ToDoListState } from './state.js';
 import { test } from './test.js';
 const { button, div, input, label, li, small, ul } = tags.html;
-const { svg, circle } = tags.svg;
-const { math, semantics, mfrac, mi, mn } = tags.mathml;
 export function view(/**@type {ToDoListState}*/ s) {
-    function item(/**@type {number}*/ i) {
-        return s.getFilteredReversedList()[i];
-    }
     return div({ id: 'root' }, [
-        div({
-            $height: '100px',
-            $display: 'flex',
-            $flexDirection: 'row',
-            $alignItems: 'baseline',
-        }, [
-            svg({ xmlns: 'http://www.w3.org/2000/svg', stroke: 'red', fill: 'grey' }, [
-                circle({ cx: '50', cy: '50', r: () => (s.newInput.length + 10).toString() }),
-            ]),
-            math({ display: 'block' }, [
-                semantics(mfrac(mi('x'), mn(() => s.newInput.length.toString()))),
-            ]),
-        ]),
         div({ id: 'title-container' }, [
             label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
             () => small(() => s.newInput || 'via hyper-arrow'),
@@ -124,31 +105,23 @@ export function view(/**@type {ToDoListState}*/ s) {
                 onClick: s.model.deleteAllCompleted.bind(s.model),
             }),
         ]),
-        ul({ id: 'list', style: 'padding: 0', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: false }, () => s.getFilteredReversedList().map((item, i) => li({ id: () => 'li-' + item.id, class: 'item-container' }, [
+        ul({ id: 'list', style: 'padding: 0', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () => s.getShownList().map((item, i) => li({ id: () => 'li-' + item.id, class: 'item-container' }, [
             button({
                 id: () => 'up-' + item.id,
                 class: 'item-up',
                 innerHTML: '⇧',
-                disabled: () => !!s.editingId,
+                disabled: () => !!s.editingId || i === 0,
                 onClick() {
-                    const j = s.getFilteredReversedList().findIndex((j) => j.id === item.id);
-                    if (j === 0)
-                        return;
-                    const prevItem = s.getFilteredReversedList()[j - 1];
-                    swap(s.model.list, item, prevItem);
+                    s.swap(i - 1, i);
                 },
             }),
             button({
                 id: () => 'down-' + item.id,
                 class: 'item-down',
                 innerHTML: '⇩',
-                disabled: () => !!s.editingId,
+                disabled: () => !!s.editingId || i === s.getShownList().length - 1,
                 onClick() {
-                    const j = s.getFilteredReversedList().findIndex((j) => j.id === item.id);
-                    if (j === s.getFilteredReversedList().length - 1)
-                        return;
-                    const nextItem = s.getFilteredReversedList()[j + 1];
-                    swap(s.model.list, item, nextItem);
+                    s.swap(i, i + 1);
                 },
             }),
             input({
@@ -172,7 +145,7 @@ export function view(/**@type {ToDoListState}*/ s) {
                     },
                     onKeyDown(/**@type {any}*/ e) {
                         if (e.keyCode === 13)
-                            s.update(item.id, s.editInput);
+                            s.updateItemText(item.id, s.editInput);
                     },
                     [ON_CREATE](/**@type {any}*/ el) {
                         requestAnimationFrame(() => el.select());
@@ -192,7 +165,7 @@ export function view(/**@type {ToDoListState}*/ s) {
                 disabled: () => !!s.editingId && s.editingId !== item.id,
                 onClick() {
                     if (s.editingId === item.id)
-                        s.update(item.id, s.editInput);
+                        s.updateItemText(item.id, s.editInput);
                     else {
                         s.editingId = item.id;
                         s.editInput = item.text;
@@ -213,29 +186,4 @@ export function view(/**@type {ToDoListState}*/ s) {
             }),
         ]))),
     ]);
-}
-function swap(
-/**@type {ToDoItem[]}*/ list, 
-/**@type {ToDoItem}*/ a, 
-/**@type {ToDoItem}*/ b) {
-    const ia = list.findIndex((i) => i.id === a.id);
-    const ib = list.findIndex((i) => i.id === b.id);
-    // let x = new ToDoItem(-1, '', false)
-    // let y = a
-    // list[ia] = x
-    // x = b
-    // list[ib] = a
-    // list[ia] = b
-    let x = a;
-    list[ia] = b;
-    list[ib] = x;
-    // if (ib < ia) {
-    //   list.splice(ia, 1)
-    //   list.splice(ib, 1, a)
-    //   list.splice(ia, 0, b)
-    // } else {
-    //   list.splice(ib, 1)
-    //   list.splice(ia, 1, b)
-    //   list.splice(ib, 0, a)
-    // }
 }
