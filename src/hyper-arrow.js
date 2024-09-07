@@ -174,7 +174,7 @@ function createRText(/**@type {VText}*/ vtext) {
  * @overload @param {VText} vtext @param {Text} text @returns {RText}
  */
 function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node) {
-  // @ts-ignore ok. trickky type coersion. rnode and vnode point to the same object
+  // @ts-ignore ok. trickky type coercion. rnode and vnode point to the same object
   const /**@type {RNode}*/ rnode = vnode
   rnode[NODE] = node
   if (
@@ -210,7 +210,7 @@ export function watch(watchFn, effectFn) {
  */
 function evaluate(fn, vel, key, effect) {
   if (typeof fn !== 'function') return fn
-  // @ts-ignore ok. tickky type coersion. vel will become rel after createVEl()
+  // @ts-ignore ok. tickky type coercion. vel will become rel after createVEl()
   const /**@type {REl}*/ rel = vel
   currentArrow = vel ? [rel, key, fn] : [null, null, fn, effect]
   const result = fn()
@@ -426,11 +426,11 @@ function setProp(
   // plain value: blur() focus() after() append() ... (all methods)
   // @ts-ignore ok, guaranteed by getObjectPropertyType has 'set'
   if (getObjectPropertyType(el, key).includes('set')) el[key] = value
-  // @ts-ignore ok. DOM can coerse type
+  // @ts-ignore ok. DOM can coerce type
   else if (key[0] === '$') el.style.setProperty(removeFirst(key), value)
-  // @ts-ignore ok. DOM can coerse type
+  // @ts-ignore ok. DOM can coerce type
   else if (key[0] === '_') setAttribute(el, removeFirst(key), value)
-  // @ts-ignore ok. DOM can coerse type
+  // @ts-ignore ok. DOM can coerce type
   else setAttribute(el, key, value)
 }
 
