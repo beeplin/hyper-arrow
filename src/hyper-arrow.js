@@ -2,6 +2,7 @@
 
 // reassign built-in objects and methods for better minification
 const LENGTH = 'length'
+const TEXT = 'text'
 const OBJECT = Object
 const PROXY = Proxy
 const REFLECT = Reflect
@@ -9,7 +10,8 @@ const DOCUMENT = document
 const isArray = Array.isArray
 const removeFirst = (/**@type {any}*/ x) => x.slice(1)
 const toLowerCase = (/**@type {string}*/ str) => str.toLowerCase()
-/** @type {(el: El, k: string, v: string) => void} */
+/** @type {(el: El, k: string, v: unknown) => void} */
+// @ts-ignore ok. setAttribute can coerce
 const setAttribute = (el, k, v) => el.setAttribute(k, v)
 /** @type {(el: El, k: string) => void} */
 const removeAttribute = (el, k) => el.removeAttribute(k)
@@ -17,7 +19,7 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
- * @typedef {{[k: string | symbol]: unknown}} Props
+ * @typedef {{[k: string | symbol]: unknown, id?: string}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
  * @_______ {[null, tag: string, Props, VNode[], ElType]} VEl is a class, can use instanceof
@@ -47,7 +49,7 @@ const FN = 2
 let currentArrow = null
 
 // ROPA: Reactive Object Property Access
-/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
+/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>} */
 export const arrow2ropa = new Map()
 /** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
 export const ropa2arrow = new WeakMap()
@@ -71,7 +73,7 @@ const /**@type {{[k:string]: string}}*/ prop2attr = {
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
  * @typedef {[Props, Children] | [Props, ...Child[]] | [Children] | Child[]} Args
- * @type {{[ns: string]: {[tag: string]: (...args: Args) => VEl}}}
+ * @type {{[type: string]: {[tag: string]: (...args: Args) => VEl}}}
  */
 export const tags = new PROXY(
   {},
@@ -133,7 +135,7 @@ function createVNode(/**@type {VEl | string}*/ x) {
 }
 
 function createVText(/**@type {string}*/ txt) {
-  const /**@type {VText}*/ vtext = [null, txt, {}, [], 'text']
+  const /**@type {VText}*/ vtext = [null, txt, {}, [], TEXT]
   return vtext
 }
 
@@ -151,23 +153,20 @@ function createREl(/**@type {VEl}*/ vel) {
       ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
       : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
   // use uid to track el's identity for debugging purpose
-  setAttribute(el, UID, uid++ + '')
+  setAttribute(el, UID, uid++)
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
   el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
-  const rel = convertVNodeToRNode(vel, el)
   // @ts-ignore let it crash if oncreate is not function
-  rel[PROPS][ON_CREATE]?.(el)
-  return rel
+  vel[PROPS][ON_CREATE]?.(el)
+  return convertVNodeToRNode(vel, el)
 }
 
 function createRNode(/**@type {VNode}*/ vnode) {
-  return vnode[TYPE] === 'text' ? createRText(vnode) : createREl(vnode)
+  return vnode[TYPE] === TEXT ? createRText(vnode) : createREl(vnode)
 }
 
 function createRText(/**@type {VText}*/ vtext) {
-  const node = DOCUMENT.createTextNode(vtext[TXT])
-  const rtext = convertVNodeToRNode(vtext, node)
-  return rtext
+  return convertVNodeToRNode(vtext, DOCUMENT.createTextNode(vtext[TXT]))
 }
 
 /**
@@ -175,33 +174,31 @@ function createRText(/**@type {VText}*/ vtext) {
  * @overload @param {VText} vtext @param {Text} text @returns {RText}
  */
 function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node) {
-  // @ts-ignore ok. trickky type coercion. rnode and vnode point to the same object
+  // @ts-ignore ok. tricky type coercion. rnode and vnode point to the same object
   const /**@type {RNode}*/ rnode = vnode
   rnode[NODE] = node
-  if (
+  const hasCache =
     rnode instanceof VEl &&
     rnode[PROPS][CACHE_REMOVED_CHILDREN_AND_MAY_LEAK] &&
     getFullUniqueIds(rnode[CHILDREN])
-  )
-    rnode[CACHE] = {}
+  if (hasCache) rnode[CACHE] = {}
   // @ts-ignore ok
   node[BRAND_KEY] = rnode
   return rnode
 }
 
 /**
- * run watchFn() once, and whenever watchFn's ROPAs change,
- * auto rerun watchFn(), and run effectFn(watchFn()) if effectFn provided
+ * run fn() once, and when triggered, rerun fn(), or effectFn(fn()) if has effectFn
  * @template F
- * @param {F extends (() => any) ? F : never} watchFn
+ * @param {F extends (() => any) ? F : never} fn
  * @param {((a: ReturnType<F extends (() => any) ? F : never>) => any)=} effectFn
- * @returns {() => void} fn to stop watchFn from rerunning by removing it from deps
+ * @returns {() => void} function to stop fn rerunning by removing it from arrow2ropa
  */
-export function watch(watchFn, effectFn) {
-  evaluate(watchFn, null, null, effectFn)
+export function watch(fn, effectFn) {
+  evaluate(fn, null, null, effectFn)
   return () => {
     for (const arrow of arrow2ropa.keys())
-      if (arrow[FN] === watchFn) arrow2ropa.delete(arrow)
+      if (arrow[FN] === fn) arrow2ropa.delete(arrow)
   }
 }
 
@@ -211,9 +208,9 @@ export function watch(watchFn, effectFn) {
  */
 function evaluate(fn, vel, key, effect) {
   if (typeof fn !== 'function') return fn
-  // @ts-ignore ok. tickky type coercion. vel will become rel after createVEl()
+  // @ts-ignore ok. ticky type coercion. vel will become rel after createVEl()
   const /**@type {REl}*/ rel = vel
-  currentArrow = vel ? [rel, key, fn] : [null, null, fn, effect]
+  currentArrow = rel ? [rel, key, fn] : [null, null, fn, effect]
   const result = fn()
   currentArrow = null
   return result
@@ -229,21 +226,23 @@ export function reactive(obj) {
       const result = REFLECT.get(obj, prop)
       // would throw if proxying function.prototype, so skip it
       if (typeof obj === 'function' && prop === 'prototype') return result
-      // collect ROPAs of current arrow
+      // collect ROPAs for current arrow
       if (currentArrow) {
         // console.log('--get--')
-        // console.log(currentArrow[2], currentArrow[0]?.[TAG], currentArrow[1])
+        // console.log(currentArrow[0]?.[TAG], currentArrow[1], currentArrow[2])
         // console.log(obj, prop)
         if (!arrow2ropa.has(currentArrow)) arrow2ropa.set(currentArrow, new WeakMap())
-        const ropaMap = arrow2ropa.get(currentArrow)
-        if (!ropaMap?.has(obj)) ropaMap?.set(obj, new Set())
-        ropaMap?.get(obj)?.add(prop)
-        // build reverse deps for debugging purpose
+        const ropas = arrow2ropa.get(currentArrow)
+        if (ropas) {
+          if (!ropas.has(obj)) ropas.set(obj, new Set())
+          ropas.get(obj)?.add(prop)
+        }
+        // build ropa2arrow only for debugging purpose
         if (!ropa2arrow.has(obj)) ropa2arrow.set(obj, OBJECT.create(null))
-        const propRecord = ropa2arrow.get(obj)
-        if (propRecord) {
-          if (!(prop in propRecord)) propRecord[prop] = new WeakSet()
-          propRecord[prop].add(currentArrow)
+        const props = ropa2arrow.get(obj)
+        if (props) {
+          if (!(prop in props)) props[prop] = new WeakSet()
+          props[prop].add(currentArrow)
         }
       }
       return reactive(result)
@@ -253,8 +252,8 @@ export function reactive(obj) {
       const result = REFLECT.set(obj, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) return result
-      for (const [arrow, ropaMap] of arrow2ropa.entries())
-        if (ropaMap.get(obj)?.has(prop)) {
+      for (const [arrow, ropas] of arrow2ropa.entries())
+        if (ropas.get(obj)?.has(prop)) {
           const [rel, key, fn, effect] = arrow
           currentArrow = arrow
           const value = fn()
@@ -267,8 +266,8 @@ export function reactive(obj) {
             effect?.(value)
           } else if (
             typeof key === 'number' ||
-            // createVEl can't tell tag(() => VEl) from tag(() => VEl[]),
-            // so key may be wrongly null. this special case is handled here
+            // createVEl can't tell tag(() => Child) from tag(() => Child[]),
+            // so key may be wrongly null.
             (key === null && (typeof value === 'string' || value instanceof VEl))
           ) {
             const index = key ?? 0
@@ -287,7 +286,7 @@ export function reactive(obj) {
       const result = REFLECT.deleteProperty(obj, prop)
       // console.log('--delete--')
       // console.log(obj, prop)
-      for (const ropaMap of arrow2ropa.values()) ropaMap.get(obj)?.delete(prop)
+      for (const ropas of arrow2ropa.values()) ropas.get(obj)?.delete(prop)
       delete ropa2arrow.get(obj)?.[prop]
       return result
     },
@@ -308,10 +307,9 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
   const newIds = getFullUniqueIds(newVNodes)
   // if both have full unique ids, smart update
   if (oldIds && newIds) {
-    // remove unmatched. MUST REMOVE FROM TAIL!!! otherwise index would be messed up
-    for (let i = oldIds[LENGTH] - 1; i >= 0; i--) {
+    // remove unmatched children. MUST REMOVE FROM TAIL, otherwise index messed up
+    for (let i = oldIds[LENGTH] - 1; i >= 0; i--)
       if (!newIds.includes(oldIds[i])) removeChild(rel, i)
-    }
     // build from head to tail
     for (const [i, id] of newIds.entries()) {
       const j = rel[CHILDREN].findIndex((vnode) => vnode[PROPS].id === id)
@@ -324,7 +322,7 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
         insertChild(rel, i, removeChild(rel, j)) // ok, j > i always
         updateChild(rel, i, newVNode)
       } else if (rel[CACHE]?.[id]) {
-        // matched in removed cache, bring it out, then update
+        // matched in cache, bring it out, then update
         insertChild(rel, i, rel[CACHE][id])
         updateChild(rel, i, newVNode)
       } else {
@@ -333,7 +331,7 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
       }
     }
   } else {
-    // no unique ids, silly update
+    // no full unique ids, silly update
     const newLen = newVNodes[LENGTH]
     const oldLen = rel[CHILDREN][LENGTH]
     // build from head to tail
@@ -360,8 +358,8 @@ function updateChild(
   const oldRNode = rel[CHILDREN][index]
   // if both vel with same tag, patch the existing el
   if (
-    oldRNode[TYPE] !== 'text' &&
-    newVNode[TYPE] !== 'text' &&
+    oldRNode[TYPE] !== TEXT &&
+    newVNode[TYPE] !== TEXT &&
     oldRNode[TAG] === newVNode[TAG]
   ) {
     const el = oldRNode[NODE]
@@ -369,11 +367,10 @@ function updateChild(
       if (oldRNode[PROPS][key] !== newVNode[PROPS][key])
         setProp(el, key, newVNode[PROPS][key])
     for (const key in oldRNode[PROPS]) if (!(key in newVNode[PROPS])) unsetProp(el, key)
-    // innerText, innerHTML, textContent prop already deals with children, so skip
+    // innerText, innerHTML, textContent already deals with children, so skip children
     if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in newVNode[PROPS]))
       updateChildren(oldRNode, newVNode[CHILDREN])
-    const newRNode = convertVNodeToRNode(newVNode, oldRNode[NODE])
-    rel[CHILDREN][index] = newRNode
+    rel[CHILDREN][index] = convertVNodeToRNode(newVNode, oldRNode[NODE])
   } else {
     // replace whole node. REMOVE FIRST!!!
     removeChild(rel, index)
@@ -393,22 +390,19 @@ function insertChild(
   el.insertBefore(node, el.childNodes.item(index))
   rel[CHILDREN].splice(index, 0, newRNode)
   // already brought out, so remove from cache
-  if (rel[CACHE] && typeof newRNode[PROPS].id === 'string')
-    delete rel[CACHE][newRNode[PROPS].id]
+  if (rel[CACHE] && newRNode[PROPS].id) delete rel[CACHE][newRNode[PROPS].id]
 }
 
 function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
-  // put into cache
-  if (rel[CACHE] && typeof rnode[PROPS].id === 'string')
-    rel[CACHE][rnode[PROPS].id] = rnode
+  // move into cache
+  if (rel[CACHE] && rnode[PROPS].id) rel[CACHE][rnode[PROPS].id] = rnode
   return rnode
 }
 
 function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
   const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
-  // if (new Set(ids).size !== ids[LENGTH]) throw ERROR(`duplicate children id: ${ids}`)
   return ids[LENGTH] === anodes[LENGTH] && ids[LENGTH] === new Set(ids).size
     ? ids
     : null
@@ -423,13 +417,11 @@ function setProp(
   // getter/setter: on* aria* autofocus id className classList style innerHTML ...
   // getter only: client* scrollTop tagName dataset attributes children firstChild ...
   // plain value: blur() focus() after() append() ... (all methods)
-  // @ts-ignore ok, guaranteed by getObjectPropertyType has 'set'
+  // @ts-ignore ok, guaranteed by getObjectPropertyType having 'set'
   if (getObjectPropertyType(el, key).includes('set')) el[key] = value
-  // @ts-ignore ok. DOM can coerce type
+  // @ts-ignore ok. style.setProperty can coerce
   else if (key[0] === '$') el.style.setProperty(removeFirst(key), value)
-  // @ts-ignore ok. DOM can coerce type
   else if (key[0] === '_') setAttribute(el, removeFirst(key), value)
-  // @ts-ignore ok. DOM can coerce type
   else setAttribute(el, key, value)
 }
 
@@ -438,8 +430,6 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   if (toLowerCase(key) in el.attributes) removeAttribute(el, key)
   // special cases for IDL prop naming
   else if (key in prop2attr) removeAttribute(el, prop2attr[key])
-  // @ts-ignore ok. guaranteed by key in el
-  else if (key in el) el[key] = typeof el[key] === 'string' ? '' : undefined
   else if (key[0] === '_') removeAttribute(el, removeFirst(key))
   else if (key[0] === '$') el.style.removeProperty(removeFirst(key))
   // TODO: test more cases for how to unset arbitary non-attr props

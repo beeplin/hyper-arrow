@@ -9,8 +9,9 @@
 ✘ arrow 类型 union 化 @cancelled(24-08-29 22:23)
 ✔ h 返回值 vel @done(24-08-30 00:13)
 ✔ 复用 children 已有元素 @done(24-09-02 01:24)
-✔ 根据key顺序智能更新children @done(24-09-02 21:07)
+✔ 根据 key 顺序智能更新 children @done(24-09-02 21:07)
 ✔ keep-alive @done(24-09-02 17:56)
 ✔ 区分 VNnode RNode @done(24-09-05 22:03)
 ✔ HChildren 支持非数组 @done(24-09-06 01:28)
-✔ BUG 如果 view 中 map(_,i) 而不是 map(item)，也就是彻底响应化，中间不间断，则在 active/completed 状态下切换 done， 从动态 filtered 数组中删除， 则 filtered 数组已经少了一个元素，但旧 arrow 仍存在，rerun fn 时找不到缺少了的元素，报错 @done(24-09-07 19:33)
+☐ 可配置 cache 上限
+☐ unsetProp prop->attr 时，支持 camel 转 kebab
