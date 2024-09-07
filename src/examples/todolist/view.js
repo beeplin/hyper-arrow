@@ -1,4 +1,4 @@
-import { deps, tags } from '../../hyper-arrow.js'
+import { deps, reverseDeps, tags } from '../../hyper-arrow.js'
 import { ToDoItem } from './model.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
@@ -41,7 +41,7 @@ export function view(/**@type {ToDoListState}*/ s) {
         innerText: 'log deps',
         onclick() {
           console.log(deps)
-          // console.log(trigger2arrow)
+          console.log(reverseDeps)
         },
       }),
       button({
