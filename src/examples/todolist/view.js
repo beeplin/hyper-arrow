@@ -1,4 +1,4 @@
-import { arrow2trigger, tags } from '../../hyper-arrow.js'
+import { deps, tags } from '../../hyper-arrow.js'
 import { ToDoItem } from './model.js'
 import { ToDoListState } from './state.js'
 import { test } from './test.js'
@@ -40,7 +40,7 @@ export function view(/**@type {ToDoListState}*/ s) {
         id: 'log',
         innerText: 'log deps',
         onclick() {
-          console.log(arrow2trigger)
+          console.log(deps)
           // console.log(trigger2arrow)
         },
       }),
@@ -133,7 +133,7 @@ export function view(/**@type {ToDoListState}*/ s) {
         onClick: s.model.deleteAllCompleted.bind(s.model),
       }),
     ]),
-    ul({ id: 'list', style: 'padding: 0', cacheRemovedChildren: true }, () =>
+    ul({ id: 'list', style: 'padding: 0', cacheRemovedChildren: false }, () =>
       s.getFilteredReversedList().map((item, i) =>
         li({ id: () => 'li-' + item.id, class: 'item-container' }, [
           button({

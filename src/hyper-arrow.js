@@ -1,6 +1,6 @@
 // @ts-check
 
-// these are for better minification
+// reassign built-in objects and methods for better minification
 const LENGTH = 'length'
 const OBJECT = Object
 const ERROR = Error
@@ -47,12 +47,8 @@ const FN = 0
 const REL = 1
 let /**@type {Arrow?}*/ currentArrow = null
 
-/** @typedef {[target: object, prop: string | symbol]} Trigger */
-const TARGET = 0
-const PROP = 1
-
-/** @type {Map<Arrow, Trigger[]>}*/
-export const arrow2trigger = new Map()
+/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
+export const deps = new Map()
 // /** @type {Map<object, Record<string | symbol, Arrow[]>>} */
 // export const trigger2arrow = new Map()
 
@@ -181,7 +177,8 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
   // @ts-ignore ok. trickky type coersion. rnode and vnode point to the same object
   const /**@type {RNode}*/ rnode = vnode
   rnode[NODE] = node
-  if (rnode[PROPS][CACHE_REMOVED_CHILDREN] && getIds(rnode[CHILDREN])) rnode[CACHE] = {}
+  if (rnode[PROPS][CACHE_REMOVED_CHILDREN] && getFullUniqueIds(rnode[CHILDREN]))
+    rnode[CACHE] = {}
   // @ts-ignore ok
   node[BRAND_KEY] = rnode
   return rnode
@@ -198,8 +195,7 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
 export function watch(watchFn, effectFn) {
   evaluate(watchFn, null, null, effectFn)
   return () => {
-    for (const arrow of arrow2trigger.keys())
-      if (arrow[FN] === watchFn) arrow2trigger.delete(arrow)
+    for (const arrow of deps.keys()) if (arrow[FN] === watchFn) deps.delete(arrow)
     // for (const target of trigger2arrow.keys()) {
     //   const obj = trigger2arrow.get(target)
     //   if (obj) for (const p in obj) obj[p] = obj[p].filter((a) => a !== watchFn)
@@ -239,10 +235,10 @@ export function reactive(target) {
         // console.log(target, prop)
         // }
 
-        if (!arrow2trigger.has(currentArrow)) arrow2trigger.set(currentArrow, [])
-        const triggers = arrow2trigger.get(currentArrow)
-        if (triggers && !triggers.some((t) => t[TARGET] === target && t[PROP] === prop))
-          triggers.push([target, prop])
+        if (!deps.has(currentArrow)) deps.set(currentArrow, new WeakMap())
+        const weakmap = deps.get(currentArrow)
+        if (!weakmap?.has(target)) weakmap?.set(target, new Set())
+        weakmap?.get(target)?.add(prop)
 
         // if (!trigger2arrow.has(target)) trigger2arrow.set(target, Object.create(null))
         // const obj = trigger2arrow.get(target)
@@ -257,64 +253,57 @@ export function reactive(target) {
       const oldValue = REFLECT.get(target, prop)
       const result = REFLECT.set(target, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
-      if (oldValue === newValue && prop !== LENGTH) return result
-      for (const [arrow, triggers] of arrow2trigger.entries()) {
-        for (const trigger of triggers) {
-          // update target in all triggers, so oldValue can be garbage collected
-          if (trigger[TARGET] === oldValue) trigger[TARGET] = newValue
-          // dependent arrows found! Action!
-          if (trigger[TARGET] === target && trigger[PROP] === prop) {
-            const [fn, rel, key, effect] = arrow
-            currentArrow = arrow
-            const value = fn()
-            currentArrow = null
+      if (oldValue === newValue && !(isArray(target) && prop === LENGTH)) return result
+      for (const [arrow, weakmap] of deps.entries())
+        if (weakmap.get(target)?.has(prop)) {
+          const [fn, rel, key, effect] = arrow
+          currentArrow = arrow
+          const value = fn()
+          currentArrow = null
 
-            // if (rel?.[TAG] === 'ul') {
-            console.log('--set--')
-            console.log(target, prop, oldValue, newValue)
-            console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
-            console.log(key, value)
-            // }
+          // if (rel?.[TAG] === 'ul') {
+          console.log('--set--')
+          console.log(target, prop, oldValue, newValue)
+          console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
+          console.log(key, value)
+          // }
 
-            if (!rel) {
-              effect?.(value)
-            } else if (
-              typeof key === 'number' ||
-              // createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
-              // so key may be wrongly null. this special case is handled here
-              (key === null && (typeof value === 'string' || value instanceof VEl))
-            ) {
-              const index = key ?? 0
-              removeArrowsInRNodeFromDeps(rel[CHILDREN][index])
-              updateChild(rel, index, createVNode(value))
-            } else if (key === null) {
-              rel[CHILDREN].map(removeArrowsInRNodeFromDeps)
-              updateChildren(rel, value.map(createVNode))
-            } else {
-              setProp(rel[NODE], key, value)
-            }
+          if (!rel) {
+            effect?.(value)
+          } else if (
+            typeof key === 'number' ||
+            // createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
+            // so key may be wrongly null. this special case is handled here
+            (key === null && (typeof value === 'string' || value instanceof VEl))
+          ) {
+            const index = key ?? 0
+            removeArrowsInRNodeFromDeps(rel[CHILDREN][index])
+            updateChild(rel, index, createVNode(value))
+          } else if (key === null) {
+            rel[CHILDREN].map(removeArrowsInRNodeFromDeps)
+            updateChildren(rel, value.map(createVNode))
+          } else {
+            setProp(rel[NODE], key, value)
           }
         }
-      }
       return result
     },
-    deleteProperty(target, prop) {
-      console.log('--delete--')
-      console.log(target, prop)
-      for (const [arrow, triggers] of arrow2trigger.entries())
-        for (const [index, trigger] of triggers.entries())
-          if (trigger[TARGET] === target && trigger[PROP] === prop)
-            triggers.splice(index, 1)
-      // FIXME: recursive delete triggers
-      const result = REFLECT.deleteProperty(target, prop)
-      return result
-    },
+    // deleteProperty(target, prop) {
+    //   console.log('--delete--')
+    //   console.log(target, prop)
+    //   for (const [arrow, triggers] of arrow2trigger.entries())
+    //     for (const [index, trigger] of triggers.entries())
+    //       if (trigger[TARGET] === target && trigger[PROP] === prop)
+    //         triggers.splice(index, 1)
+    //   // FIXME: recursive delete triggers
+    //   const result = REFLECT.deleteProperty(target, prop)
+    //   return result
+    // },
   })
 }
 
 function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-  for (const arrow of arrow2trigger.keys())
-    if (arrowInRNode(arrow, rnode)) arrow2trigger.delete(arrow)
+  for (const arrow of deps.keys()) if (arrowInRNode(arrow, rnode)) deps.delete(arrow)
   // for (const target of trigger2arrow.keys()) {
   //   const obj = trigger2arrow.get(target)
   //   if (obj) for (const p in obj) obj[p] = obj[p].filter((a) => !arrowInRNode(a, rnode))
@@ -326,9 +315,9 @@ function arrowInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {
 }
 
 function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
-  const oldIds = getIds(rel[CHILDREN])
-  const newIds = getIds(newVNodes)
-  // if both have unique ids, smart update
+  const oldIds = getFullUniqueIds(rel[CHILDREN])
+  const newIds = getFullUniqueIds(newVNodes)
+  // if both have full unique ids, smart update
   if (oldIds && newIds) {
     // remove unmatched. MUST REMOVE FROM TAIL!!! otherwise index would be messed up
     for (let i = oldIds[LENGTH] - 1; i >= 0; i--) {
@@ -428,7 +417,7 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   return rnode
 }
 
-function getIds(/**@type {ANode[]}*/ anodes) {
+function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
   const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
   // if (new Set(ids).size !== ids[LENGTH]) throw ERROR(`duplicate children id: ${ids}`)
   return ids[LENGTH] === anodes[LENGTH] && ids[LENGTH] === new Set(ids).size
