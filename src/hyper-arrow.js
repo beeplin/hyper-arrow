@@ -3,12 +3,10 @@
 // reassign built-in objects and methods for better minification
 const LENGTH = 'length'
 const OBJECT = Object
-const ERROR = Error
 const PROXY = Proxy
 const REFLECT = Reflect
 const DOCUMENT = document
 const isArray = Array.isArray
-// const createElementNS = DOCUMENT.createElementNS.bind(DOCUMENT)
 const removeFirst = (/**@type {any}*/ x) => x.slice(1)
 const toLowerCase = (/**@type {string}*/ str) => str.toLowerCase()
 /** @type {(el: El, k: string, v: string) => void} */
@@ -22,29 +20,29 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
  * @typedef {{[k: string | symbol]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @_______ {[ElType, tag: string, Props, VNode[]]} VEl is a class, can use instanceof
- * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
- * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
- * @typedef {['text', txt: string, Empty, [], Text]} RText real element
+ * @_______ {[null, tag: string, Props, VNode[], ElType]} VEl is a class, can use instanceof
+ * @typedef {[El,   tag: string, Props, RNode[], ElType, Cache?]} REl real element
+ * @typedef {[null, txt: string, Empty, [],     'text']} VText virtual textnode
+ * @typedef {[Text, txt: string, Empty, [],     'text']} RText real element
  * @typedef {VEl | VText} VNode virtual node
  * @typedef {REl | RText} RNode real node
  * @typedef {VNode | RNode} ANode any node
  */
-const TYPE = 0
+const NODE = 0
 const TAG = 1
 const TXT = 1
 const PROPS = 2
 const CHILDREN = 3
-const NODE = 4
+const TYPE = 4
 const CACHE = 5
 
 /**
- * @typedef {[Function, REl, key: ?string|number]} ElArrow
- * @typedef {[Function, null, null, effect?: Function]} WatchArrow
+ * @typedef {[REl, key: string | number | null, Function]} ElArrow
+ * @typedef {[null, null, Function, effect?: Function]} WatchArrow
  * @typedef {ElArrow | WatchArrow} Arrow
  */
-const FN = 0
-const REL = 1
+const REL = 0
+const FN = 2
 /** @type {Arrow?} */
 let currentArrow = null
 /** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
@@ -133,7 +131,7 @@ function createVNode(/**@type {VEl | string}*/ x) {
 }
 
 function createVText(/**@type {string}*/ txt) {
-  const /**@type {VText}*/ vtext = ['text', txt, {}, []]
+  const /**@type {VText}*/ vtext = [null, txt, {}, [], 'text']
   return vtext
 }
 
@@ -212,7 +210,7 @@ function evaluate(fn, vel, key, effect) {
   if (typeof fn !== 'function') return fn
   // @ts-ignore ok. tickky type coersion. vel will become rel after createVEl()
   const /**@type {REl}*/ rel = vel
-  currentArrow = vel ? [fn, rel, key] : [fn, null, null, effect]
+  currentArrow = vel ? [rel, key, fn] : [null, null, fn, effect]
   const result = fn()
   currentArrow = null
   return result
@@ -255,7 +253,7 @@ export function reactive(target) {
       for (const [arrow, targetMap] of deps.entries()) {
         const propSet = targetMap.get(target)
         if (propSet?.has(prop)) {
-          const [fn, rel, key, effect] = arrow
+          const [rel, key, fn, effect] = arrow
           currentArrow = arrow
           const value = fn()
           currentArrow = null
@@ -425,10 +423,11 @@ function setProp(
   // plain value: blur() focus() after() append() ... (all methods)
   // @ts-ignore ok, guaranteed by getObjectPropertyType has 'set'
   if (getObjectPropertyType(el, key).includes('set')) el[key] = value
-  else if (typeof value !== 'string')
-    throw ERROR(`<${el.nodeName}> attr/style must be string: ${key} = ${value}`)
+  // @ts-ignore ok. DOM can coerse type
   else if (key[0] === '$') el.style.setProperty(removeFirst(key), value)
+  // @ts-ignore ok. DOM can coerse type
   else if (key[0] === '_') setAttribute(el, removeFirst(key), value)
+  // @ts-ignore ok. DOM can coerse type
   else setAttribute(el, key, value)
 }
 
@@ -437,16 +436,12 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   if (toLowerCase(key) in el.attributes) removeAttribute(el, key)
   // special cases for IDL prop naming
   else if (key in prop2attr) removeAttribute(el, prop2attr[key])
-  // TODO: test more cases for how to unset arbitary non-attr props
   // @ts-ignore ok. guaranteed by key in el
   else if (key in el) el[key] = typeof el[key] === 'string' ? '' : undefined
-  else {
-    const start = key[0]
-    const remained = removeFirst(key)
-    if (start === '_') removeAttribute(el, remained)
-    else if (start === '$') el.style.removeProperty(remained)
-    else throw ERROR(`unset invalid prop '${key}' from <${el.nodeName}>`)
-  }
+  else if (key[0] === '_') removeAttribute(el, removeFirst(key))
+  else if (key[0] === '$') el.style.removeProperty(removeFirst(key))
+  // TODO: test more cases for how to unset arbitary non-attr props
+  else throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
 }
 
 function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ prop) {

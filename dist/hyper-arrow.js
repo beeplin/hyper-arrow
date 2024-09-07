@@ -1,8 +1,8 @@
 // @ts-check
-// these are for better minification
+// reassign built-in objects and methods for better minification
 const LENGTH = 'length';
 const OBJECT = Object;
-const ERROR = Error;
+// const ERROR = Error
 const PROXY = Proxy;
 const REFLECT = Reflect;
 const DOCUMENT = document;
@@ -17,43 +17,44 @@ const removeAttribute = (el, k) => el.removeAttribute(k);
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
- * @typedef {{[k: string]: unknown}} Props
+ * @typedef {{[k: string | symbol]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @xxxxxxx {[ElType, tag: string, Props, VNode[]]} VEl defined by function VEl below
- * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
- * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
- * @typedef {['text', txt: string, Empty, [], Text]} RText real element
+ * @_______ {[null, tag: string, Props, VNode[], ElType]} VEl is a class, can use instanceof
+ * @typedef {[El,   tag: string, Props, RNode[], ElType, Cache?]} REl real element
+ * @typedef {[null, txt: string, Empty, [],     'text']} VText virtual textnode
+ * @typedef {[Text, txt: string, Empty, [],     'text']} RText real element
  * @typedef {VEl | VText} VNode virtual node
  * @typedef {REl | RText} RNode real node
  * @typedef {VNode | RNode} ANode any node
  */
-const TYPE = 0;
+const NODE = 0;
 const TAG = 1;
 const TXT = 1;
 const PROPS = 2;
 const CHILDREN = 3;
-const NODE = 4;
+const TYPE = 4;
 const CACHE = 5;
 /**
- * @typedef {[Function, REl, key: ?string|number]} ElArrow
- * @typedef {[Function, null, null, effect?: Function]} WatchArrow
+ * @typedef {[REl, key: string | number | null, Function]} ElArrow
+ * @typedef {[null, null, Function, effect?: Function]} WatchArrow
  * @typedef {ElArrow | WatchArrow} Arrow
  */
-const FN = 0;
-const REL = 1;
-let /**@type {Arrow?}*/ currentArrow = null;
-/** @typedef {[target: object, prop: string | symbol]} Trigger */
-const TARGET = 0;
-const PROP = 1;
-export const /** dependency map @type {Map<Arrow, Trigger[]>}*/ deps = new Map();
+const REL = 0;
+const FN = 2;
+/** @type {Arrow?} */
+let currentArrow = null;
+/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
+export const deps = new Map();
+/** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
+export const reverseDeps = new WeakMap();
 const BRAND_KEY = '__hyper_arrow__';
 const BRAND_SYMBOL = Symbol(BRAND_KEY);
 export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL];
+export const ON_CREATE = Symbol();
+export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK = Symbol();
 let uid = 0;
 const UID = 'uid';
-const ONCREATE = 'oncreate';
-const CACHE_REMOVED_CHILDREN = 'cacheRemovedChildren';
 const /**@type {{[k:string]: string}}*/ prop2attr = {
     defaultValue: 'value',
     htmlFor: 'for',
@@ -87,6 +88,8 @@ function createVEl(
     const [props, x] = typeof args[0] === 'object' && !isArray(args[0]) && !(args[0] instanceof VEl)
         ? [args[0], removeFirst(args)]
         : [{}, args];
+    for (const key of OBJECT.getOwnPropertySymbols(props))
+        vel[PROPS][key] = props[key];
     for (const key in props) {
         // on* event handlers, all lowercase, have no arrow, not evaluted
         if (key.startsWith('on'))
@@ -94,7 +97,7 @@ function createVEl(
         else
             vel[PROPS][key] = evaluate(props[key], vel, key);
     }
-    // NOTE: args may be tag(() => VEl), not tag(() => VEl[]).
+    // args may be tag(() => VEl), not tag(() => VEl[]).
     // in this case arrow key should be 0, not null.
     // but cannot foresee whether fn returns VEl or VEl[] before it's actually evaluted
     // so the wrong arrow key (null) must be handled later in reactive/set
@@ -113,7 +116,7 @@ function createVNode(/**@type {VEl | string}*/ x) {
     return typeof x === 'string' ? createVText(x) : x;
 }
 function createVText(/**@type {string}*/ txt) {
-    const /**@type {VText}*/ vtext = ['text', txt, {}, []];
+    const /**@type {VText}*/ vtext = [null, txt, {}, [], 'text'];
     return vtext;
 }
 /** mount virtual element to DOM */
@@ -135,7 +138,7 @@ function createREl(/**@type {VEl}*/ vel) {
     el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]));
     const rel = convertVNodeToRNode(vel, el);
     // @ts-ignore let it crash if oncreate is not function
-    (_b = (_a = rel[PROPS])[ONCREATE]) === null || _b === void 0 ? void 0 : _b.call(_a, el);
+    (_b = (_a = rel[PROPS])[ON_CREATE]) === null || _b === void 0 ? void 0 : _b.call(_a, el);
     return rel;
 }
 function createRNode(/**@type {VNode}*/ vnode) {
@@ -154,7 +157,9 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
     // @ts-ignore ok. trickky type coersion. rnode and vnode point to the same object
     const /**@type {RNode}*/ rnode = vnode;
     rnode[NODE] = node;
-    if (rnode[PROPS][CACHE_REMOVED_CHILDREN] && getIds(rnode[CHILDREN]))
+    if (rnode instanceof VEl &&
+        rnode[PROPS][CACHE_REMOVED_CHILDREN_AND_MAY_LEAK] &&
+        getFullUniqueIds(rnode[CHILDREN]))
         rnode[CACHE] = {};
     // @ts-ignore ok
     node[BRAND_KEY] = rnode;
@@ -185,7 +190,7 @@ function evaluate(fn, vel, key, effect) {
         return fn;
     // @ts-ignore ok. tickky type coersion. vel will become rel after createVEl()
     const /**@type {REl}*/ rel = vel;
-    currentArrow = vel ? [fn, rel, key] : [fn, null, null, effect];
+    currentArrow = vel ? [rel, key, fn] : [null, null, fn, effect];
     const result = fn();
     currentArrow = null;
     return result;
@@ -196,21 +201,34 @@ export function reactive(target) {
         return target;
     return new PROXY(target, {
         get(target, prop) {
+            var _a;
             // this is how isReactive() works
             if (prop === BRAND_SYMBOL)
                 return true;
             const result = REFLECT.get(target, prop);
-            // function.prototype cannot be proxied, so skip it
+            // would throw if proxying function.prototype, so skip it
             if (typeof target === 'function' && prop === 'prototype')
                 return result;
-            // collect trigger as dependency of current arrow
+            // collect dependencies of current arrow
             if (currentArrow) {
+                // console.log('--get--')
+                // console.log(currentArrow[0], currentArrow[1]?.[TAG], currentArrow[2])
+                // console.log(target, prop)
                 if (!deps.has(currentArrow))
-                    deps.set(currentArrow, []);
-                // @ts-ignore ok, guaranteed by deps.set
-                const /**@type {Trigger[]}*/ triggers = deps.get(currentArrow);
-                if (!triggers.some((t) => t[TARGET] === target && t[PROP] === prop))
-                    triggers.push([target, prop]);
+                    deps.set(currentArrow, new WeakMap());
+                const targetMap = deps.get(currentArrow);
+                if (!(targetMap === null || targetMap === void 0 ? void 0 : targetMap.has(target)))
+                    targetMap === null || targetMap === void 0 ? void 0 : targetMap.set(target, new Set());
+                (_a = targetMap === null || targetMap === void 0 ? void 0 : targetMap.get(target)) === null || _a === void 0 ? void 0 : _a.add(prop);
+                // build reverse deps for debugging purpose
+                if (!reverseDeps.has(target))
+                    reverseDeps.set(target, Object.create(null));
+                const propRecord = reverseDeps.get(target);
+                if (propRecord) {
+                    if (!(prop in propRecord))
+                        propRecord[prop] = new WeakSet();
+                    propRecord[prop].add(currentArrow);
+                }
             }
             return reactive(result);
         },
@@ -218,56 +236,67 @@ export function reactive(target) {
             const oldValue = REFLECT.get(target, prop);
             const result = REFLECT.set(target, prop, newValue);
             // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
-            if (oldValue === newValue && prop !== LENGTH)
+            if (oldValue === newValue && !(isArray(target) && prop === LENGTH))
                 return result;
-            for (const [arrow, triggers] of deps.entries()) {
-                for (const trigger of triggers) {
-                    // update target in all triggers, so oldValue can be garbage collected
-                    if (trigger[TARGET] === oldValue)
-                        trigger[TARGET] = newValue;
-                    // dependent arrows found! Action!
-                    if (trigger[TARGET] === target && trigger[PROP] === prop) {
-                        const [fn, rel, key, effect] = arrow;
-                        const value = fn();
-                        // console.log('set')
-                        // console.log({ target, prop, oldValue, newValue })
-                        // console.log({ ...rel, key, value })
-                        if (!rel) {
-                            effect === null || effect === void 0 ? void 0 : effect(value);
-                        }
-                        else if (typeof key === 'number' ||
-                            // NOTE: createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
-                            // so key may be wrongly null. this special case is handled here
-                            (key === null && (typeof value === 'string' || value instanceof VEl))) {
-                            const index = key !== null && key !== void 0 ? key : 0;
-                            removeArrowsInRNodeFromDeps(rel[CHILDREN][index]);
-                            updateChild(rel, index, createVNode(value));
-                        }
-                        else if (key === null) {
-                            rel[CHILDREN].map(removeArrowsInRNodeFromDeps);
-                            updateChildren(rel, value.map(createVNode));
-                        }
-                        else {
-                            setProp(rel[NODE], key, value);
-                        }
+            for (const [arrow, targetMap] of deps.entries()) {
+                const propSet = targetMap.get(target);
+                if (propSet === null || propSet === void 0 ? void 0 : propSet.has(prop)) {
+                    const [rel, key, fn, effect] = arrow;
+                    currentArrow = arrow;
+                    const value = fn();
+                    currentArrow = null;
+                    // console.log('--set--')
+                    // console.log(target, prop, oldValue, newValue)
+                    // console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
+                    // console.log(key, value)
+                    if (!rel) {
+                        effect === null || effect === void 0 ? void 0 : effect(value);
+                    }
+                    else if (typeof key === 'number' ||
+                        // createVEl can't tell tag(() => VEl) from tag(() => VEl[]).
+                        // so key may be wrongly null. this special case is handled here
+                        (key === null && (typeof value === 'string' || value instanceof VEl))) {
+                        const index = key !== null && key !== void 0 ? key : 0;
+                        removeArrowsInRNodeFromDeps(rel[CHILDREN][index]);
+                        updateChild(rel, index, createVNode(value));
+                    }
+                    else if (key === null) {
+                        rel[CHILDREN].map(removeArrowsInRNodeFromDeps);
+                        updateChildren(rel, value.map(createVNode));
+                    }
+                    else {
+                        setProp(rel[NODE], key, value);
                     }
                 }
             }
             return result;
         },
+        deleteProperty(target, prop) {
+            var _a, _b;
+            const result = REFLECT.deleteProperty(target, prop);
+            // console.log('--delete--')
+            // console.log(target, prop)
+            for (const targetMap of deps.values())
+                (_a = targetMap.get(target)) === null || _a === void 0 ? void 0 : _a.delete(prop);
+            (_b = reverseDeps.get(target)) === null || _b === void 0 ? true : delete _b[prop];
+            return result;
+        },
     });
 }
 function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-    var _a;
     for (const arrow of deps.keys())
-        if (arrow[REL] && rnode[NODE].contains((_a = arrow[REL]) === null || _a === void 0 ? void 0 : _a[NODE]))
+        if (arrowIsInRNode(arrow, rnode))
             deps.delete(arrow);
+}
+function arrowIsInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {
+    var _a;
+    return arrow[REL] && rnode[NODE].contains((_a = arrow[REL]) === null || _a === void 0 ? void 0 : _a[NODE]);
 }
 function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
     var _a;
-    const oldIds = getIds(rel[CHILDREN]);
-    const newIds = getIds(newVNodes);
-    // if both have unique ids, smart update
+    const oldIds = getFullUniqueIds(rel[CHILDREN]);
+    const newIds = getFullUniqueIds(newVNodes);
+    // if both have full unique ids, smart update
     if (oldIds && newIds) {
         // remove unmatched. MUST REMOVE FROM TAIL!!! otherwise index would be messed up
         for (let i = oldIds[LENGTH] - 1; i >= 0; i--) {
@@ -369,20 +398,17 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
         rel[CACHE][rnode[PROPS].id] = rnode;
     return rnode;
 }
-function getIds(/**@type {ANode[]}*/ anodes) {
+function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
     const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string');
-    if (new Set(ids).size !== ids[LENGTH])
-        throw ERROR(`duplicate children id: ${ids}`);
-    else
-        return ids[LENGTH] === anodes[LENGTH] ? ids : null;
+    // if (new Set(ids).size !== ids[LENGTH]) throw ERROR(`duplicate children id: ${ids}`)
+    return ids[LENGTH] === anodes[LENGTH] && ids[LENGTH] === new Set(ids).size
+        ? ids
+        : null;
 }
 function setProp(
 /**@type {El}*/ el, 
 /**@type {string}*/ key, 
 /**@type {unknown}*/ value) {
-    // special keys only goes into Vel, not el
-    if ([ONCREATE, CACHE_REMOVED_CHILDREN].includes(key))
-        return;
     // IDL properties are getter/setters, proxies of attributes. For example:
     // getter/setter: on* aria* autofocus id className classList style innerHTML ...
     // getter only: client* scrollTop tagName dataset attributes children firstChild ...
@@ -390,12 +416,13 @@ function setProp(
     // @ts-ignore ok, guaranteed by getObjectPropertyType has 'set'
     if (getObjectPropertyType(el, key).includes('set'))
         el[key] = value;
-    else if (typeof value !== 'string')
-        throw ERROR(`<${el.nodeName}> attr/style must be string: ${key} = ${value}`);
+    // @ts-ignore ok. DOM can coerse type
     else if (key[0] === '$')
         el.style.setProperty(removeFirst(key), value);
+    // @ts-ignore ok. DOM can coerse type
     else if (key[0] === '_')
         setAttribute(el, removeFirst(key), value);
+    // @ts-ignore ok. DOM can coerse type
     else
         setAttribute(el, key, value);
 }
@@ -410,16 +437,12 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
     // @ts-ignore ok. guaranteed by key in el
     else if (key in el)
         el[key] = typeof el[key] === 'string' ? '' : undefined;
-    else {
-        const start = key[0];
-        const remained = removeFirst(key);
-        if (start === '_')
-            removeAttribute(el, remained);
-        else if (start === '$')
-            el.style.removeProperty(remained);
-        else
-            throw ERROR(`invalid prop '${key}' to unset from <${el.nodeName}>`);
-    }
+    else if (key[0] === '_')
+        removeAttribute(el, removeFirst(key));
+    else if (key[0] === '$')
+        el.style.removeProperty(removeFirst(key));
+    else
+        throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`);
 }
 function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
     if (!(prop in object))

@@ -3,7 +3,7 @@ export function VEl(type: ElType, tag: string, props: Props, children: VNode[]):
 export class VEl {
     /** virtual element @constructor */
     constructor(type: ElType, tag: string, props: Props, children: VNode[]);
-    0: ElType;
+    4: ElType;
     1: string;
     2: Props;
     3: VNode[];
@@ -20,8 +20,13 @@ export function mount(selector: string, vel: VEl): void;
  */
 export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: ((a: ReturnType<F extends (() => any) ? F : never>) => any) | undefined): () => void;
 export function reactive<T extends object>(target: T): T;
-export const deps: Map<Arrow, Trigger[]>;
+/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
+export const deps: Map<Arrow, WeakMap<object, Set<string | symbol>>>;
+/** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
+export const reverseDeps: WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>;
 export function isReactive(x: any): boolean;
+export const ON_CREATE: unique symbol;
+export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK: unique symbol;
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -36,7 +41,7 @@ export const tags: {
 export type ElType = "html" | "svg" | "mathml";
 export type El = HTMLElement | SVGElement | MathMLElement;
 export type Props = {
-    [k: string]: unknown;
+    [k: string | symbol]: unknown;
 };
 export type Cache = {
     [k: string]: RNode;
@@ -47,15 +52,15 @@ export type Empty = {
 /**
  * real element
  */
-export type REl = [ElType, tag: string, Props, RNode[], El, Cache?];
+export type REl = [El, tag: string, Props, RNode[], ElType, Cache?];
 /**
  * virtual textnode
  */
-export type VText = ["text", txt: string, Empty, []];
+export type VText = [null, txt: string, Empty, [], "text"];
 /**
  * real element
  */
-export type RText = ["text", txt: string, Empty, [], Text];
+export type RText = [Text, txt: string, Empty, [], "text"];
 /**
  * virtual node
  */
@@ -68,10 +73,9 @@ export type RNode = REl | RText;
  * any node
  */
 export type ANode = VNode | RNode;
-export type ElArrow = [Function, REl, key: (string | number) | null];
-export type WatchArrow = [Function, null, null, effect?: Function];
+export type ElArrow = [REl, key: string | number | null, Function];
+export type WatchArrow = [null, null, Function, effect?: Function];
 export type Arrow = ElArrow | WatchArrow;
-export type Trigger = [target: object, prop: string | symbol];
 export type Child = VEl | string | (() => (VEl | string));
 export type Children = Child[] | (() => Child[]);
 export type Args = [Props, Children] | [Props, ...Child[]] | [Children] | Child[];
