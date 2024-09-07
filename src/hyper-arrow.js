@@ -225,20 +225,19 @@ export function reactive(target) {
       // this is how isReactive() works
       if (prop === BRAND_SYMBOL) return true
       const result = REFLECT.get(target, prop)
-      // function.prototype cannot be proxied, so skip it
+      // would throw if proxying function.prototype, so skip it
       if (typeof target === 'function' && prop === 'prototype') return result
+
+      // console.log('--get--')
+      // console.log(currentArrow[0], currentArrow[1]?.[TAG], currentArrow[2])
+      // console.log(target, prop)
+
       // collect trigger as dependency of current arrow
       if (currentArrow) {
-        // if (currentArrow[1]?.[TAG] === 'ul') {
-        // console.log('--get--')
-        // console.log(currentArrow[0], currentArrow[1]?.[TAG], currentArrow[2])
-        // console.log(target, prop)
-        // }
-
         if (!deps.has(currentArrow)) deps.set(currentArrow, new WeakMap())
-        const weakmap = deps.get(currentArrow)
-        if (!weakmap?.has(target)) weakmap?.set(target, new Set())
-        weakmap?.get(target)?.add(prop)
+        const targetMap = deps.get(currentArrow)
+        if (!targetMap?.has(target)) targetMap?.set(target, new Set())
+        targetMap?.get(target)?.add(prop)
 
         // if (!trigger2arrow.has(target)) trigger2arrow.set(target, Object.create(null))
         // const obj = trigger2arrow.get(target)
@@ -254,19 +253,22 @@ export function reactive(target) {
       const result = REFLECT.set(target, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
       if (oldValue === newValue && !(isArray(target) && prop === LENGTH)) return result
-      for (const [arrow, weakmap] of deps.entries())
-        if (weakmap.get(target)?.has(prop)) {
+      for (const [arrow, targetMap] of deps.entries()) {
+        const propSet = targetMap.get(target)
+        // array.length = a removes all props bigger than a-1. follow this behavior
+        if (propSet && isArray(target) && prop === LENGTH)
+          for (const p of propSet)
+            if (typeof p === 'string' && +p >= target[LENGTH]) propSet.delete(p)
+        if (propSet?.has(prop)) {
           const [fn, rel, key, effect] = arrow
           currentArrow = arrow
           const value = fn()
           currentArrow = null
 
-          // if (rel?.[TAG] === 'ul') {
-          console.log('--set--')
-          console.log(target, prop, oldValue, newValue)
-          console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
-          console.log(key, value)
-          // }
+          // console.log('--set--')
+          // console.log(target, prop, oldValue, newValue)
+          // console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
+          // console.log(key, value)
 
           if (!rel) {
             effect?.(value)
@@ -286,19 +288,16 @@ export function reactive(target) {
             setProp(rel[NODE], key, value)
           }
         }
+      }
       return result
     },
-    // deleteProperty(target, prop) {
-    //   console.log('--delete--')
-    //   console.log(target, prop)
-    //   for (const [arrow, triggers] of arrow2trigger.entries())
-    //     for (const [index, trigger] of triggers.entries())
-    //       if (trigger[TARGET] === target && trigger[PROP] === prop)
-    //         triggers.splice(index, 1)
-    //   // FIXME: recursive delete triggers
-    //   const result = REFLECT.deleteProperty(target, prop)
-    //   return result
-    // },
+    deleteProperty(target, prop) {
+      const result = REFLECT.deleteProperty(target, prop)
+      // console.log('--delete--')
+      // console.log(target, prop)
+      for (const targetMap of deps.values()) targetMap.get(target)?.delete(prop)
+      return result
+    },
   })
 }
 
