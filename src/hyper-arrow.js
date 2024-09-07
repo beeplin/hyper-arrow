@@ -22,7 +22,7 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
  * @typedef {{[k: string]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @xxxxxxx {[ElType, tag: string, Props, VNode[]]} VEl defined by function VEl below
+ * @xxxxxxx {[ElType, tag: string, Props, VNode[]]} VEl defined as constructor below
  * @typedef {[ElType, tag: string, Props, RNode[], El, Cache?]} REl real element
  * @typedef {['text', txt: string, Empty, []]} VText virtual textnode
  * @typedef {['text', txt: string, Empty, [], Text]} RText real element
@@ -291,14 +291,10 @@ export function reactive(target) {
 }
 
 function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-  for (const arrow of deps.keys()) if (arrowInRNode(arrow, rnode)) deps.delete(arrow)
-  // for (const target of trigger2arrow.keys()) {
-  //   const obj = trigger2arrow.get(target)
-  //   if (obj) for (const p in obj) obj[p] = obj[p].filter((a) => !arrowInRNode(a, rnode))
-  // }
+  for (const arrow of deps.keys()) if (arrowIsInRNode(arrow, rnode)) deps.delete(arrow)
 }
 
-function arrowInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {
+function arrowIsInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {
   return arrow[REL] && rnode[NODE].contains(arrow[REL]?.[NODE])
 }
 
