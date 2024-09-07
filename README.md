@@ -170,7 +170,7 @@ mount(
 
 ### `CACHE_REMOVED_CHILDREN_AND_MAY_LEAK`
 
-A unique symbol to allow a DOM element to cache all it's removed child elements, so instead of recreating new childs, it can reuse cached ones when needed, if the element `id` matched.
+A unique symbol to allow a DOM element to cache all it's removed children elements, so instead of recreating a new child, it can reuse the cached one when needed, if the child's `id` matches.
 
 ```js
 import {
@@ -194,7 +194,7 @@ const view = div(
   }),
   ul({ id: 'list', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () =>
     // in dev tool you can see the `uid` attributes of `li` elements remain
-    // same during changing. Yes, `ul` is reusing old removed `li`s
+    // same during list changing, because `ul` is reusing old removed `li`s
     model.list.map((item) => li({ id: () => item }, item.toString())),
   ),
 )
@@ -202,20 +202,20 @@ const view = div(
 mount('#app', view)
 ```
 
-NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element keeps alive forever and keeps removing more and more children into cache, the removed children cannot be garbage collected.
+NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element keeps alive forever and keeps removing more and more new children into cache, the removed children cannot be garbage collected.
 
 ## `watch(fn, [effectFn])`
 
-Run `fn()` once, and whenever `fn`'s dependencies (all **reactive-object-property-access**, or **ROPA**s, within `fn`) change, automatically rerun `fn()`, or if `effectFn` provided, run `effectFn(fn())`.
+Run `fn()` once, and whenever `fn`'s dependencies (all **reactive-object-property-access**, or **ROPA**s, happened within `fn`) change, automatically rerun `fn()`, or, if `effectFn` provided, run `effectFn(fn())`.
 
-### `deps`
+### `arrow2ropa`
 
-`Map<ArrowFunctionWithContext, WeakMap<ReactiveObject, Set<PropertyKey>>>`. Internal dependency map. `deps` stores all **ROPA**s for each arrow function, so when any **ROPA** changes, the arrow function reruns. Arrow functions within tag functions and `watch` all go into `deps`.
+`Map<ArrowFunctionWithContext, WeakMap<ReactiveObject, Set<PropertyKey>>>`. Internal dependency map. `arrow2ropa` stores all **ROPA**s for each arrow function, so when any **ROPA** changes, the coresponding arrow function reruns. `fn`s of `watch`s and arrow functions within tag functions all go into `arrow2ropa`.
 
-You may never need `deps`. Exposed only for debugging purposes.
+You may never need to use `arrow2ropa` directly. Exposed only for debugging purposes.
 
-### `reverseDeps`
+### `ropa2arrow`
 
-`WeakMap<ReactiveObject, Record<PropertyKey, WeakSet<ArrowFunctionWithContext>>>`. For each **ROPA**, `reverseDeps` stores all arrow functions it would trigger.
+`WeakMap<ReactiveObject, Record<PropertyKey, WeakSet<ArrowFunctionWithContext>>>`. For each **ROPA**, `ropa2arrow` stores all arrow functions it would trigger.
 
-`reverseDeps` is also only for debugging purposes. It's collected but not even actually used in `hyper-arrow`'s own source code.
+`ropa2arrow` is also only for debugging purposes. It's collected but not even actually used in `hyper-arrow`'s own source code.

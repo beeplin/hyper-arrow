@@ -13,4 +13,4 @@
 ✔ keep-alive @done(24-09-02 17:56)
 ✔ 区分 VNnode RNode @done(24-09-05 22:03)
 ✔ HChildren 支持非数组 @done(24-09-06 01:28)
-☐ BUG 如果 view 中 map(_,i) 而不是 map(item)，也就是彻底响应化，中间不间断，则在 active/completed 状态下切换 done， 从动态 filtered 数组中删除， 则 filtered 数组已经少了一个元素，但旧 arrow 仍存在，rerun fn 时找不到缺少了的元素，报错
+✔ BUG 如果 view 中 map(_,i) 而不是 map(item)，也就是彻底响应化，中间不间断，则在 active/completed 状态下切换 done， 从动态 filtered 数组中删除， 则 filtered 数组已经少了一个元素，但旧 arrow 仍存在，rerun fn 时找不到缺少了的元素，报错 @done(24-09-07 19:33)
