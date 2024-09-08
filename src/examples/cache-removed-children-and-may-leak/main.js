@@ -3,6 +3,7 @@ import {
   mount,
   reactive,
   tags,
+  UID_ATTR_NAME,
 } from '../../hyper-arrow.js'
 
 const { div, button, ul, li } = tags.html
@@ -18,10 +19,8 @@ const view = div(
     },
   }),
   ul({ id: 'list', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () =>
-    // in the dev tool you can see the `uid` attributes of `li` elements remain
-    // same during changing, showing `ul` is reusing old removed `li`s
     model.list.map((item) => li({ id: () => item }, item.toString())),
   ),
 )
 
-mount('#app', view)
+mount('#app', view, { [UID_ATTR_NAME]: 'uid' })

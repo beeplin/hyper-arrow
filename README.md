@@ -13,6 +13,7 @@ super tiny front-end UI library, for educational purposes
 ## Get started
 
 ```js
+// @ts-nocheck
 import { mount, reactive, tags } from '../../hyper-arrow.js'
 
 class Model {
@@ -43,6 +44,7 @@ const view = div(
   // children in the rest parameters
   div({ style: 'margin: 4px' }, 'hyper-arrow demo'),
   input({
+    type: 'text',
     // arrow functions make properties reactive
     value: () => model.input,
     class: () => (model.input ? 'class3' : 'class4'),
@@ -60,6 +62,7 @@ const view = div(
   }),
   button(
     {
+      type: 'button',
       style: 'margin: 4px',
       onClick() {
         model.add()
@@ -70,6 +73,7 @@ const view = div(
   // can also using 'innerText' to set text as single child
   // just like `el.innerText = 'xxx'` in DOM API
   button({
+    type: 'button',
     innerText: 'clear all',
     style: () => 'margin: 4px;',
     onClick() {
@@ -85,6 +89,26 @@ const view = div(
 
 // mount your view to the page and go!
 mount('#app', view)
+
+model.input = 'aaa'
+model.add()
+model.input = 'bbb'
+model.add()
+```
+
+It will create the following DOM tree with proper dynamic behaviors:
+
+```html
+<div id="container-id" class="container-class" style="padding: 4px;">
+  <div style="margin: 4px;">hyper-arrow demo</div>
+  <input type="text" class="class4" style="margin: 4px; color: black;" />
+  <button type="button" style="margin: 4px;">add</button>
+  <button type="button" style="margin: 4px;">clear all</button>
+  <ul>
+    <li>aaa</li>
+    <li>bbb</li>
+  </ul>
+</div>
 ```
 
 See `src/examples` for more.
@@ -133,77 +157,31 @@ const view = div({ id: 'root' }, [
 mount('#app', view)
 ```
 
+It generates the DOM three:
+
+```html
+<div id="root">
+  <button>increase</button>
+  <svg stroke="red" fill="lightyellow">
+    <circle cx="50" cy="50" r="10"></circle>
+  </svg>
+  <math display="block">
+    <mfrac><mi>x</mi><mn>10</mn></mfrac>
+  </math>
+</div>
+```
+
 ### `mount(element_selector, view, [options])`
 
 Mount the view onto DOM. Examples already shown above. See below for details of optional `options`
 
 ## Advanced API
 
-### `ON_CREATE`
-
-A unique symbol for creating special "onCreate" event handlers for DOM elements.
-
-```js
-import { mount, ON_CREATE, tags } from '../../hyper-arrow.js'
-
-const { input } = tags.html
-
-mount(
-  '#app',
-  input({
-    value: 'hello world',
-    // `el` is the created DOM element
-    [ON_CREATE](el) {
-      requestAnimationFrame(() => {
-        el.focus()
-        setTimeout(() => {
-          el.select()
-        }, 1000)
-      })
-    },
-  }),
-)
-```
-
-### `CACHE_REMOVED_CHILDREN_AND_MAY_LEAK`
-
-A unique symbol to allow a DOM element to cache all it's removed children elements, so instead of recreating a new child, it can reuse the cached one when needed, if the child's `id` matches.
-
-```js
-import {
-  CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
-  mount,
-  reactive,
-  tags,
-} from '../../hyper-arrow.js'
-
-const { div, button, ul, li } = tags.html
-
-const model = reactive({ list: ['0', '1'] })
-
-const view = div(
-  button({
-    innerText: 'change',
-    onClick() {
-      const length = Math.floor(Math.random() * 10)
-      model.list = Array.from({ length }, (_, i) => i.toString())
-    },
-  }),
-  ul({ id: 'list', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () =>
-    // in dev tool you can see the `uid` attributes of `li` elements remain
-    // same during list changing, because `ul` is reusing old removed `li`s
-    model.list.map((item) => li({ id: () => item }, item.toString())),
-  ),
-)
-
-mount('#app', view)
-```
-
-NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element keeps alive forever and keeps removing more and more new children into cache, the removed children cannot be garbage collected.
-
 ### `UID_ATTR_NAME`
 
-`mount` can accept an optional third parameter `options` to configure extra behaviors. If the options has key `[UID_ATTR_NAME]`, which is a unique symbol, then each DOM element created by `mount` will have a unique HTML attribute to identify itself. This is useful when debugging, for example, to check if smart children updating or caching works.
+`mount` can accept an optional third parameter `options` for extra configuration.
+
+`[UID_ATTR_NAME]` is a unique symbol key in `mount`'s `options`. It adds unique HTML attributes to all DOM elements created by `mount` in order to identify themselves.
 
 ```js
 import { mount, tags, UID_ATTR_NAME } from '../../hyper-arrow.js'
@@ -228,6 +206,72 @@ will generate:
   <div uid="6">e</div>
 </div>
 ```
+
+This is useful, for example, when checking if the parent element, when doing smart children updating or caching, is reusing elements correctly instead of recreating new ones (see below).
+
+### `CACHE_REMOVED_CHILDREN_AND_MAY_LEAK`
+
+A unique symbol key that allows allow a parent DOM element to cache all it's removed children elements, so instead of creating new children, it can reuse the cached ones when needed, as long as the children's `id` attributes match.
+
+```js
+import {
+  CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
+  mount,
+  reactive,
+  tags,
+  UID_ATTR_NAME,
+} from '../../hyper-arrow.js'
+
+const { div, button, ul, li } = tags.html
+
+const model = reactive({ list: ['0', '1'] })
+
+const view = div(
+  button({
+    innerText: 'change',
+    onClick() {
+      const length = Math.floor(Math.random() * 10)
+      model.list = Array.from({ length }, (_, i) => i.toString())
+    },
+  }),
+  ul({ id: 'list', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () =>
+    model.list.map((item) => li({ id: () => item }, item.toString())),
+  ),
+)
+
+mount('#app', view, { [UID_ATTR_NAME]: 'uid' })
+```
+
+In the dev tool you can see that, when the list changes, the `uid` attributes of `li` elements remain the same. That means `ul` is reusing old removed `li`s.
+
+NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element lives forever and keeps removing more and more new children into cache, the removed children cannot be garbage collected.
+
+### `ON_CREATE`
+
+A unique symbol key to create a special "onCreate" event handler on a DOM element.
+
+```js
+import { mount, ON_CREATE, tags } from '../../hyper-arrow.js'
+
+const { input } = tags.html
+
+mount(
+  '#app',
+  input({
+    value: 'hello world',
+    [ON_CREATE](el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        setTimeout(() => {
+          el.select()
+        }, 1000)
+      })
+    },
+  }),
+)
+```
+
+The created DOM element, `el`, is passed into the event handler function.
 
 ### `isReactive(object)`
 
