@@ -3,6 +3,7 @@
 // reassign built-in objects and methods for better minification
 const LENGTH = 'length'
 const TEXT = 'text'
+const SYMBOL = Symbol
 const OBJECT = Object
 const PROXY = Proxy
 const REFLECT = Reflect
@@ -56,14 +57,16 @@ export const faci2ropa = new Map()
 export const ropa2faci = new WeakMap()
 
 const BRAND_KEY = '__hyper_arrow__'
-const BRAND_SYMBOL = Symbol(BRAND_KEY)
+const BRAND_SYMBOL = SYMBOL(BRAND_KEY)
 export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
 
-export const ON_CREATE = Symbol()
-export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK = Symbol()
+export const ON_CREATE = SYMBOL()
+export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK = SYMBOL()
+export const UID_ATTR_NAME = SYMBOL()
 
-let uid = 0
-const UID = 'uid'
+let /**@type {string?}*/ uidAttrName = null
+let currentUid = 0
+
 const /**@type {{[k:string]: string}}*/ prop2attr = {
     defaultValue: 'value',
     htmlFor: 'for',
@@ -141,7 +144,12 @@ function createVText(/**@type {string}*/ txt) {
 }
 
 /** mount virtual element to DOM */
-export function mount(/**@type {string}*/ selector, /**@type {VEl}*/ vel) {
+export function mount(
+  /**@type {string}*/ selector,
+  /**@type {VEl}*/ vel,
+  /**@type {{[k:UID_ATTR_NAME?]: string}}*/ options = {},
+) {
+  uidAttrName = options[UID_ATTR_NAME]
   // @ts-ignore let it crash if selector not found
   DOCUMENT.querySelector(selector).append(createREl(vel)[NODE])
 }
@@ -154,7 +162,7 @@ function createREl(/**@type {VEl}*/ vel) {
       ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
       : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
   // use uid to track el's identity, only for debugging purposes
-  setAttribute(el, UID, uid++)
+  if (uidAttrName) setAttribute(el, uidAttrName, currentUid++)
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
   el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
   // @ts-ignore let it crash if oncreate is not function

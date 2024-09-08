@@ -132,9 +132,9 @@ const view = div({ id: 'root' }, [
 mount('#app', view)
 ```
 
-### `mount(element_selector, view)`
+### `mount(element_selector, view, [options])`
 
-Mount the view onto DOM.
+Mount the view onto DOM. Examples already shown above. See below for details of optional `options`
 
 ## Advanced API
 
@@ -199,6 +199,34 @@ mount('#app', view)
 ```
 
 NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element keeps alive forever and keeps removing more and more new children into cache, the removed children cannot be garbage collected.
+
+### `UID_ATTR_NAME`
+
+`mount` can accept a third paramter `options` to configure extra behaviors. If options has a key `[UID_ATTR_NAME]`, which is a unique symbol, then each DOM element created by `mount` will have a unique HTML attribute to identify itself. This is useful for debugging purposes, for example, checking if smart children updating or caching is working.
+
+```js
+import { mount, tags, UID_ATTR_NAME } from '../../hyper-arrow.js'
+
+const { div } = tags.html
+
+const view = div(div('a'), div('b'), div(div('c'), div('d')), div('e'))
+
+mount('#app', view, { [UID_ATTR_NAME]: 'uid' })
+```
+
+will generate:
+
+```html
+<div uid="0">
+  <div uid="1">a</div>
+  <div uid="2">b</div>
+  <div uid="3">
+    <div uid="4">c</div>
+    <div uid="5">d</div>
+  </div>
+  <div uid="6">e</div>
+</div>
+```
 
 ### `isReactive(object)`
 

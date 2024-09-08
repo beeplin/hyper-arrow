@@ -9,32 +9,34 @@ export class VEl {
     3: VNode[];
 }
 /** mount virtual element to DOM */
-export function mount(selector: string, vel: VEl): void;
+export function mount(selector: string, vel: VEl, options?: {
+    [k: symbol | null]: string;
+}): void;
 /**
- * run watchFn() once, and whenever watchFn's ROPAs change,
- * auto rerun watchFn(), and run effectFn(watchFn()) if effectFn provided
+ * run fn() once, and when triggered, rerun fn(), or effectFn(fn()) if has effectFn
  * @template F
- * @param {F extends (() => any) ? F : never} watchFn
+ * @param {F extends (() => any) ? F : never} fn
  * @param {((a: ReturnType<F extends (() => any) ? F : never>) => any)=} effectFn
- * @returns {() => void} fn to stop watchFn from rerunning by removing it from deps
+ * @returns {() => void} function to stop fn rerunning by removing it from faci2ropa
  */
-export function watch<F>(watchFn: F extends (() => any) ? F : never, effectFn?: ((a: ReturnType<F extends (() => any) ? F : never>) => any) | undefined): () => void;
+export function watch<F>(fn: F extends (() => any) ? F : never, effectFn?: ((a: ReturnType<F extends (() => any) ? F : never>) => any) | undefined): () => void;
 export function reactive<T extends object>(obj: T): T;
-/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>}*/
-export const arrow2ropa: Map<Arrow, WeakMap<object, Set<string | symbol>>>;
-/** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
-export const ropa2arrow: WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>;
+/** @type {Map<Faci, WeakMap<object, Set<string | symbol>>>} */
+export const faci2ropa: Map<Faci, WeakMap<object, Set<string | symbol>>>;
+/** @type {WeakMap<object, Record<string | symbol, WeakSet<Faci>>>} */
+export const ropa2faci: WeakMap<object, Record<string | symbol, WeakSet<Faci>>>;
 export function isReactive(x: any): boolean;
-export const ON_CREATE: unique symbol;
-export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK: unique symbol;
+export const ON_CREATE: symbol;
+export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK: symbol;
+export const UID_ATTR_NAME: symbol;
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
  * @typedef {[Props, Children] | [Props, ...Child[]] | [Children] | Child[]} Args
- * @type {{[ns: string]: {[tag: string]: (...args: Args) => VEl}}}
+ * @type {{[type: string]: {[tag: string]: (...args: Args) => VEl}}}
  */
 export const tags: {
-    [ns: string]: {
+    [type: string]: {
         [tag: string]: (...args: Args) => VEl;
     };
 };
@@ -58,7 +60,7 @@ export type REl = [El, tag: string, Props, RNode[], ElType, Cache?];
  */
 export type VText = [null, txt: string, Empty, [], "text"];
 /**
- * real element
+ * real textnode
  */
 export type RText = [Text, txt: string, Empty, [], "text"];
 /**
@@ -73,9 +75,18 @@ export type RNode = REl | RText;
  * any node
  */
 export type ANode = VNode | RNode;
-export type ElArrow = [REl, key: string | number | null, Function];
-export type WatchArrow = [null, null, Function, effect?: Function];
-export type Arrow = ElArrow | WatchArrow;
+/**
+ * FACI: Function And Contextual Info
+ */
+export type ElFaci = [REl, key: string | number | null, Function];
+/**
+ * FACI: Function And Contextual Info
+ */
+export type WatchFaci = [null, null, Function, effect?: Function];
+/**
+ * FACI: Function And Contextual Info
+ */
+export type Faci = ElFaci | WatchFaci;
 export type Child = VEl | string | (() => (VEl | string));
 export type Children = Child[] | (() => Child[]);
 export type Args = [Props, Children] | [Props, ...Child[]] | [Children] | Child[];
