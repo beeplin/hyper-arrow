@@ -1,8 +1,8 @@
 import {
   CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
-  faci2ropa,
+  fawc2ropa,
   ON_CREATE,
-  ropa2faci,
+  ropa2fawc,
   tags,
 } from '../../hyper-arrow.js'
 import { ToDoListState } from './state.js'
@@ -17,14 +17,16 @@ export function view(/**@type {ToDoListState}*/ s) {
       () => small(() => s.newInput || 'via hyper-arrow'),
       button({
         id: 'log',
+        type: 'button',
         innerText: 'log deps',
         onclick() {
-          console.log(faci2ropa)
-          console.log(ropa2faci)
+          console.log(fawc2ropa)
+          console.log(ropa2fawc)
         },
       }),
       button({
         id: 'test',
+        type: 'button',
         innerText: 'auto test',
         disabled: () => !!s.editingId,
         onClick() {
@@ -49,12 +51,14 @@ export function view(/**@type {ToDoListState}*/ s) {
       }),
       button({
         id: 'add',
+        type: 'button',
         innerText: '✓',
         disabled: () => !s.newInput || !!s.editingId,
         onClick: s.createFromInput.bind(s),
       }),
       button({
         id: 'clear',
+        type: 'button',
         innerText: '✗',
         disabled: () => !s.newInput || !!s.editingId,
         onClick() {
@@ -107,6 +111,7 @@ export function view(/**@type {ToDoListState}*/ s) {
       ]),
       button({
         id: 'delete-all-completed',
+        type: 'button',
         innerText: 'delete all completed',
         disabled: () => !!s.editingId,
         onClick: s.model.deleteAllCompleted.bind(s.model),
@@ -120,6 +125,7 @@ export function view(/**@type {ToDoListState}*/ s) {
             button({
               id: () => 'up-' + item.id,
               class: 'item-up',
+              type: 'button',
               innerHTML: '⇧',
               disabled: () => !!s.editingId || i === 0,
               onClick() {
@@ -129,6 +135,7 @@ export function view(/**@type {ToDoListState}*/ s) {
             button({
               id: () => 'down-' + item.id,
               class: 'item-down',
+              type: 'button',
               innerHTML: '⇩',
               disabled: () => !!s.editingId || i === s.getShownList().length - 1,
               onClick() {
@@ -172,6 +179,7 @@ export function view(/**@type {ToDoListState}*/ s) {
             button({
               id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
               class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
+              type: 'button',
               innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
               disabled: () => !!s.editingId && s.editingId !== item.id,
               onClick() {
@@ -185,6 +193,7 @@ export function view(/**@type {ToDoListState}*/ s) {
             button({
               id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
               class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
+              type: 'button',
               innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
               disabled: () => !!s.editingId && s.editingId !== item.id,
               onClick() {

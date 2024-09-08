@@ -1,4 +1,4 @@
-# hyper-arrow
+# hyper-array
 
 super tiny front-end UI library, for educational purposes
 
@@ -7,7 +7,8 @@ super tiny front-end UI library, for educational purposes
 - No building steps, easy use via `<script module="type">` tag in plain HTML
 - Proxy-based reactivity, like [`reactive` in Vue 3](https://vuejs.org/api/reactivity-core.html#reactive) or [`makeAutoObservable` in MobX](https://mobx.js.org/observable-state.html#makeautoobservable)
 - No templates or JSX. Tag functions `div`, `button` and etc. work like [`h` in hyperscript](https://github.com/hyperhype/hyperscript) or [`h` in Vue 3](https://vuejs.org/api/render-function.html#h)
-- `=>` arrow functions within tag functions provide reactivity (that's where the name comes ;))
+- `=>` arrow functions within tag functions provide reactivity, which is where the name comes ;)
+- Smart and performant element children inserting, removing, swapping and updating, if all children has unique `id` attributes
 
 ## Get started
 
@@ -107,7 +108,7 @@ const { math, mi, mn, mfrac } = tags.mathml
 
 const model = reactive({ number: 10 })
 
-// children can be an array, instead of being the rest paramaters
+// children can be an array, instead of being the rest parameters
 const view = div({ id: 'root' }, [
   button({
     innerText: 'increase',
@@ -140,7 +141,7 @@ Mount the view onto DOM. Examples already shown above. See below for details of 
 
 ### `ON_CREATE`
 
-A unique symbol for creating special "oncreate" event handlers for DOM elements.
+A unique symbol for creating special "onCreate" event handlers for DOM elements.
 
 ```js
 import { mount, ON_CREATE, tags } from '../../hyper-arrow.js'
@@ -202,7 +203,7 @@ NOTE: this may be leaking! Currently there is no cache invalidation mechanism pr
 
 ### `UID_ATTR_NAME`
 
-`mount` can accept a third paramter `options` to configure extra behaviors. If options has a key `[UID_ATTR_NAME]`, which is a unique symbol, then each DOM element created by `mount` will have a unique HTML attribute to identify itself. This is useful for debugging purposes, for example, checking if smart children updating or caching is working.
+`mount` can accept an optional third parameter `options` to configure extra behaviors. If the options has key `[UID_ATTR_NAME]`, which is a unique symbol, then each DOM element created by `mount` will have a unique HTML attribute to identify itself. This is useful when debugging, for example, to check if smart children updating or caching works.
 
 ```js
 import { mount, tags, UID_ATTR_NAME } from '../../hyper-arrow.js'
@@ -234,16 +235,18 @@ Check if an `object` is a reactive proxy.
 
 ### `watch(fn, [effectFn])`
 
-Run `fn()` once, and whenever `fn`'s dependencies (all **reactive-object-property-access**, or **ROPA**s, happened within `fn`) change, automatically rerun `fn()`, or, if `effectFn` provided, run `effectFn(fn())`.
+Run `fn()` once, and whenever `fn`'s dependencies (see below) change, automatically rerun `fn()`, or, if `effectFn` provided, run `effectFn(fn())`.
 
-### `arrow2ropa`
+### `fawc2ropa`
 
-`Map<ArrowFunctionWithContext, WeakMap<ReactiveObject, Set<PropertyKey>>>`. Internal dependency map. `arrow2ropa` stores all **ROPA**s for each arrow function, so when any **ROPA** changes, the coresponding arrow function reruns. `fn`s of `watch`s and arrow functions within tag functions all go into `arrow2ropa`.
+`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`. For each **function-associated-with-context** (**FAWC**), `fawc2ropa` stores all the **reactive-object-property-access**es (**ROPA**s) within the function call. When any **ROPA** changes, the corresponding function of the **FAWC** reruns, and updates the correct position of the DOM with the help of its contextual info. `fn`s of `watch`s also go into `fawc2ropa`.
 
-You may never need to use `arrow2ropa` directly. Exposed only for debugging purposes.
+Keep in mind that your **FAWC**s' returned value must rely only on **ROPA**s (like `ro.p` or `ro[p]`) within the **FAWC**, not on any other things like non-reactive object, free variable bindings (like `let x = 1` inside the function), or global/closure variables.
 
-### `ropa2arrow`
+You may never need to use `fawc2ropa` directly. It's for internal use, and is exposed only for debugging purposes.
 
-`WeakMap<ReactiveObject, Record<PropertyKey, WeakSet<ArrowFunctionWithContext>>>`. For each **ROPA**, `ropa2arrow` stores all arrow functions it would trigger.
+### `ropa2fawc`
 
-`ropa2arrow` is also only for debugging purposes. It's collected but not even actually used in `hyper-arrow`'s own source code.
+`WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`. For each **ROPA**, `ropa2fawc` stores all **FAWC**s it would trigger to rerun.
+
+`ropa2fawc` is purely for debugging purposes. It's not even actually used in `hyper-arrow`'s own source code.
