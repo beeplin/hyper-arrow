@@ -1,8 +1,8 @@
 import {
-  arrow2ropa,
   CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
+  faci2ropa,
   ON_CREATE,
-  ropa2arrow,
+  ropa2faci,
   tags,
 } from '../../hyper-arrow.js'
 import { ToDoListState } from './state.js'
@@ -19,8 +19,8 @@ export function view(/**@type {ToDoListState}*/ s) {
         id: 'log',
         innerText: 'log deps',
         onclick() {
-          console.log(arrow2ropa)
-          console.log(ropa2arrow)
+          console.log(faci2ropa)
+          console.log(ropa2faci)
         },
       }),
       button({

@@ -19,13 +19,13 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
- * @typedef {{[k: string | symbol]: unknown, id?: string}} Props
+ * @typedef {{[k: string | symbol]: unknown}} Props
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {{[k: string]: never}} Empty
- * @_______ {[null, tag: string, Props, VNode[], ElType]} VEl is a class, can use instanceof
+ * @_______ {[null, tag: string, Props, VNode[], ElType]} VEl virual element (class)
  * @typedef {[El,   tag: string, Props, RNode[], ElType, Cache?]} REl real element
  * @typedef {[null, txt: string, Empty, [],     'text']} VText virtual textnode
- * @typedef {[Text, txt: string, Empty, [],     'text']} RText real element
+ * @typedef {[Text, txt: string, Empty, [],     'text']} RText real textnode
  * @typedef {VEl | VText} VNode virtual node
  * @typedef {REl | RText} RNode real node
  * @typedef {VNode | RNode} ANode any node
@@ -39,20 +39,21 @@ const TYPE = 4
 const CACHE = 5
 
 /**
- * @typedef {[REl, key: string | number | null, Function]} ElArrow
- * @typedef {[null, null, Function, effect?: Function]} WatchArrow
- * @typedef {ElArrow | WatchArrow} Arrow
+ * FACI: Function And Contextual Info
+ * @typedef {[REl, key: string | number | null, Function]} ElFaci
+ * @typedef {[null, null, Function, effect?: Function]} WatchFaci
+ * @typedef {ElFaci | WatchFaci} Faci
  */
 const REL = 0
 const FN = 2
-/** @type {Arrow?} */
-let currentArrow = null
+/** @type {Faci?} */
+let currentFaci = null
 
 // ROPA: Reactive Object Property Access
-/** @type {Map<Arrow, WeakMap<object, Set<string | symbol>>>} */
-export const arrow2ropa = new Map()
-/** @type {WeakMap<object, Record<string | symbol, WeakSet<Arrow>>>} */
-export const ropa2arrow = new WeakMap()
+/** @type {Map<Faci, WeakMap<object, Set<string | symbol>>>} */
+export const faci2ropa = new Map()
+/** @type {WeakMap<object, Record<string | symbol, WeakSet<Faci>>>} */
+export const ropa2faci = new WeakMap()
 
 const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
@@ -111,14 +112,14 @@ function createVEl(
       : [{}, args]
   for (const key of OBJECT.getOwnPropertySymbols(props)) vel[PROPS][key] = props[key]
   for (const key in props) {
-    // on* event handlers, all lowercase, have no arrow, not evaluted
+    // on* event handlers, all lowercase, not FACI, not evaluted
     if (key.startsWith('on')) vel[PROPS][toLowerCase(key)] = props[key]
     else vel[PROPS][key] = evaluate(props[key], vel, key)
   }
   // args may be tag(() => VEl), not tag(() => VEl[]).
-  // in this case arrow key should be 0, not null.
+  // in this case FACI key should be 0, not null.
   // but cannot foresee whether fn returns VEl or VEl[] before it's actually evaluted
-  // so the wrong arrow key (null) must be handled later in reactive/set
+  // so the wrong FACI key (null) must be handled later in reactive/set
   const children =
     isArray(x) && x[LENGTH] === 1 && (typeof x[0] === 'function' || isArray(x[0]))
       ? x[0]
@@ -152,7 +153,7 @@ function createREl(/**@type {VEl}*/ vel) {
       : vel[TYPE] === 'svg'
       ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
       : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
-  // use uid to track el's identity for debugging purpose
+  // use uid to track el's identity, only for debugging purposes
   setAttribute(el, UID, uid++)
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
   el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
@@ -192,27 +193,26 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
  * @template F
  * @param {F extends (() => any) ? F : never} fn
  * @param {((a: ReturnType<F extends (() => any) ? F : never>) => any)=} effectFn
- * @returns {() => void} function to stop fn rerunning by removing it from arrow2ropa
+ * @returns {() => void} function to stop fn rerunning by removing it from faci2ropa
  */
 export function watch(fn, effectFn) {
   evaluate(fn, null, null, effectFn)
   return () => {
-    for (const arrow of arrow2ropa.keys())
-      if (arrow[FN] === fn) arrow2ropa.delete(arrow)
+    for (const faci of faci2ropa.keys()) if (faci[FN] === fn) faci2ropa.delete(faci)
   }
 }
 
 /**
- * create a new arrow with contextual info and run fn within it, if fn is function
+ * create a new FACI and run fn with it, if fn is function
  * @type {(fn: unknown, vel: ?VEl, k: ?string|number, effect?: Function) => any}
  */
 function evaluate(fn, vel, key, effect) {
   if (typeof fn !== 'function') return fn
   // @ts-ignore ok. ticky type coercion. vel will become rel after createVEl()
   const /**@type {REl}*/ rel = vel
-  currentArrow = rel ? [rel, key, fn] : [null, null, fn, effect]
+  currentFaci = rel ? [rel, key, fn] : [null, null, fn, effect]
   const result = fn()
-  currentArrow = null
+  currentFaci = null
   return result
 }
 
@@ -226,23 +226,23 @@ export function reactive(obj) {
       const result = REFLECT.get(obj, prop)
       // would throw if proxying function.prototype, so skip it
       if (typeof obj === 'function' && prop === 'prototype') return result
-      // collect ROPAs for current arrow
-      if (currentArrow) {
+      // collect current ROPA for current FACI
+      if (currentFaci) {
         // console.log('--get--')
-        // console.log(currentArrow[0]?.[TAG], currentArrow[1], currentArrow[2])
+        // console.log(currentFaci)
         // console.log(obj, prop)
-        if (!arrow2ropa.has(currentArrow)) arrow2ropa.set(currentArrow, new WeakMap())
-        const ropas = arrow2ropa.get(currentArrow)
+        if (!faci2ropa.has(currentFaci)) faci2ropa.set(currentFaci, new WeakMap())
+        const ropas = faci2ropa.get(currentFaci)
         if (ropas) {
           if (!ropas.has(obj)) ropas.set(obj, new Set())
           ropas.get(obj)?.add(prop)
         }
-        // build ropa2arrow only for debugging purpose
-        if (!ropa2arrow.has(obj)) ropa2arrow.set(obj, OBJECT.create(null))
-        const props = ropa2arrow.get(obj)
+        // collect current FACI for current ROPA, only for debugging purposes
+        if (!ropa2faci.has(obj)) ropa2faci.set(obj, OBJECT.create(null))
+        const props = ropa2faci.get(obj)
         if (props) {
           if (!(prop in props)) props[prop] = new WeakSet()
-          props[prop].add(currentArrow)
+          props[prop].add(currentFaci)
         }
       }
       return reactive(result)
@@ -252,12 +252,12 @@ export function reactive(obj) {
       const result = REFLECT.set(obj, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) return result
-      for (const [arrow, ropas] of arrow2ropa.entries())
+      for (const [faci, ropas] of faci2ropa.entries())
         if (ropas.get(obj)?.has(prop)) {
-          const [rel, key, fn, effect] = arrow
-          currentArrow = arrow
+          const [rel, key, fn, effect] = faci
+          currentFaci = faci
           const value = fn()
-          currentArrow = null
+          currentFaci = null
           // console.log('--set--')
           // console.log(obj, prop, oldValue, newValue)
           // console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
@@ -271,10 +271,10 @@ export function reactive(obj) {
             (key === null && (typeof value === 'string' || value instanceof VEl))
           ) {
             const index = key ?? 0
-            removeArrowsInRNodeFromDeps(rel[CHILDREN][index])
+            removeFacisInRNodeFromDeps(rel[CHILDREN][index])
             updateChild(rel, index, createVNode(value))
           } else if (key === null) {
-            rel[CHILDREN].map(removeArrowsInRNodeFromDeps)
+            rel[CHILDREN].map(removeFacisInRNodeFromDeps)
             updateChildren(rel, value.map(createVNode))
           } else {
             setProp(rel[NODE], key, value)
@@ -286,20 +286,20 @@ export function reactive(obj) {
       const result = REFLECT.deleteProperty(obj, prop)
       // console.log('--delete--')
       // console.log(obj, prop)
-      for (const ropas of arrow2ropa.values()) ropas.get(obj)?.delete(prop)
-      delete ropa2arrow.get(obj)?.[prop]
+      for (const ropas of faci2ropa.values()) ropas.get(obj)?.delete(prop)
+      delete ropa2faci.get(obj)?.[prop]
       return result
     },
   })
 }
 
-function removeArrowsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-  for (const arrow of arrow2ropa.keys())
-    if (arrowIsInRNode(arrow, rnode)) arrow2ropa.delete(arrow)
+function removeFacisInRNodeFromDeps(/**@type {RNode}*/ rnode) {
+  for (const faci of faci2ropa.keys())
+    if (faciIsInRNode(faci, rnode)) faci2ropa.delete(faci)
 }
 
-function arrowIsInRNode(/**@type {Arrow}*/ arrow, /**@type {RNode}*/ rnode) {
-  return arrow[REL] && rnode[NODE].contains(arrow[REL]?.[NODE])
+function faciIsInRNode(/**@type {Faci}*/ faci, /**@type {RNode}*/ rnode) {
+  return faci[REL] && rnode[NODE].contains(faci[REL]?.[NODE])
 }
 
 function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
@@ -390,19 +390,21 @@ function insertChild(
   el.insertBefore(node, el.childNodes.item(index))
   rel[CHILDREN].splice(index, 0, newRNode)
   // already brought out, so remove from cache
-  if (rel[CACHE] && newRNode[PROPS].id) delete rel[CACHE][newRNode[PROPS].id]
+  // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can ceoerce
+  delete rel[CACHE]?.[newRNode[PROPS].id]
 }
 
 function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
   // move into cache
-  if (rel[CACHE] && rnode[PROPS].id) rel[CACHE][rnode[PROPS].id] = rnode
+  // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can ceoerce
+  if (rel[CACHE]) rel[CACHE][rnode[PROPS].id] = rnode
   return rnode
 }
 
 function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
-  const ids = anodes.map((vn) => vn[PROPS].id).filter((id) => typeof id === 'string')
+  const ids = anodes.map((an) => an[PROPS].id).filter((id) => typeof id === 'string')
   return ids[LENGTH] === anodes[LENGTH] && ids[LENGTH] === new Set(ids).size
     ? ids
     : null

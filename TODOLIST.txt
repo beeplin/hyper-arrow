@@ -1,12 +1,12 @@
 ✔ const @done(24-08-18 09:49)
 ✔ export deps @done(24-08-18 09:49)
 ✔ simplest example @done(24-08-18 12:08)
-✘ reverse deps @cancelled(24-08-18 12:09)
+✔ reverse deps @done(24-09-08 08:44)
 ✔ support ...args for children @done(24-08-18 14:19)
 ✔ children => textContent / innerText @done(24-08-29 20:47)
 ✔ attr 嵌套设置 @done(24-08-29 21:39)
 ✔ context 改名 arrow @done(24-08-29 22:11)
-✘ arrow 类型 union 化 @cancelled(24-08-29 22:23)
+✔ arrow 类型 union 化 @done(24-09-08 08:45)
 ✔ h 返回值 vel @done(24-08-30 00:13)
 ✔ 复用 children 已有元素 @done(24-09-02 01:24)
 ✔ 根据 key 顺序智能更新 children @done(24-09-02 21:07)
@@ -14,4 +14,5 @@
 ✔ 区分 VNnode RNode @done(24-09-05 22:03)
 ✔ HChildren 支持非数组 @done(24-09-06 01:28)
 ☐ 可配置 cache 上限
-☐ unsetProp prop->attr 时，支持 camel 转 kebab
+☐ unsetProp prop->attr 时支持 camel 转 kebab
+✔ arrow->faci @done(24-09-08 09:26)
