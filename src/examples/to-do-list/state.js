@@ -1,4 +1,4 @@
-import { ToDoItem, ToDoList } from './model.js'
+import { ToDoList } from './model.js'
 
 export class ToDoListState {
   newInput = ''
@@ -47,12 +47,17 @@ export class ToDoListState {
     // this.model.list[i] = this.model.list[j]
     // this.model.list[j] = x
 
-    // avoid duplicate ids and can smart update DOM
-    let x = new ToDoItem(-1, '', false)
-    let y = this.model.list[i]
-    this.model.list[i] = x
-    x = this.model.list[j]
-    this.model.list[j] = y
-    this.model.list[i] = x
+    // // avoid duplicate ids and can smart update DOM
+    // let x = new ToDoItem(-1, '', false)
+    // let y = this.model.list[i]
+    // this.model.list[i] = x
+    // x = this.model.list[j]
+    // this.model.list[j] = y
+    // this.model.list[i] = x
+
+    // best solution
+    this.model.list = this.model.list.map(
+      (_, index) => this.model.list[index === i ? j : index === j ? i : index],
+    )
   }
 }

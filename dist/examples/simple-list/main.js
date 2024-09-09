@@ -26,6 +26,7 @@ const view = div(
 }, 
 // children in the rest parameters
 div({ style: 'margin: 4px' }, 'hyper-arrow demo'), input({
+    type: 'text',
     // arrow functions make properties reactive
     value: () => model.input,
     class: () => (model.input ? 'class3' : 'class4'),
@@ -42,6 +43,7 @@ div({ style: 'margin: 4px' }, 'hyper-arrow demo'), input({
             model.add();
     },
 }), button({
+    type: 'button',
     style: 'margin: 4px',
     onClick() {
         model.add();
@@ -50,6 +52,7 @@ div({ style: 'margin: 4px' }, 'hyper-arrow demo'), input({
 // can also using 'innerText' to set text as single child
 // just like `el.innerText = 'xxx'` in DOM API
 button({
+    type: 'button',
     innerText: 'clear all',
     style: () => 'margin: 4px;',
     onClick() {
@@ -62,3 +65,7 @@ ul(
 () => model.list.map((item) => li(item))));
 // mount your view to the page and go!
 mount('#app', view);
+model.input = 'aaa';
+model.add();
+model.input = 'bbb';
+model.add();

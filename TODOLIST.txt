@@ -13,6 +13,8 @@
 ✔ keep-alive @done(24-09-02 17:56)
 ✔ 区分 VNnode RNode @done(24-09-05 22:03)
 ✔ HChildren 支持非数组 @done(24-09-06 01:28)
-☐ 可配置 cache 上限
+☐ 可配置 cache 上限 @started(24-09-08 16:33)
 ☐ unsetProp prop->attr 时支持 camel 转 kebab
 ✔ arrow->faci @done(24-09-08 09:26)
+☐ debug log
+☐ try uglifyjs mangle-props, use class/object, not array

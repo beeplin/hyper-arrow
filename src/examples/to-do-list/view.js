@@ -1,5 +1,5 @@
 import {
-  CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
+  CACHE_REMOVED_CHILDREN,
   fawc2ropa,
   ON_CREATE,
   ropa2fawc,
@@ -14,7 +14,7 @@ export function view(/**@type {ToDoListState}*/ s) {
   return div({ id: 'root' }, [
     div({ id: 'title-container' }, [
       label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
-      () => small(() => s.newInput || 'via hyper-arrow'),
+      () => small({ id: 'small' }, () => s.newInput || 'via hyper-arrow'),
       button({
         id: 'log',
         type: 'button',
@@ -117,92 +117,90 @@ export function view(/**@type {ToDoListState}*/ s) {
         onClick: s.model.deleteAllCompleted.bind(s.model),
       }),
     ]),
-    ul(
-      { id: 'list', style: 'padding: 0', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true },
-      () =>
-        s.getShownList().map((item, i) =>
-          li({ id: () => 'li-' + item.id, class: 'item-container' }, [
-            button({
-              id: () => 'up-' + item.id,
-              class: 'item-up',
-              type: 'button',
-              innerHTML: '⇧',
-              disabled: () => !!s.editingId || i === 0,
-              onClick() {
-                s.swap(i - 1, i)
-              },
-            }),
-            button({
-              id: () => 'down-' + item.id,
-              class: 'item-down',
-              type: 'button',
-              innerHTML: '⇩',
-              disabled: () => !!s.editingId || i === s.getShownList().length - 1,
-              onClick() {
-                s.swap(i, i + 1)
-              },
-            }),
-            input({
-              id: () => 'checkbox-' + item.id,
-              class: 'checkbox',
-              type: 'checkbox',
-              checked: () => item.done,
-              disabled: () => !!s.editingId,
-              onInput() {
-                s.model.toggle(item.id)
-              },
-            }),
-            () =>
-              s.isEditing(item.id)
-                ? input({
-                    id: () => 'edit-' + item.id,
-                    class: 'item-input',
-                    type: 'text',
-                    value: () => s.editInput,
-                    onInput(/**@type {any}*/ e) {
-                      s.editInput = e.target.value
-                    },
-                    onKeyDown(/**@type {any}*/ e) {
-                      if (e.keyCode === 13) s.updateItemText(item.id, s.editInput)
-                    },
-                    [ON_CREATE](/**@type {any}*/ el) {
-                      requestAnimationFrame(() => el.select())
-                    },
-                  })
-                : label({
-                    id: () => 'label-' + item.id,
-                    class: () => 'item-label' + (item.done ? ' done' : ''),
-                    for: () => 'checkbox-' + item.id,
-                    innerText: () => item.text,
-                    $minWidth: '150px',
-                  }),
-            button({
-              id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
-              class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
-              type: 'button',
-              innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
-              disabled: () => !!s.editingId && s.editingId !== item.id,
-              onClick() {
-                if (s.editingId === item.id) s.updateItemText(item.id, s.editInput)
-                else {
-                  s.editingId = item.id
-                  s.editInput = item.text
-                }
-              },
-            }),
-            button({
-              id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
-              class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
-              type: 'button',
-              innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
-              disabled: () => !!s.editingId && s.editingId !== item.id,
-              onClick() {
-                if (s.editingId === item.id) s.editingId = null
-                else s.model.delete(item.id)
-              },
-            }),
-          ]),
-        ),
+    ul({ id: 'ul', style: 'padding: 0', [CACHE_REMOVED_CHILDREN]: 10 }, () =>
+      s.getShownList().map((item, i) =>
+        li({ id: () => 'li-' + item.id, class: 'item-container' }, [
+          button({
+            id: () => 'up-' + item.id,
+            class: 'item-up',
+            type: 'button',
+            innerHTML: '⇧',
+            disabled: () => !!s.editingId || i === 0,
+            onClick() {
+              s.swap(i - 1, i)
+            },
+          }),
+          button({
+            id: () => 'down-' + item.id,
+            class: 'item-down',
+            type: 'button',
+            innerHTML: '⇩',
+            disabled: () => !!s.editingId || i === s.getShownList().length - 1,
+            onClick() {
+              s.swap(i, i + 1)
+            },
+          }),
+          input({
+            id: () => 'checkbox-' + item.id,
+            class: 'checkbox',
+            type: 'checkbox',
+            checked: () => item.done,
+            disabled: () => !!s.editingId,
+            onInput() {
+              s.model.toggle(item.id)
+            },
+          }),
+          () =>
+            s.isEditing(item.id)
+              ? input({
+                  id: () => 'edit-' + item.id,
+                  class: 'item-input',
+                  type: 'text',
+                  value: () => s.editInput,
+                  onInput(/**@type {any}*/ e) {
+                    s.editInput = e.target.value
+                  },
+                  onKeyDown(/**@type {any}*/ e) {
+                    if (e.keyCode === 13) s.updateItemText(item.id, s.editInput)
+                  },
+                  [ON_CREATE](/**@type {any}*/ el) {
+                    requestAnimationFrame(() => el.select())
+                  },
+                })
+              : label({
+                  id: () => 'label-' + item.id,
+                  class: () => 'item-label' + (item.done ? ' done' : ''),
+                  for: () => 'checkbox-' + item.id,
+                  innerText: () => item.text,
+                  $minWidth: '150px',
+                }),
+          button({
+            id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
+            class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
+            type: 'button',
+            innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
+            disabled: () => !!s.editingId && s.editingId !== item.id,
+            onClick() {
+              if (s.editingId === item.id) s.updateItemText(item.id, s.editInput)
+              else {
+                s.editingId = item.id
+                s.editInput = item.text
+              }
+            },
+          }),
+          button({
+            id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
+            class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
+            type: 'button',
+            innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
+            disabled: () => !!s.editingId && s.editingId !== item.id,
+            onClick() {
+              if (s.editingId === item.id) s.editingId = null
+              else s.model.delete(item.id)
+            },
+          }),
+        ]),
+      ),
     ),
   ])
 }

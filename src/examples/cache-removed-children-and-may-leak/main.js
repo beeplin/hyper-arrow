@@ -1,5 +1,5 @@
 import {
-  CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
+  CACHE_REMOVED_CHILDREN,
   mount,
   reactive,
   tags,
@@ -18,7 +18,7 @@ const view = div(
       model.list = Array.from({ length }, (_, i) => i.toString())
     },
   }),
-  ul({ id: 'list', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () =>
+  ul({ id: 'list', [CACHE_REMOVED_CHILDREN]: 100 }, () =>
     model.list.map((item) => li({ id: () => item }, item.toString())),
   ),
 )

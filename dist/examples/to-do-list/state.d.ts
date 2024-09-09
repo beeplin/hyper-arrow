@@ -6,11 +6,10 @@ export class ToDoListState {
     editInput: string;
     /**@type {ToDoList}*/ model: ToDoList;
     createFromInput(): number | undefined;
-    getShownList(): ToDoItem[];
+    getShownList(): import("./model.js").ToDoItem[];
     isEditing(id: number): boolean;
     updateItemText(id: number, text: string): void;
     swap(i: number, j: number): void;
 }
 import { ToDoList } from './model.js';
-import { ToDoItem } from './model.js';
 //# sourceMappingURL=state.d.ts.map

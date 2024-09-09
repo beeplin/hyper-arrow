@@ -40,7 +40,9 @@ export class ToDoList {
 
   delete(/**@type {number}*/ id) {
     const index = this.getIndexById(id)
-    if (index !== -1) this.list.splice(index, 1)
+    // TODO: splice 会导致许多无效列表更新
+    // if (index !== -1) this.list.splice(index, 1)
+    this.list = this.list.filter((item) => item.id !== id)
   }
 
   deleteAllCompleted() {

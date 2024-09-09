@@ -5,8 +5,10 @@
   "main": "dist/hyper-arrow.js",
   "module": "dist/hyper-arrow.js",
   "scripts": {
-    "build": "shx rm -rf dist && shx cp -r src dist && tsc && uglifyjs dist/hyper-arrow.js --compress --mangle --source-map --module --output dist/hyper-arrow.min.js",
-    "prepublishOnly": "npm run build"
+    "uglify": "uglifyjs dist/hyper-arrow.js -o dist/hyper-arrow.js --config-file uglifyjs.json",
+    "build": "tsc && npm run uglify",
+    "clean": "shx rm -rf dist && shx cp -r src dist",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "repository": {
     "type": "git",

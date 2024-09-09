@@ -1,9 +1,10 @@
 // @ts-check
 
+const DEBUG = true
+
 // reassign built-in objects and methods for better minification
 const LENGTH = 'length'
 const TEXT = 'text'
-const SYMBOL = Symbol
 const OBJECT = Object
 const PROXY = Proxy
 const REFLECT = Reflect
@@ -20,13 +21,18 @@ const removeAttribute = (el, k) => el.removeAttribute(k)
 /**
  * @typedef {'html' | 'svg' | 'mathml'} ElType
  * @typedef {HTMLElement | SVGElement | MathMLElement} El
- * @typedef {{[k: string | symbol]: unknown}} Props
- * @typedef {{[k: string]: RNode}} Cache
+ * @typedef {string} Tag
+ * @typedef {string} Txt
+ * @typedef {{[k: string | symbol]: unknown,
+ *            [CACHE_REMOVED_CHILDREN]?: number,
+ *            [ON_CREATE]?: (el: Element) => void}} Props
  * @typedef {{[k: string]: never}} Empty
- * @_______ {[null, tag: string, Props, VNode[], ElType]} VEl virtual element (class)
- * @typedef {[El,   tag: string, Props, RNode[], ElType, Cache?]} REl real element
- * @typedef {[null, txt: string, Empty, [],     'text']} VText virtual text node
- * @typedef {[Text, txt: string, Empty, [],     'text']} RText real text node
+ * @typedef {{[k: string]: RNode}} Cache
+ * @typedef {number} CacheSize
+ * @_______ {[null, Tag, Props, VNode[], ElType]} VEl virtual element (class)
+ * @typedef {[El,   Tag, Props, RNode[], ElType, Cache?, CacheSize?]} REl real element
+ * @typedef {[null, Txt, Empty, [],     'text']} VText virtual text node
+ * @typedef {[Text, Txt, Empty, [],     'text']} RText real text node
  * @typedef {VEl | VText} VNode virtual node
  * @typedef {REl | RText} RNode real node
  * @typedef {VNode | RNode} ANode any node
@@ -38,6 +44,7 @@ const PROPS = 2
 const CHILDREN = 3
 const TYPE = 4
 const CACHE = 5
+const CACHE_SIZE = 6
 
 /** @typedef {string | number | null} Key */
 /** @template F @typedef {F extends () => any ? F : never} ZIF Zero Input Function */
@@ -61,14 +68,14 @@ export const fawc2ropa = new Map()
 export const ropa2fawc = new WeakMap()
 
 const BRAND_KEY = '__hyper_arrow__'
-const BRAND_SYMBOL = SYMBOL(BRAND_KEY)
+const BRAND_SYMBOL = Symbol(BRAND_KEY)
 export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
 
-export const ON_CREATE = SYMBOL()
-export const CACHE_REMOVED_CHILDREN_AND_MAY_LEAK = SYMBOL()
-export const UID_ATTR_NAME = SYMBOL()
+export const ON_CREATE = Symbol()
+export const CACHE_REMOVED_CHILDREN = Symbol()
+export const UID_ATTR_NAME = Symbol()
 
-let /**@type {string?}*/ uidAttrName = null
+let /**@type {string | undefined}*/ uidAttrName
 let currentUid = 0
 
 const /**@type {{[k:string]: string}}*/ prop2attr = {
@@ -152,11 +159,24 @@ function createVText(/**@type {string}*/ txt) {
 export function mount(
   /**@type {string}*/ selector,
   /**@type {VEl}*/ vel,
-  /**@type {{[k:UID_ATTR_NAME?]: string}}*/ options = {},
+  /**@type {{[UID_ATTR_NAME]?: string}}*/ options = {},
 ) {
   uidAttrName = options[UID_ATTR_NAME]
   // @ts-ignore let it crash if selector not found
-  DOCUMENT.querySelector(selector).append(createREl(vel)[NODE])
+  appendVNodes(DOCUMENT.querySelector(selector), [vel])
+}
+
+function appendVNodes(/**@type {El}*/ el, /**@type {VNode[]}*/ vnodes) {
+  el.append(...vnodes.map(createRNode).map((rnode) => rnode[NODE]))
+  if (DEBUG) {
+    for (const c of Array.from(el.children)) {
+      console.log('append', print(el), '<', print(c))
+    }
+  }
+}
+
+function createRNode(/**@type {VNode}*/ vnode) {
+  return vnode[TYPE] === TEXT ? createRText(vnode) : createREl(vnode)
 }
 
 function createREl(/**@type {VEl}*/ vel) {
@@ -166,21 +186,21 @@ function createREl(/**@type {VEl}*/ vel) {
       : vel[TYPE] === 'svg'
       ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
       : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
+  if (DEBUG) console.group('create', print(vel))
   // use uid to track el's identity, only for debugging purposes
   if (uidAttrName) setAttribute(el, uidAttrName, currentUid++)
   for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
-  el.append(...vel[CHILDREN].map(createRNode).map((rnode) => rnode[NODE]))
+  if (DEBUG) console.groupEnd()
+  appendVNodes(el, vel[CHILDREN])
   // @ts-ignore let it crash if onCreate is not function
   vel[PROPS][ON_CREATE]?.(el)
   return convertVNodeToRNode(vel, el)
 }
 
-function createRNode(/**@type {VNode}*/ vnode) {
-  return vnode[TYPE] === TEXT ? createRText(vnode) : createREl(vnode)
-}
-
 function createRText(/**@type {VText}*/ vtext) {
-  return convertVNodeToRNode(vtext, DOCUMENT.createTextNode(vtext[TXT]))
+  const node = DOCUMENT.createTextNode(vtext[TXT])
+  if (DEBUG) console.log('create', print(node))
+  return convertVNodeToRNode(vtext, node)
 }
 
 /**
@@ -193,9 +213,12 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
   rnode[NODE] = node
   const hasCache =
     rnode instanceof VEl &&
-    rnode[PROPS][CACHE_REMOVED_CHILDREN_AND_MAY_LEAK] &&
+    typeof rnode[PROPS][CACHE_REMOVED_CHILDREN] === 'number' &&
     getFullUniqueIds(rnode[CHILDREN])
-  if (hasCache) rnode[CACHE] = {}
+  if (hasCache) {
+    rnode[CACHE] = {}
+    rnode[CACHE_SIZE] = 0
+  }
   // @ts-ignore ok
   node[BRAND_KEY] = rnode
   return rnode
@@ -236,9 +259,11 @@ export function reactive(obj) {
       if (typeof obj === 'function' && prop === 'prototype') return result
       // collect current ROPA for current FAWC
       if (currentFawc) {
-        // console.log('--get--')
-        // console.log(currentFawc)
-        // console.log(obj, prop)
+        if (DEBUG) {
+          const [vel, key, zif] = currentFawc
+          console.log('get', obj, prop)
+          console.log('   ', vel ? print(vel) : '[watch]', key, zif)
+        }
         if (!fawc2ropa.has(currentFawc)) fawc2ropa.set(currentFawc, new WeakMap())
         const ropas = fawc2ropa.get(currentFawc)
         if (ropas) {
@@ -262,14 +287,23 @@ export function reactive(obj) {
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) return result
       for (const [fawc, ropas] of fawc2ropa.entries())
         if (ropas.get(obj)?.has(prop)) {
-          const value = runFawc(fawc)
-          const [vel, key, _, effect] = fawc
+          const [vel, key, zif, effect] = fawc
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
           const /**@type {REl}*/ rel = vel
-          // console.log('--set--')
-          // console.log(obj, prop, oldValue, newValue)
-          // console.log(rel?.[TAG], rel?.[PROPS], rel?.[CHILDREN])
-          // console.log(key, value)
+          if (DEBUG)
+            console.groupCollapsed(
+              'set',
+              obj,
+              prop,
+              oldValue,
+              newValue,
+              '\n     ',
+              vel ? print(rel[NODE]) : '[watch]',
+              key,
+              zif,
+            )
+          const value = runFawc(fawc)
+          if (DEBUG) console.groupEnd()
           if (!vel) {
             effect?.(value)
           } else if (
@@ -292,8 +326,7 @@ export function reactive(obj) {
     },
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
-      // console.log('--delete--')
-      // console.log(obj, prop)
+      if (DEBUG) console.log('del', obj, prop)
       for (const ropas of fawc2ropa.values()) ropas.get(obj)?.delete(prop)
       delete ropa2fawc.get(obj)?.[prop]
       return result
@@ -397,18 +430,31 @@ function insertChild(
   const /**@type {RNode}*/ newRNode = newANode[NODE] ? newANode : createRNode(newANode)
   const node = newRNode[NODE]
   el.insertBefore(node, el.childNodes.item(index))
+  if (DEBUG) console.log('insert', print(el), index, print(node))
   rel[CHILDREN].splice(index, 0, newRNode)
   // already brought out, so remove from cache
-  // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-  delete rel[CACHE]?.[newRNode[PROPS].id]
+  if (rel[CACHE] && rel[CACHE_SIZE]) {
+    // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
+    delete rel[CACHE][newRNode[PROPS].id]
+    rel[CACHE_SIZE]-- // FIXME: duplicate id
+  }
 }
 
 function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
+  if (DEBUG) console.log('remove', print(rel[NODE]), index, print(rnode[NODE]))
   // move into cache
-  // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-  if (rel[CACHE]) rel[CACHE][rnode[PROPS].id] = rnode
+  if (
+    rel[CACHE] &&
+    rel[CACHE_SIZE] != null &&
+    rel[PROPS][CACHE_REMOVED_CHILDREN] != null &&
+    rel[CACHE_SIZE] < rel[PROPS][CACHE_REMOVED_CHILDREN]
+  ) {
+    // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
+    rel[CACHE][rnode[PROPS].id] = rnode
+    rel[CACHE_SIZE]++
+  }
   return rnode
 }
 
@@ -428,23 +474,49 @@ function setProp(
   // getter/setter: on* aria* autofocus id className classList style innerHTML ...
   // getter only: client* scrollTop tagName dataset attributes children firstChild ...
   // plain value: blur() focus() after() append() ... (all methods)
-  // @ts-ignore ok, guaranteed by getObjectPropertyType having 'set'
-  if (getObjectPropertyType(el, key).includes('set')) el[key] = value
-  // @ts-ignore ok. style.setProperty can coerce
-  else if (key[0] === '$') el.style.setProperty(removeFirst(key), value)
-  else if (key[0] === '_') setAttribute(el, removeFirst(key), value)
-  else setAttribute(el, key, value)
+  let type
+  if (getObjectPropertyType(el, key).includes('set')) {
+    // @ts-ignore ok, guaranteed by getObjectPropertyType having 'set'
+    el[key] = value
+    type = '+ prop'
+  } else if (key[0] === '$') {
+    // @ts-ignore ok. style.setProperty can coerce
+    el.style.setProperty(removeFirst(key), value)
+    type = '+style'
+  } else if (key[0] === '_') {
+    setAttribute(el, removeFirst(key), value)
+    type = '+ attr'
+  } else {
+    setAttribute(el, key, value)
+    type = '+ attr'
+  }
+  if (DEBUG)
+    console.log(
+      type,
+      print(el),
+      key + ' = ' + (typeof value === 'function' ? 'func' : value),
+    )
 }
 
 function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   // remove attr and IDL prop. most IDL props can also be unset by lowercasing into attr
-  if (toLowerCase(key) in el.attributes) removeAttribute(el, key)
-  // special cases for IDL prop naming
-  else if (key in prop2attr) removeAttribute(el, prop2attr[key])
-  else if (key[0] === '_') removeAttribute(el, removeFirst(key))
-  else if (key[0] === '$') el.style.removeProperty(removeFirst(key))
-  // TODO: test more cases for how to unset arbitrary non-attr props
-  else throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
+  let type
+  if (toLowerCase(key) in el.attributes) {
+    removeAttribute(el, key)
+    type = '- attr'
+    // special cases for IDL prop naming
+  } else if (key in prop2attr) {
+    removeAttribute(el, prop2attr[key])
+    type = '- attr'
+  } else if (key[0] === '_') {
+    removeAttribute(el, removeFirst(key))
+    type = '- attr'
+  } else if (key[0] === '$') {
+    el.style.removeProperty(removeFirst(key))
+    type = '-style'
+    // TODO: test more cases for how to unset arbitrary non-attr props
+  } else throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
+  if (DEBUG) console.log(type, print(el), key)
 }
 
 function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
@@ -457,4 +529,11 @@ function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ 
   const proto = OBJECT.getPrototypeOf(object)
   if (!proto) return []
   return getObjectPropertyType(proto, prop)
+}
+
+function print(/**@type {Element|Text|VEl}*/ x) {
+  if (x instanceof Element) return x.localName + ' #' + x.id
+  if (x instanceof Text) return '"' + x.data + '"'
+  const id = x[PROPS].id
+  return x[TAG] + ' #' + id
 }

@@ -1,0 +1,12 @@
+{
+  "compress": {
+    "drop_console": true,
+    "hoist_funs": true,
+    "passes": 3,
+    "unsafe": true,
+    "unused": true
+  },
+  "mangle": true,
+  "module": true,
+  "warnings": true
+}
