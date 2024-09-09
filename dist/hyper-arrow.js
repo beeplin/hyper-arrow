@@ -1,82 +1,43 @@
 function c(e, t, n, r) {
-  ;(this[$] = e), (this[E] = t), (this[O] = n), (this[W] = r)
+  ;(this[W] = e), (this[A] = t), (this[E] = n), (this[O] = r)
 }
 function p(e) {
   return 'string' == typeof e ? [null, e, {}, [], S] : e
 }
-function e(e, t, n = {}) {
-  ;(z = n[G]), l(u.querySelector(e), [t])
-}
-function l(e, t) {
-  if ((e.append(...t.map(i).map((e) => e[A])), h))
-    for (var n of Array.from(e.children));
-}
-function i(e) {
-  return (
-    e[$] === S
-      ? (e) => {
-          var t = u.createTextNode(e[o])
-          return h, a(e, t)
-        }
-      : (e) => {
-          var t,
-            n,
-            r,
-            o =
-              'html' === e[$]
-                ? u.createElement(e[E])
-                : 'svg' === e[$]
-                ? u.createElementNS('http://www.w3.org/2000/svg', e[E])
-                : u.createElementNS('http://www.w3.org/1998/Math/MathML', e[E])
-          for (r in (h, z && k(o, z, J++), e[O])) g(o, r, e[O][r])
-          return h, l(o, e[W]), null != (n = (t = e[O])[V]) && n.call(t, o), a(e, o)
-        }
-  )(e)
-}
-function a(e, t) {
-  return (
-    (e[A] = t),
-    e instanceof c &&
-      'number' == typeof e[O][n] &&
-      w(e[W]) &&
-      ((e[L] = {}), (e[T] = 0)),
-    (t[H] = e)
-  )
-}
-function r(t, e) {
+function e(t, e) {
   return (
     y([null, null, t, e]),
     () => {
-      for (var e of C.keys()) e[2] === t && C.delete(e)
+      for (var e of j.keys()) e[2] === t && j.delete(e)
     }
   )
 }
 function y(e) {
   var t,
     n = e[2]
-  return 'function' != typeof n ? n : ((t = j), (j = e), (e = n()), (j = t), e)
+  return 'function' != typeof n ? n : ((t = T), (T = e), (e = n()), (T = t), e)
 }
-function f(e) {
-  return e !== P(e) || R(e)
+function o(e) {
+  return e !== P(e) || G(e)
     ? e
     : new t(e, {
         get(e, t) {
-          var n, r, o, l, i
+          var n, r
           return (
-            t === I ||
+            t === V ||
             ((n = x.get(e, t)),
             'function' == typeof e && 'prototype' === t
               ? n
-              : (j &&
-                  (h && ([r, o, l] = j),
-                  C.has(j) || C.set(j, new WeakMap()),
-                  (i = C.get(j)) &&
-                    (i.has(e) || i.set(e, new Set()), null != (i = i.get(e))) &&
-                    i.add(t),
-                  q.has(e) || q.set(e, P.create(null)),
-                  (i = q.get(e))) &&
-                  (t in i || (i[t] = new WeakSet()), i[t].add(j)),
-                f(n)))
+              : (T &&
+                  (h,
+                  j.has(T) || j.set(T, new WeakMap()),
+                  (r = j.get(T)) &&
+                    (r.has(e) || r.set(e, new Set()), null != (r = r.get(e))) &&
+                    r.add(t),
+                  C.has(e) || C.set(e, P.create(null)),
+                  (r = C.get(e))) &&
+                  (t in r || (r[t] = new WeakSet()), r[t].add(T)),
+                o(n)))
           )
         },
         set(e, t, n) {
@@ -87,7 +48,7 @@ function f(e) {
             f = x.get(e, t),
             u = x.set(e, t, n)
           if (f !== n || (M(e) && t === b))
-            for (var [a, s] of C.entries())
+            for (var [a, s] of j.entries())
               null != (s = s.get(e)) &&
                 s.has(t) &&
                 (([s, r, o, l] = a),
@@ -98,10 +59,10 @@ function f(e) {
                 s
                   ? 'number' == typeof r ||
                     (null === r && ('string' == typeof a || a instanceof c))
-                    ? ((s = null != r ? r : 0), v(i[W][s]), d(i, s, p(a)))
+                    ? ((s = null != r ? r : 0), v(i[O][s]), d(i, s, p(a)))
                     : null === r
-                    ? (i[W].map(v), B(i, a.map(p)))
-                    : g(i[A], r, a)
+                    ? (i[O].map(v), z(i, a.map(p)))
+                    : g(i[N], r, a)
                   : null != l && l(a))
           return u
         },
@@ -111,57 +72,96 @@ function f(e) {
             o,
             l = x.deleteProperty(e, t)
           h
-          for (o of C.values()) null != (n = o.get(e)) && n.delete(t)
-          return null != (r = q.get(e)) && delete r[t], l
+          for (o of j.values()) null != (n = o.get(e)) && n.delete(t)
+          return null != (r = C.get(e)) && delete r[t], l
         },
       })
 }
 function v(e) {
-  for (var t of C.keys())
+  for (var t of j.keys())
     (n = t),
       (r = e),
-      n[F] && r[A].contains(null == (r = n[F]) ? void 0 : r[A]) && C.delete(t)
+      n[H] && r[N].contains(null == (r = n[H]) ? void 0 : r[N]) && j.delete(t)
   var n, r
 }
-function B(n, r) {
-  var t = w(n[W]),
+function r(e, t, n = {}) {
+  ;(q = n[J]), l(f.querySelector(e), [t])
+}
+function l(e, t) {
+  if ((e.append(...t.map(i).map((e) => e[N])), h))
+    for (var n of Array.from(e.children));
+}
+function i(e) {
+  return (
+    e[W] === S
+      ? (e) => {
+          var t = f.createTextNode(e[F])
+          return h, a(e, t)
+        }
+      : (e) => {
+          var t,
+            n,
+            r,
+            o =
+              'html' === e[W]
+                ? f.createElement(e[A])
+                : 'svg' === e[W]
+                ? f.createElementNS('http://www.w3.org/2000/svg', e[A])
+                : f.createElementNS('http://www.w3.org/1998/Math/MathML', e[A])
+          for (r in (h, q && u(o, q, K++), e[E])) g(o, r, e[E][r])
+          return h, l(o, e[O]), null != (n = (t = e[E])[D]) && n.call(t, o), a(e, o)
+        }
+  )(e)
+}
+function a(e, t) {
+  return (
+    (e[N] = t),
+    e instanceof c &&
+      'number' == typeof e[E][n] &&
+      w(e[O]) &&
+      ((e[$] = {}), (e[L] = 0)),
+    (t[R] = e)
+  )
+}
+function z(n, r) {
+  var t = w(n[O]),
     o = w(r)
   if (t && o) {
     for (let e = t[b] - 1; 0 <= e; e--) o.includes(t[e]) || m(n, e)
     for (let [e, t] of o.entries()) {
-      var l = n[W].findIndex((e) => e[O].id === t),
+      var l = n[O].findIndex((e) => e[E].id === t),
         i = r[e]
       ;(e === l
         ? d
-        : n[W][l]
+        : n[O][l]
         ? (s(n, e, m(n, l)), d)
-        : null != (l = n[L]) && l[t]
-        ? (s(n, e, n[L][t]), d)
+        : null != (l = n[$]) && l[t]
+        ? (s(n, e, n[$][t]), d)
         : s)(n, e, i)
     }
   } else {
     var f = r[b],
-      u = n[W][b]
+      u = n[O][b]
     for (let e = 0; e < f || e < u; e++)
       e < f && e < u ? d(n, e, r[e]) : e >= u ? s(n, e, r[e]) : m(n, u + f - 1 - e)
   }
 }
 function d(e, t, n) {
-  var r = e[W][t]
-  if (r[$] !== S && n[$] !== S && r[E] === n[E]) {
+  var r = e[O][t]
+  if (r[W] !== S && n[W] !== S && r[A] === n[A]) {
     var o,
       l,
-      i = r[A]
-    for (o in n[O]) r[O][o] !== n[O][o] && g(i, o, n[O][o])
-    for (l in r[O])
-      if (!(l in n[O])) {
+      i = r[N]
+    for (o in n[E]) r[E][o] !== n[E][o] && g(i, o, n[E][o])
+    for (l in r[E])
+      if (!(l in n[E])) {
         var f = void 0,
           f = i,
           u = l
         let e
-        if (D(u) in f.attributes) N(f, u), (e = '- attr')
-        else if (u in K) N(f, K[u]), (e = '- attr')
-        else if ('_' === u[0]) N(f, _(u)), (e = '- attr')
+        if (B(u) in f.attributes) k(f, u), (e = '- attr')
+        else if (u in Q) k(f, Q[u]), (e = '- attr')
+        else if ('_' === u[0]) k(f, _(u)), (e = '- attr')
         else {
           if ('$' !== u[0])
             throw Error(`unknown prop '${u}' to unset from <${f.nodeName}>`)
@@ -169,34 +169,34 @@ function d(e, t, n) {
         }
         h
       }
-    ;['innerText', 'innerHTML', 'textContent'].some((e) => e in n[O]) || B(r, n[W]),
-      (e[W][t] = a(n, r[A]))
+    ;['innerText', 'innerHTML', 'textContent'].some((e) => e in n[E]) || z(r, n[O]),
+      (e[O][t] = a(n, r[N]))
   } else m(e, t), s(e, t, n)
 }
 function s(e, t, n) {
-  var r = e[A],
-    n = n[A] ? n : i(n),
-    o = n[A]
+  var r = e[N],
+    n = n[N] ? n : i(n),
+    o = n[N]
   r.insertBefore(o, r.childNodes.item(t)),
     h,
-    e[W].splice(t, 0, n),
-    e[L] && e[T] && (delete e[L][n[O].id], e[T]--)
+    e[O].splice(t, 0, n),
+    e[$] && e[L] && (delete e[$][n[E].id], e[L]--)
 }
 function m(e, t) {
-  t = e[W].splice(t, 1)[0]
+  t = e[O].splice(t, 1)[0]
   return (
-    t[A].remove(),
+    t[N].remove(),
     h,
-    e[L] &&
-      null != e[T] &&
-      null != e[O][n] &&
-      e[T] < e[O][n] &&
-      ((e[L][t[O].id] = t), e[T]++),
+    e[$] &&
+      null != e[L] &&
+      null != e[E][n] &&
+      e[L] < e[E][n] &&
+      ((e[$][t[E].id] = t), e[L]++),
     t
   )
 }
 function w(e) {
-  var t = e.map((e) => e[O].id).filter((e) => 'string' == typeof e)
+  var t = e.map((e) => e[E].id).filter((e) => 'string' == typeof e)
   return t[b] === e[b] && t[b] === new Set(t).size ? t : null
 }
 function g(e, t, n) {
@@ -215,8 +215,8 @@ function g(e, t, n) {
     ? '$' === t[0]
       ? e.style.setProperty(_(t), n)
       : '_' === t[0]
-      ? k(e, _(t), n)
-      : k(e, t, n)
+      ? u(e, _(t), n)
+      : u(e, t, n)
     : (e[t] = n),
     h
 }
@@ -226,34 +226,27 @@ let h = !0,
   P = Object,
   t = Proxy,
   x = Reflect,
-  u = document,
+  f = document,
   M = Array.isArray,
   _ = (e) => e.slice(1),
-  D = (e) => e.toLowerCase(),
-  k = (e, t, n) => e.setAttribute(t, n),
-  N = (e, t) => e.removeAttribute(t),
-  A = 0,
-  E = 1,
-  o = 1,
-  O = 2,
-  W = 3,
-  $ = 4,
-  L = 5,
-  T = 6,
-  F = 0,
-  j = null,
-  C = new Map(),
-  q = new WeakMap(),
-  H = '__hyper_arrow__',
-  I = Symbol(H),
-  R = (e) => !!e[I],
-  V = Symbol(),
+  B = (e) => e.toLowerCase(),
+  u = (e, t, n) => e.setAttribute(t, n),
+  k = (e, t) => e.removeAttribute(t),
+  D = Symbol(),
   n = Symbol(),
-  G = Symbol(),
-  z,
-  J = 0,
-  K = { defaultValue: 'value', htmlFor: 'for', className: 'class' },
-  Q = new t(
+  N = 0,
+  A = 1,
+  F = 1,
+  E = 2,
+  O = 3,
+  W = 4,
+  $ = 5,
+  L = 6,
+  H = 0,
+  T = null,
+  j = new Map(),
+  C = new WeakMap(),
+  I = new t(
     {},
     {
       get: (e, n) =>
@@ -269,9 +262,9 @@ let h = !0,
                     'object' != typeof n[0] || M(n[0]) || n[0] instanceof c
                       ? [{}, n]
                       : [n[0], _(n)]
-                for (r of P.getOwnPropertySymbols(i)) l[O][r] = i[r]
+                for (r of P.getOwnPropertySymbols(i)) l[E][r] = i[r]
                 for (o in i)
-                  o.startsWith('on') ? (l[O][D(o)] = i[o]) : (l[O][o] = y([l, o, i[o]]))
+                  o.startsWith('on') ? (l[E][B(o)] = i[o]) : (l[E][o] = y([l, o, i[o]]))
                 var f = y([
                   l,
                   null,
@@ -280,24 +273,31 @@ let h = !0,
                     : e,
                 ])
                 if ('function' == typeof f || 'string' == typeof f || f instanceof c)
-                  l[W].push(p(y([l, 0, f])))
-                else for (var u in f) l[W].push(p(y([l, +u, f[u]])))
+                  l[O].push(p(y([l, 0, f])))
+                else for (var u in f) l[O].push(p(y([l, +u, f[u]])))
                 return l
               }.bind(null, n, t),
           },
         ),
     },
-  )
+  ),
+  R = '__hyper_arrow__',
+  V = Symbol(R),
+  G = (e) => !!e[V],
+  J = Symbol(),
+  q,
+  K = 0,
+  Q = { defaultValue: 'value', htmlFor: 'for', className: 'class' }
 export {
   n as CACHE_REMOVED_CHILDREN,
-  V as ON_CREATE,
-  G as UID_ATTR_NAME,
+  D as ON_CREATE,
+  J as UID_ATTR_NAME,
   c as VEl,
-  C as fawc2ropa,
-  R as isReactive,
-  e as mount,
-  f as reactive,
-  q as ropa2fawc,
-  Q as tags,
-  r as watch,
+  j as fawc2ropa,
+  G as isReactive,
+  r as mount,
+  o as reactive,
+  C as ropa2fawc,
+  I as tags,
+  e as watch,
 }

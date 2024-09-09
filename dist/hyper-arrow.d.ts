@@ -8,10 +8,6 @@ export class VEl {
     2: Props;
     3: VNode[];
 }
-/** mount virtual element to DOM */
-export function mount(selector: string, vel: VEl, options?: {
-    [UID_ATTR_NAME]?: string;
-}): void;
 /**
  * run fn() once, and when triggered, rerun fn(), or effectFn(fn()) if has effectFn
  * returns a function that can stop fn from rerunning by removing it from fawc2ropa
@@ -19,14 +15,16 @@ export function mount(selector: string, vel: VEl, options?: {
  */
 export function watch<F>(fn: ZIF<F>, effectFn?: Effect<F> | undefined): () => void;
 export function reactive<T extends object>(obj: T): T;
+/** mount virtual element to DOM */
+export function mount(selector: string, vel: VEl, options?: {
+    [UID_ATTR_NAME]?: string;
+}): void;
+export const ON_CREATE: unique symbol;
+export const CACHE_REMOVED_CHILDREN: unique symbol;
 /** @type {Map<AnyFawc, WeakMap<object, Set<string | symbol>>>} */
 export const fawc2ropa: Map<AnyFawc, WeakMap<object, Set<string | symbol>>>;
 /** @type {WeakMap<object, Record<string | symbol, WeakSet<AnyFawc>>>} */
 export const ropa2fawc: WeakMap<object, Record<string | symbol, WeakSet<AnyFawc>>>;
-export function isReactive(x: any): boolean;
-export const ON_CREATE: unique symbol;
-export const CACHE_REMOVED_CHILDREN: unique symbol;
-export const UID_ATTR_NAME: unique symbol;
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -38,6 +36,8 @@ export const tags: {
         [tag: string]: (...args: Args) => VEl;
     };
 };
+export function isReactive(x: any): boolean;
+export const UID_ATTR_NAME: unique symbol;
 export type ElType = "html" | "svg" | "mathml";
 export type El = HTMLElement | SVGElement | MathMLElement;
 export type Tag = string;
