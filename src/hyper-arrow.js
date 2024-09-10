@@ -31,7 +31,7 @@ export const CACHE_REMOVED_CHILDREN = Symbol()
  * @typedef {{[k: string]: never}} Empty
  * @typedef {{[k: string]: RNode}} Cache
  * @typedef {number} CacheSize
- * @_______ {[null, Tag, Props, VNode[], ElType]} VEl virtual element (class)
+ * @_______ {[null, Tag, Props, VNode[], ElType]} VEl virtual element, array-like class
  * @typedef {[El,   Tag, Props, RNode[], ElType, Cache?, CacheSize?]} REl real element
  * @typedef {[null, Txt, Empty, [],     'text']} VText virtual text node
  * @typedef {[Text, Txt, Empty, [],     'text']} RText real text node
