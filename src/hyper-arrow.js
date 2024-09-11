@@ -500,8 +500,10 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   } else if (key[0] === '$') {
     el.style.removeProperty(removeFirst(key))
     type = '-style'
+  } else {
     // TODO: test more cases for how to unset arbitrary non-attr props
-  } else throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
+    throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
+  }
   DEBUG && console.log(type, print(el), key)
 }
 
