@@ -35,22 +35,22 @@ vscode-vim
     {old} & {new}: [ ] b ( ) B { } < > t ' " ` 
   insert
     a A i I gI gi o O 
-  delete 
-    (can with "{C}) x {V}x X {V}X d{T} {V}d dd D J {V}J gJ {V}gJ
-  yank
-    (can with "{C}) y{T} {V}y yy Y
-  put
-    (can with "{C}) p P gp gP [p ]p
-  replace (with register)
-    (can with "{C}) gr{T} {V}gr grr
-  change (without going into insert mode)
+  delete (can with "{C})
+     x {V}x X {V}X d{T} {V}d dd D J {V}J gJ {V}gJ
+  yank (can with "{C})
+    y{T} {V}y yy Y
+  put (can with "{C})
+    p P gp gP [p ]p
+  replace with register (can with "{C})
+    gr{T} {V}gr grr
+  change (can with "{C})
+    c{T} {V}c cc C {V}C s {V}s S {V}R 
+  change without going into insert mode
     r{C} {V}r{C} gr{C} R gR ~ {V}~ {V}u {V}U g~{T} gu{T} gU{T} 
     ^A ^X <{T} {V}< << >{T} {V}> >> gq{T} ={T} {V}= == gc{T} {V}gc gcc gC{T} {V}gC gCC
-    :s & (repeat :s) 
-  change (delete and go into insert mode)
-    c{T} {V}c cc C {V}C s {V}s S {V}R 
+    :s & (repeat :s)
   undo redo & repeat change
-    u U ^R . q{C}{commands}q @{C} @@
+    u U ^R . q{C}{commands}q @{C} @@ @:
   visual mode
     v{T} V{T} ^V{T} o O gv (last v) (v is not {O}. can do v{T}{T}{T}{O})
     gn gN (n & v. {O}gn == gn{O}. vgn extends visual area to the END of the matched )
