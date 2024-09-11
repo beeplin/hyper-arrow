@@ -7,7 +7,7 @@ vscode-vim
     {V} within visual mode
   motion (no jump)
     h l 0 ^ $ g0 g^ g$ gm | 
-    k j gk gj - + _ 
+    k j gk gj - + _ g_
     w W e E b B ge gE _w _e _b (partial word)
     f{C} F{C} t{C} T{C} ; ,
     g`{C} g'{C}...
@@ -44,7 +44,7 @@ vscode-vim
   replace with register (can with "{C})
     gr{T} {V}gr grr
   change (can with "{C})
-    c{T} {V}c cc C {V}C s {V}s S {V}R 
+    c{T} {V}c cc C {V}C s {V}s S {V}S (<- shadowed by surround) {V}R 
   change without going into insert mode
     r{C} {V}r{C} gr{C} R gR ~ {V}~ {V}u {V}U g~{T} gu{T} gU{T} 
     ^A ^X <{T} {V}< << >{T} {V}> >> gq{T} ={T} {V}= == gc{T} {V}gc gcc gC{T} {V}gC gCC
@@ -65,4 +65,6 @@ vscode-vim
     ^W +: s v h l j k o q c w ^W = < > - +
   insert mode
     ^O{command} ^R{register} ^P ^N ^H ^W ^U ^T ^D ^E ^Y ^A ^@
+  misc
+    ga 
 
