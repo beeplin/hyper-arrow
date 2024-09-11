@@ -99,11 +99,17 @@ export const tags = new PROXY(
   },
 )
 
+let isFirstCreateVEl = true
+
 function createVEl(
   /**@type {ElType}*/ type,
   /**@type {string}*/ tag,
   /**@type {Args}*/ ...args
 ) {
+  if (DEBUG && isFirstCreateVEl) {
+    isFirstCreateVEl = false
+    console.groupCollapsed('init')
+  }
   const vel = new VEl(type, tag, OBJECT.create(null), [])
   const /**@type {[Props, [Children] | Child[]]}*/ [props, x] =
       typeof args[0] === 'object' && !isArray(args[0]) && !(args[0] instanceof VEl)
@@ -153,7 +159,6 @@ export const UID_ATTR_NAME = Symbol()
 let /**@type {string | undefined}*/ uidAttrName
 let currentUid = 0
 
-DEBUG && console.groupCollapsed('init')
 /** mount virtual element to DOM */
 export function mount(
   /**@type {string}*/ selector,

@@ -1,0 +1,57 @@
+vscode-vim
+    motion (no jump)
+        to left or right
+            h l 0 ^ $ g0 g^ g$ gm | 
+        to up or down
+            k j gk gj - + _ 
+        to positional text object 
+            w W e E b B ge gE
+        to matched character
+            f{c} F{c} t{c} T{c} ; ,
+        to jump
+            ^O ^I !!NOT USED AS {m}!!
+    motion (jump)
+        to line
+            G gg
+        to positional text object 
+            % ( ) { } [[ ]] [] ][ [( ]) [{ ]} [* ]* [# ]# ]m ]M
+        to matched pattern
+            /{pattern}<CR> ?{pattern}<CR> /<CR> ?<CR> n N * # g* g#
+        to marked or last position
+            (m{c}) `{c} '{c} `` '' `. '. (change) `" '" (edit) `[ `] '[ '] (operated/put text) `< `> '< '> (visual area)
+        to screen position
+            H M L
+        to go somewhere
+            go gd g; g, !!NOT USED AS {m}!!
+    insert
+        a A i I gI gi o O
+    insert mode
+        ^O{command} ^R{c} ^P ^N ^H ^W ^U ^T ^D ^E ^Y ^A ^@
+    delete 
+        ("{c}) x X d{m} {v}d dd D J {v}J gJ {v}gJ
+    yank
+        ("{c}) y{m} {v}y yy Y
+    put
+        ("{c}) p P gp gP [p ]p
+    change (without going into insert mode)
+        r{c} {v}r{c} gr{c} R gR ~ {v}~ {v}u {v}U g~{m} gu{m} gU{m} :s & (repeat :s) ^A ^X <{m} << >{m} >> gq{m} ={m} {v}= ==
+    change (delete and go into insert mode)
+        c{m} {v}c cc C s S
+    repeat change
+        . q{c}{changes}q @{c} @@
+    visual mode
+        v{m} V{m} ^V{m} o (other end of visual) gv (last visual)
+    scroll
+        ^E ^Y ^B ^F ^U ^D zt zz zb z<CR> z. z-
+    fold
+        za zo zO zc zC zM zR
+    tab
+        gt gT
+    window
+        ^W +: s v h l j k o q c w ^W = < > - +
+    ranging text object
+        a&i +: w W s p [ ] b ( ) B { } < > t ' " ` a i e <leader>w 
+    surrounding text object
+        s +: [ ] b ( ) B { } < > t ' " `
+    gn text object
+        gn ???
