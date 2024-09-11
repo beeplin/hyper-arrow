@@ -1,57 +1,68 @@
 vscode-vim
-    motion (no jump)
-        to left or right
-            h l 0 ^ $ g0 g^ g$ gm | 
-        to up or down
-            k j gk gj - + _ 
-        to positional text object 
-            w W e E b B ge gE
-        to matched character
-            f{c} F{c} t{c} T{c} ; ,
-        to jump
-            ^O ^I !!NOT USED AS {m}!!
-    motion (jump)
-        to line
-            G gg
-        to positional text object 
-            % ( ) { } [[ ]] [] ][ [( ]) [{ ]} [* ]* [# ]# ]m ]M
-        to matched pattern
-            /{pattern}<CR> ?{pattern}<CR> /<CR> ?<CR> n N * # g* g#
-        to marked or last position
-            (m{c}) `{c} '{c} `` '' `. '. (change) `" '" (edit) `[ `] '[ '] (operated/put text) `< `> '< '> (visual area)
-        to screen position
-            H M L
-        to go somewhere
-            go gd g; g, !!NOT USED AS {m}!!
-    insert
-        a A i I gI gi o O
-    insert mode
-        ^O{command} ^R{c} ^P ^N ^H ^W ^U ^T ^D ^E ^Y ^A ^@
-    delete 
-        ("{c}) x X d{m} {v}d dd D J {v}J gJ {v}gJ
-    yank
-        ("{c}) y{m} {v}y yy Y
-    put
-        ("{c}) p P gp gP [p ]p
-    change (without going into insert mode)
-        r{c} {v}r{c} gr{c} R gR ~ {v}~ {v}u {v}U g~{m} gu{m} gU{m} :s & (repeat :s) ^A ^X <{m} << >{m} >> gq{m} ={m} {v}= ==
-    change (delete and go into insert mode)
-        c{m} {v}c cc C s S
-    repeat change
-        . q{c}{changes}q @{c} @@
-    visual mode
-        v{m} V{m} ^V{m} o (other end of visual) gv (last visual)
-    scroll
-        ^E ^Y ^B ^F ^U ^D zt zz zb z<CR> z. z-
-    fold
-        za zo zO zc zC zM zR
-    tab
-        gt gT
-    window
-        ^W +: s v h l j k o q c w ^W = < > - +
-    ranging text object
-        a&i +: w W s p [ ] b ( ) B { } < > t ' " ` a i e <leader>w 
-    surrounding text object
-        s +: [ ] b ( ) B { } < > t ' " `
-    gn text object
-        gn ???
+  concepts
+    {C} one char
+    {M} motion: a move from current cursor position to somewhere else
+    {T} target of operation: motion (not ^O ^I g* scroll), text object, surround
+    {O} operation: d y c = < > ~ g~ gu gU gr g? gq (<- can repeat like dd grr) ys (zf g@)
+    {V} within visual mode
+  motion (no jump)
+    h l 0 ^ $ g0 g^ g$ gm | 
+    k j gk gj - + _ 
+    w W e E b B ge gE _w _e _b (partial word)
+    f{C} F{C} t{C} T{C} ; ,
+    g`{C} g'{C}...
+  motion (jump)
+    ^O ^I go gd g; g, <NOT {T}>
+    G gg {N}%
+    H M L
+    % ( ) { } [[ ]] [] ][ [( ]) [{ ]} [* ]* [# ]# ]m ]M
+    /{pattern}<CR> ?{pattern}<CR> /<CR> ?<CR> n N * # g* g#
+    `{C} '{C} (with m{C}) 
+    `` '' (to last position, can set with m` m')
+    `. `[ `] '. '[ '] (to last changed/put text, but in true vim can also to yanked) 
+    `< `> '< '> (to last visual area)
+    (easy motion)
+    __/{pattern}<CR> __j __k __w __b __e __ge __l __h
+    __s{C} __2s{CC} __f{C} __F{C} __t{C} __T{C}
+    (sneaky)
+    s{CC} S{CC} (vs{CC}, but dz{CC}, yz{CC}, cz{CC} g~z{CC}, for dsb is surround)
+  text object
+    a* i* (* as: w W s p [ ] b ( ) B { } < > t ' " `)
+    aa ia (args) ii ai aI (indent) ae ie (entire) i_w (partial word)
+    2a* 2i* (nested) 2I* 2A* (include whitespace) an* In* (next) Al* il* (last)
+  surround
+    {V}S{new} ys{T}{new} ds{old} cs{old}{new}. 
+    {old} & {new}: [ ] b ( ) B { } < > t ' " ` 
+  insert
+    a A i I gI gi o O 
+  delete 
+    (can with "{C}) x {V}x X {V}X d{T} {V}d dd D J {V}J gJ {V}gJ
+  yank
+    (can with "{C}) y{T} {V}y yy Y
+  put
+    (can with "{C}) p P gp gP [p ]p
+  replace (with register)
+    (can with "{C}) gr{T} {V}gr grr
+  change (without going into insert mode)
+    r{C} {V}r{C} gr{C} R gR ~ {V}~ {V}u {V}U g~{T} gu{T} gU{T} 
+    ^A ^X <{T} {V}< << >{T} {V}> >> gq{T} ={T} {V}= == gc{T} {V}gc gcc gC{T} {V}gC gCC
+    :s & (repeat :s) 
+  change (delete and go into insert mode)
+    c{T} {V}c cc C {V}C s {V}s S {V}R 
+  undo redo & repeat change
+    u U ^R . q{C}{commands}q @{C} @@
+  visual mode
+    v{T} V{T} ^V{T} o O gv (last v) (v is not {O}. can do v{T}{T}{T}{O})
+    gn gN (n & v. {O}gn == gn{O}. vgn extends visual area to the END of the matched )
+  scroll
+    ^E ^Y ^B ^F ^U ^D (sometimes cause motion, no jump, not <T>)
+    zt zz zb z<CR> z. z-
+  fold
+    za zo zO zc zC zM zR
+  tab
+    gt gT
+  window
+    ^W +: s v h l j k o q c w ^W = < > - +
+  insert mode
+    ^O{command} ^R{register} ^P ^N ^H ^W ^U ^T ^D ^E ^Y ^A ^@
+
