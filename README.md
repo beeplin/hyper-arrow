@@ -209,13 +209,13 @@ will generate:
 
 This is useful, for example, when checking if the parent element, when doing smart children updating or caching, is reusing elements correctly instead of recreating new ones (see below).
 
-### `CACHE_REMOVED_CHILDREN_AND_MAY_LEAK`
+### `CACHE_REMOVED_CHILDREN`
 
 A unique symbol key that allows allow a parent DOM element to cache all it's removed children elements, so instead of creating new children, it can reuse the cached ones when needed, as long as the children's `id` attributes match.
 
 ```js
 import {
-  CACHE_REMOVED_CHILDREN_AND_MAY_LEAK,
+  CACHE_REMOVED_CHILDREN,
   mount,
   reactive,
   tags,
@@ -234,7 +234,8 @@ const view = div(
       model.list = Array.from({ length }, (_, i) => i.toString())
     },
   }),
-  ul({ id: 'list', [CACHE_REMOVED_CHILDREN_AND_MAY_LEAK]: true }, () =>
+  // allows cache, with 100 as max cache size
+  ul({ id: 'list', [CACHE_REMOVED_CHILDREN]: 100 }, () =>
     model.list.map((item) => li({ id: () => item }, item.toString())),
   ),
 )
@@ -242,9 +243,7 @@ const view = div(
 mount('#app', view, { [UID_ATTR_NAME]: 'uid' })
 ```
 
-In the dev tool you can see that, when the list changes, the `uid` attributes of `li` elements remain the same. That means `ul` is reusing old removed `li`s.
-
-NOTE: this may be leaking! Currently there is no cache invalidation mechanism provided, so if the parent element lives forever and keeps removing more and more new children into cache, the removed children cannot be garbage collected.
+In the dev tool you can see that, when the list changes, the `uid` attributes of `li` elements remain the same. That shows `ul` is reusing old removed `li`s.
 
 ### `ON_CREATE`
 

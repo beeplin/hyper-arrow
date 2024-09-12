@@ -18,6 +18,7 @@ const view = div(
       model.list = Array.from({ length }, (_, i) => i.toString())
     },
   }),
+  // allows cache with 100 as max cache size
   ul({ id: 'list', [CACHE_REMOVED_CHILDREN]: 100 }, () =>
     model.list.map((item) => li({ id: () => item }, item.toString())),
   ),

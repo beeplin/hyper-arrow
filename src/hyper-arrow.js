@@ -46,7 +46,6 @@ const PROPS = 2
 const CHILDREN = 3
 const TYPE = 4
 const CACHE = 5
-const CACHE_SIZE = 6
 
 /** virtual element @constructor */
 export function VEl(
@@ -208,21 +207,29 @@ export function reactive(obj) {
   return new PROXY(obj, {
     get(obj, prop) {
       // this is how isReactive() works
-      if (prop === BRAND_SYMBOL) return true
+      if (prop === BRAND_SYMBOL) {
+        return true
+      }
       const result = REFLECT.get(obj, prop)
       // would throw if try to proxy function.prototype, so skip it
-      if (typeof obj === 'function' && prop === 'prototype') return result
+      if (typeof obj === 'function' && prop === 'prototype') {
+        return result
+      }
       // collect current ROPA for current FAWC
       if (currentFawc) {
         DEBUG && console.log('get', ...print(currentFawc), obj, prop)
-        if (!fawc2ropa.has(currentFawc)) fawc2ropa.set(currentFawc, new WeakMap())
+        if (!fawc2ropa.has(currentFawc)) {
+          fawc2ropa.set(currentFawc, new WeakMap())
+        }
         const ropas = fawc2ropa.get(currentFawc)
         if (ropas) {
           if (!ropas.has(obj)) ropas.set(obj, new Set())
           ropas.get(obj)?.add(prop)
         }
         // collect current FAWC for current ROPA, only for debugging purposes
-        if (!ropa2fawc.has(obj)) ropa2fawc.set(obj, OBJECT.create(null))
+        if (!ropa2fawc.has(obj)) {
+          ropa2fawc.set(obj, OBJECT.create(null))
+        }
         const props = ropa2fawc.get(obj)
         if (props) {
           if (!(prop in props)) props[prop] = new WeakSet()
@@ -235,8 +242,10 @@ export function reactive(obj) {
       const oldValue = REFLECT.get(obj, prop)
       const result = REFLECT.set(obj, prop, newValue)
       // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
-      if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) return result
-      for (const [fawc, ropas] of fawc2ropa.entries())
+      if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) {
+        return result
+      }
+      for (const [fawc, ropas] of fawc2ropa.entries()) {
         if (ropas.get(obj)?.has(prop)) {
           DEBUG &&
             console.groupCollapsed('set', ...print(fawc), obj, prop, oldValue, newValue)
@@ -263,12 +272,15 @@ export function reactive(obj) {
             setProp(rel[NODE], key, value)
           }
         }
+      }
       return result
     },
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
       DEBUG && console.log('del', obj, prop)
-      for (const ropas of fawc2ropa.values()) ropas.get(obj)?.delete(prop)
+      for (const ropas of fawc2ropa.values()) {
+        ropas.get(obj)?.delete(prop)
+      }
       delete ropa2fawc.get(obj)?.[prop]
       return result
     },
@@ -297,8 +309,12 @@ function createREl(/**@type {VEl}*/ vel) {
       : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
   DEBUG && console.group('create', print(vel))
   // use uid to track el's identity, only for debugging purposes
-  if (uidAttrName) setAttribute(el, uidAttrName, currentUid++)
-  for (const key in vel[PROPS]) setProp(el, key, vel[PROPS][key])
+  if (uidAttrName) {
+    setAttribute(el, uidAttrName, currentUid++)
+  }
+  for (const key in vel[PROPS]) {
+    setProp(el, key, vel[PROPS][key])
+  }
   DEBUG && console.groupEnd()
   appendVNodes(el, vel[CHILDREN])
   // @ts-ignore let it crash if onCreate is not function
@@ -326,7 +342,6 @@ function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node
     getFullUniqueIds(rnode[CHILDREN])
   if (hasCache) {
     rnode[CACHE] = {}
-    rnode[CACHE_SIZE] = 0
   }
   // @ts-ignore ok
   node[BRAND_KEY] = rnode
@@ -339,8 +354,11 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
   // if both have full unique ids, smart update
   if (oldIds && newIds) {
     // remove unmatched children. MUST REMOVE FROM TAIL, otherwise index messed up
-    for (let i = oldIds[LENGTH] - 1; i >= 0; i--)
-      if (!newIds.includes(oldIds[i])) removeChild(rel, i)
+    for (let i = oldIds[LENGTH] - 1; i >= 0; i--) {
+      if (!newIds.includes(oldIds[i])) {
+        removeChild(rel, i)
+      }
+    }
     // build from head to tail
     for (const [i, id] of newIds.entries()) {
       const j = rel[CHILDREN].findIndex((vnode) => vnode[PROPS].id === id)
@@ -395,13 +413,20 @@ function updateChild(
     oldRNode[TAG] === newVNode[TAG]
   ) {
     const el = oldRNode[NODE]
-    for (const key in newVNode[PROPS])
-      if (oldRNode[PROPS][key] !== newVNode[PROPS][key])
+    for (const key in newVNode[PROPS]) {
+      if (oldRNode[PROPS][key] !== newVNode[PROPS][key]) {
         setProp(el, key, newVNode[PROPS][key])
-    for (const key in oldRNode[PROPS]) if (!(key in newVNode[PROPS])) unsetProp(el, key)
+      }
+    }
+    for (const key in oldRNode[PROPS]) {
+      if (!(key in newVNode[PROPS])) {
+        unsetProp(el, key)
+      }
+    }
     // innerText, innerHTML, textContent already deals with children, so skip children
-    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in newVNode[PROPS]))
+    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in newVNode[PROPS])) {
       updateChildren(oldRNode, newVNode[CHILDREN])
+    }
     rel[CHILDREN][index] = convertVNodeToRNode(newVNode, oldRNode[NODE])
   } else {
     // replace whole node. REMOVE FIRST!!!
@@ -423,10 +448,9 @@ function insertChild(
   DEBUG && console.log('insert', print(el), index, print(node))
   rel[CHILDREN].splice(index, 0, newRNode)
   // already brought out, so remove from cache
-  if (rel[CACHE] && rel[CACHE_SIZE]) {
+  if (rel[CACHE]) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
     delete rel[CACHE][newRNode[PROPS].id]
-    rel[CACHE_SIZE]-- // FIXME: duplicate id
   }
   // TODO: log cache action
 }
@@ -438,13 +462,11 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   // move into cache
   if (
     rel[CACHE] &&
-    rel[CACHE_SIZE] != null &&
     rel[PROPS][CACHE_REMOVED_CHILDREN] != null &&
-    rel[CACHE_SIZE] < rel[PROPS][CACHE_REMOVED_CHILDREN]
+    OBJECT.keys(rel[CACHE]).length < rel[PROPS][CACHE_REMOVED_CHILDREN]
   ) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
     rel[CACHE][rnode[PROPS].id] = rnode
-    rel[CACHE_SIZE]++
   }
   // TODO: log cache action
   return rnode
@@ -475,7 +497,8 @@ function setProp(
     setAttribute(el, key, value)
     type = '+ attr'
   }
-  DEBUG && console.log(type, print(el), key, '=', value)
+  DEBUG &&
+    console.log(type, print(el), key, '=', typeof value === 'function' ? 'func' : value)
 }
 
 const /**@type {{[k:string]: string}}*/ prop2attr = {
@@ -516,35 +539,49 @@ function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
 
 function removeFawcsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
   for (const fawc of fawc2ropa.keys()) {
-    if (fawcIsInRNode(fawc, rnode)) fawc2ropa.delete(fawc)
+    if (fawcIsInRNode(fawc, rnode)) {
+      fawc2ropa.delete(fawc)
+    }
   }
 }
-
 function fawcIsInRNode(/**@type {Fawc<() => any>}*/ fawc, /**@type {RNode}*/ rnode) {
   // @ts-ignore ok. guaranteed by createVEl. now vel is rel and has node
   return fawc[VEL] && rnode[NODE].contains(fawc[VEL]?.[NODE])
 }
 
 function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
-  if (!(prop in object)) return []
+  if (!(prop in object)) {
+    return []
+  }
   const pd = OBJECT.getOwnPropertyDescriptor(object, prop)
-  if (pd)
+  if (pd) {
     return OBJECT.entries(pd)
       .map(([k, v]) => (v ? k : null))
       .filter((x) => x)
+  }
   const proto = OBJECT.getPrototypeOf(object)
-  if (!proto) return []
+  if (!proto) {
+    return []
+  }
   return getObjectPropertyType(proto, prop)
 }
-
 /**
  * @overload @param {Element|Text|VEl} x @returns {string}
  * @overload @param {AnyFawc} x @returns {string[]}
  */
 function print(/**@type {Element|Text|VEl|AnyFawc}*/ x) {
-  if (x instanceof Text) return `"${x.data}"`
-  if (x instanceof Element) return `${x.localName} #${x.id}`
-  if (x instanceof VEl) return `${x[TAG]} #${x[PROPS].id ?? ''}`
+  if (x instanceof Text) {
+    return `"${x.data}"`
+  }
+  if (x instanceof Element) {
+    return `${x.localName} #${x.id}`
+  }
+  if (x instanceof VEl) {
+    return `${x[TAG]} #${x[PROPS].id ?? ''}`
+  }
   const [vel, key, zif, effect] = x
-  return vel ? [print(vel), key, zif] : ['watch', zif, effect]
+  const zifLines = zif.toString().split('\n')
+  const zifFirstLine = zifLines[0]
+  const zifStr = zifLines.length === 1 ? zifFirstLine : zifFirstLine + ' ...'
+  return vel ? [print(vel), key, zifStr] : ['watch', zifStr, effect]
 }

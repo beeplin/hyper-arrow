@@ -11,10 +11,10 @@
 ✔ 复用 children 已有元素 @done(24-09-02 01:24)
 ✔ 根据 key 顺序智能更新 children @done(24-09-02 21:07)
 ✔ keep-alive @done(24-09-02 17:56)
-✔ 区分 VNnode RNode @done(24-09-05 22:03)
+✔ 区分 VNode RNode @done(24-09-05 22:03)
 ✔ HChildren 支持非数组 @done(24-09-06 01:28)
-☐ 可配置 cache 上限 @started(24-09-08 16:33)
+✔ 可配置 cache 上限 @started(24-09-08 16:33) @done(24-09-12 23:36) @lasted(4d7h3m42s)
 ☐ unsetProp prop->attr 时支持 camel 转 kebab
-✔ arrow->faci @done(24-09-08 09:26)
-☐ debug log
-☐ try uglifyjs mangle-props, use class/object, not array
+✔ arrow->fawc @done(24-09-08 09:26)
+✔ debug log @done(24-09-12 23:37)
+✔ try uglifyjs mangle-props, use class/object, not array @done(24-09-12 23:36)

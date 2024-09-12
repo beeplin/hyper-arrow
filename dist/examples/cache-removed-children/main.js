@@ -7,5 +7,7 @@ const view = div(button({
         const length = Math.floor(Math.random() * 10);
         model.list = Array.from({ length }, (_, i) => i.toString());
     },
-}), ul({ id: 'list', [CACHE_REMOVED_CHILDREN]: 100 }, () => model.list.map((item) => li({ id: () => item }, item.toString()))));
+}), 
+// allows cache with 100 as max cache size
+ul({ id: 'list', [CACHE_REMOVED_CHILDREN]: 100 }, () => model.list.map((item) => li({ id: () => item }, item.toString()))));
 mount('#app', view, { [UID_ATTR_NAME]: 'uid' });
