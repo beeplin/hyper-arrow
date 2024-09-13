@@ -1,3 +1,4 @@
+export function debug(value?: boolean): void;
 /** virtual element, array-like class @constructor */
 export function VEl(type: ElType, tag: string, props: Props, children: VNode[]): void;
 export class VEl {
