@@ -64,7 +64,7 @@ export function VEl(
 
 // FAWC: Function Associated With Context
 /** @typedef {string | number | null} Key - props | child | children */
-/** @template F @typedef {F extends () => any ? F : never} ZI - Zero Input fn*/
+/** @template F @typedef {F extends () => any ? F : never} ZI - Zero Input fn */
 /** @template F @typedef {F extends ZI<F> ? ReturnType<ZI<F>> : F} Evaluated */
 /** @template F @typedef {(arg: ReturnType<ZI<F>>) => void} Effect */
 /** @template T @typedef {[null, null, ZI<T>, Effect<T>?]} WatchFawc */
@@ -284,7 +284,7 @@ export function reactive(obj) {
               newValue,
             )
           }
-          const [vel, key, _, effect] = fawc
+          const [vel, key, , effect] = fawc
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
           const /** @type {REl} */ rel = vel
           const value = runFawc(fawc)
