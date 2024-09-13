@@ -2,7 +2,7 @@ import { CACHE_REMOVED_CHILDREN, fawc2ropas, ON_CREATE, ropa2fawcs, tags, } from
 import { ToDoListState } from './state.js';
 import { test } from './test.js';
 const { button, div, input, label, li, small, ul } = tags.html;
-export function view(/**@type {ToDoListState}*/ s) {
+export function view(/** @type {ToDoListState} */ s) {
     return div({ id: 'root' }, [
         div({ id: 'title-container' }, [
             label({ id: 'title', _for: 'input', innerText: 'To-Do-List' }),
@@ -34,10 +34,10 @@ export function view(/**@type {ToDoListState}*/ s) {
                 disabled: () => !!s.editingId,
                 placeholder: 'input new to-do here...',
                 $padding: '1px 3px',
-                onInput(/**@type {any}*/ e) {
+                onInput(/** @type {any} */ e) {
                     s.newInput = e.target.value;
                 },
-                onKeyDown(/**@type {any}*/ e) {
+                onKeyDown(/** @type {any} */ e) {
                     if (e.code === 'Enter')
                         s.createFromInput();
                 },
@@ -151,14 +151,14 @@ export function view(/**@type {ToDoListState}*/ s) {
                     class: 'item-input',
                     type: 'text',
                     value: () => s.editInput,
-                    onInput(/**@type {any}*/ e) {
+                    onInput(/** @type {any} */ e) {
                         s.editInput = e.target.value;
                     },
-                    onKeyDown(/**@type {any}*/ e) {
+                    onKeyDown(/** @type {any} */ e) {
                         if (e.keyCode === 13)
                             s.updateItemText(item.id, s.editInput);
                     },
-                    [ON_CREATE](/**@type {any}*/ el) {
+                    [ON_CREATE](/** @type {any} */ el) {
                         requestAnimationFrame(() => el.select());
                     },
                 })

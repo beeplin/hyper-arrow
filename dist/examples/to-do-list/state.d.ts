@@ -2,9 +2,9 @@ export class ToDoListState {
     constructor(list: ToDoList);
     newInput: string;
     filter: string;
-    /**@type {number?}*/ editingId: number | null;
+    /** @type {number?} */ editingId: number | null;
     editInput: string;
-    /**@type {ToDoList}*/ model: ToDoList;
+    /** @type {ToDoList} */ model: ToDoList;
     createFromInput(): number | undefined;
     getShownList(): import("./model.js").ToDoItem[];
     isEditing(id: number): boolean;

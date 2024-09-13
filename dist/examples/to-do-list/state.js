@@ -1,11 +1,11 @@
 import { ToDoList } from './model.js';
 export class ToDoListState {
-    constructor(/**@type {ToDoList}*/ list) {
+    constructor(/** @type {ToDoList} */ list) {
         this.newInput = '';
         this.filter = 'all';
-        /**@type {number?}*/ this.editingId = null;
+        /** @type {number?} */ this.editingId = null;
         this.editInput = '';
-        /**@type {ToDoList}*/ this.model = list;
+        /** @type {ToDoList} */ this.model = list;
     }
     createFromInput() {
         const trimmed = this.newInput.trim();
@@ -21,14 +21,14 @@ export class ToDoListState {
                 ? this.model.list.filter((x) => x.done).reverse()
                 : [...this.model.list].reverse();
     }
-    isEditing(/**@type {number}*/ id) {
+    isEditing(/** @type {number} */ id) {
         return this.editingId === id;
     }
-    updateItemText(/**@type {number}*/ id, /**@type {string}*/ text) {
+    updateItemText(/** @type {number} */ id, /** @type {string} */ text) {
         this.model.update(id, text);
         this.editingId = null;
     }
-    swap(/**@type {number}*/ i, /**@type {number}*/ j) {
+    swap(/** @type {number} */ i, /** @type {number} */ j) {
         i = this.model.list.findIndex((item, index) => item.id === this.getShownList()[i].id);
         j = this.model.list.findIndex((item, index) => item.id === this.getShownList()[j].id);
         // // simple swap. will have duplicate ids and cannot smart update DOM

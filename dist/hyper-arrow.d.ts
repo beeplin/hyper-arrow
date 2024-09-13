@@ -8,10 +8,11 @@ export class VEl {
     2: Props;
     3: VNode[];
 }
-/** mount virtual element to DOM */
-export function mount(selector: string, vel: VEl, options?: {
-    [UID_ATTR_NAME]?: string;
-}): void;
+/** mount virtual element to DOM
+ * @typedef {{[UID_ATTR_NAME]?: string}} Options
+ * @param {string} selector @param {VEl} vel @param {Options} options
+ */
+export function mount(selector: string, vel: VEl, options?: Options): void;
 /**
  * run fn() once, and when triggered, rerun fn(), or effect(fn()) if has effect
  * returns a function that stops fn from rerunning
@@ -40,6 +41,12 @@ export const tags: {
 };
 export const UID_ATTR_NAME: unique symbol;
 export function isReactive(x: any): boolean;
+/**
+ * mount virtual element to DOM
+ */
+export type Options = {
+    [UID_ATTR_NAME]?: string;
+};
 export type ElType = "html" | "svg" | "mathml";
 export type El = HTMLElement | SVGElement | MathMLElement;
 export type Tag = string;
