@@ -509,12 +509,12 @@ function setProp(
   /**@type {string}*/ key,
   /**@type {unknown}*/ value,
 ) {
-  // IDL properties are getter/setters, proxies of attributes. For example:
-  // getter/setter: on* aria* id className classList style innerHTML ...
-  // getter: client* tagName dataset attributes children firstChild ...
-  // plain value: blur() focus() after() append() ... (all methods)
   let type
   if (getObjectPropertyType(el, key).includes('set')) {
+    // IDL properties are getter/setters, proxies of attributes. For example:
+    // getter/setter: on* aria* id className classList style innerHTML ...
+    // getter: client* tagName dataset attributes children firstChild ...
+    // plain value: blur() focus() after() append() ... (all methods)
     // @ts-ignore ok, guaranteed by getObjectPropertyType having 'set'
     el[key] = value
     type = '+ prop'
@@ -526,6 +526,7 @@ function setProp(
     setAttribute(el, removeFirst(key), value)
     type = '+ attr'
   } else {
+    // set every unknown thing as attribute
     setAttribute(el, key, value)
     type = '+ attr'
   }
@@ -546,26 +547,40 @@ const /**@type {{[k:string]: string}}*/ prop2attr = {
   }
 
 function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
-  let type
-  // most IDL props can also be unset by lowercasing into attr
-  if (toLowerCase(key) in el.attributes) {
-    removeAttribute(el, key)
-    type = '- attr'
-    // special cases for IDL prop naming
-  } else if (key in prop2attr) {
-    removeAttribute(el, prop2attr[key])
-    type = '- attr'
-  } else if (key[0] === '_') {
-    removeAttribute(el, removeFirst(key))
-    type = '- attr'
-  } else if (key[0] === '$') {
-    el.style.removeProperty(removeFirst(key))
-    type = '-style'
-  } else {
-    // TODO: test more cases for how to unset arbitrary non-attr props
-    throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
+  // unset attrs. some IDL props can also be unset by lowercasing into attr
+  const lowercase = toLowerCase(key)
+  if (lowercase in el.attributes) {
+    removeAttribute(el, lowercase)
+    DEBUG && console.log('- attr', print(el), lowercase)
+    return
   }
-  DEBUG && console.log(type, print(el), key)
+  // some IDL props can also be unset by converting into kebab attr
+  const kebab = camel2kebab(key)
+  if (kebab in el.attributes) {
+    removeAttribute(el, kebab)
+    DEBUG && console.log('- attr', print(el), kebab)
+    return
+  }
+  // special cases for IDL prop naming
+  if (key in prop2attr) {
+    const attr = prop2attr[key]
+    removeAttribute(el, attr)
+    DEBUG && console.log('- attr', print(el), attr)
+    return
+  }
+  if (key[0] === '_') {
+    const remained = removeFirst(key)
+    removeAttribute(el, remained)
+    DEBUG && console.log('- attr', print(el), remained)
+    return
+  }
+  if (key[0] === '$') {
+    const remained = removeFirst(key)
+    el.style.removeProperty(remained)
+    DEBUG && console.log('-style', print(el), remained)
+    return
+  }
+  throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
 }
 
 function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
@@ -608,6 +623,15 @@ function getObjectPropertyType(
   }
   return getObjectPropertyType(proto, prop)
 }
+
+function camel2kebab(/**@type {string}*/ camel) {
+  return [...camel].reduce(
+    (acc, cur) =>
+      cur >= 'A' && cur <= 'Z' ? acc + '-' + toLowerCase(cur) : acc + cur,
+    '',
+  )
+}
+
 /**
  * @overload @param {Element|Text|VEl} x @returns {string}
  * @overload @param {Fawc} x @returns {string[]}
@@ -623,8 +647,8 @@ function print(/**@type {Element|Text|VEl|Fawc}*/ x) {
     return `${x[TAG]} #${x[PROPS].id ?? ''}`
   }
   const [vel, key, zif, effect] = x
-  const zifLines = zif.toString().split('\n')
-  const zifFirstLine = zifLines[0]
-  const zifStr = zifLines.length === 1 ? zifFirstLine : zifFirstLine + ' ...'
-  return vel ? [print(vel), key, zifStr] : ['watch', zifStr, effect]
+  const lines = zif.toString().split('\n')
+  const firstLine = lines[0]
+  const result = lines.length === 1 ? firstLine : firstLine + ' ...'
+  return vel ? [print(vel), key, result] : ['watch', result, effect]
 }
