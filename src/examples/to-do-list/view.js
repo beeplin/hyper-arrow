@@ -1,8 +1,8 @@
 import {
   CACHE_REMOVED_CHILDREN,
-  fawc2ropa,
+  fawc2ropas,
   ON_CREATE,
-  ropa2fawc,
+  ropa2fawcs,
   tags,
 } from '../../hyper-arrow.js'
 import { ToDoListState } from './state.js'
@@ -20,8 +20,8 @@ export function view(/**@type {ToDoListState}*/ s) {
         type: 'button',
         innerText: 'log deps',
         onclick() {
-          console.log(fawc2ropa)
-          console.log(ropa2fawc)
+          console.log(fawc2ropas)
+          console.log(ropa2fawcs)
         },
       }),
       button({
@@ -107,7 +107,11 @@ export function view(/**@type {ToDoListState}*/ s) {
             s.filter = 'completed'
           },
         }),
-        label({ id: 'label-completed', for: 'completed', innerText: 'completed' }),
+        label({
+          id: 'label-completed',
+          for: 'completed',
+          innerText: 'completed',
+        }),
       ]),
       button({
         id: 'delete-all-completed',
@@ -181,7 +185,8 @@ export function view(/**@type {ToDoListState}*/ s) {
             innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
             disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
-              if (s.editingId === item.id) s.updateItemText(item.id, s.editInput)
+              if (s.editingId === item.id)
+                s.updateItemText(item.id, s.editInput)
               else {
                 s.editingId = item.id
                 s.editInput = item.text
@@ -189,7 +194,8 @@ export function view(/**@type {ToDoListState}*/ s) {
             },
           }),
           button({
-            id: () => (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
+            id: () =>
+              (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
             class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
             type: 'button',
             innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),

@@ -280,16 +280,16 @@ Check if an `object` is a reactive proxy.
 
 Run `fn()` once, and whenever `fn`'s dependencies (see below) change, automatically rerun `fn()`, or, if `effectFn` provided, run `effectFn(fn())`.
 
-### `fawc2ropa`
+### `fawc2ropas`
 
-`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`. For each **function-associated-with-context** (**FAWC**), `fawc2ropa` stores all the **reactive-object-property-access**es (**ROPA**s) within the function call. When any **ROPA** changes, the corresponding function of the **FAWC** reruns, and updates the correct position of the DOM with the help of its contextual info. `fn`s of `watch`s also go into `fawc2ropa`.
+`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`. For each **function-associated-with-context** (**FAWC**), `fawc2ropas` stores all the **reactive-object-property-access**es (**ROPA**s) within the function call. When any **ROPA** changes, the corresponding function of the **FAWC** reruns, and updates the correct position of the DOM with the help of its contextual info. `fn`s of `watch`s also go into `fawc2ropas`.
 
 Keep in mind that your **FAWC**s' returned value must rely only on **ROPA**s (like `ro.p` or `ro[p]`) within the **FAWC**, not on any other things like non-reactive object, free variable bindings (like `let x = 1` inside the function), or global/closure variables.
 
-You may never need to use `fawc2ropa` directly. It's for internal use, and is exposed only for debugging purposes.
+You may never need to use `fawc2ropas` directly. It's for internal use, and is exposed only for debugging purposes.
 
-### `ropa2fawc`
+### `ropa2fawcs`
 
-`WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`. For each **ROPA**, `ropa2fawc` stores all **FAWC**s it would trigger to rerun.
+`WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`. For each **ROPA**, `ropa2fawcs` stores all **FAWC**s it would trigger to rerun.
 
-`ropa2fawc` is purely for debugging purposes. It's not even actually used in `hyper-arrow`'s own source code.
+`ropa2fawcs` is purely for debugging purposes. It's not even actually used in `hyper-arrow`'s own source code.

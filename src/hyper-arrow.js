@@ -30,11 +30,10 @@ export const CACHE_REMOVED_CHILDREN = Symbol()
  *            [ON_CREATE]?: (el: Element) => void}} Props
  * @typedef {{[k: string]: never}} Empty
  * @typedef {{[k: string]: RNode}} Cache
- * @typedef {number} CacheSize
- * @_______ {[null, Tag, Props, VNode[], ElType]} VEl virtual element, array-like class
- * @typedef {[El,   Tag, Props, RNode[], ElType, Cache?, CacheSize?]} REl real element
- * @typedef {[null, Txt, Empty, [],     'text']} VText virtual text node
- * @typedef {[Text, Txt, Empty, [],     'text']} RText real text node
+ * @_______ {[null, Tag, Props, VNode[], ElType]} VEl - virtual element (class)
+ * @typedef {[El,   Tag, Props, RNode[], ElType, Cache?]} REl - real element
+ * @typedef {[null, Txt, Empty, [],     'text']} VText - virtual text node
+ * @typedef {[Text, Txt, Empty, [],     'text']} RText - real text node
  * @typedef {VEl | VText} VNode virtual node
  * @typedef {REl | RText} RNode real node
  * @typedef {VNode | RNode} ANode any node
@@ -47,7 +46,7 @@ const CHILDREN = 3
 const TYPE = 4
 const CACHE = 5
 
-/** virtual element @constructor */
+/** virtual element, array-like class @constructor */
 export function VEl(
   /**@type {ElType}*/ type,
   /**@type {string}*/ tag,
@@ -60,26 +59,28 @@ export function VEl(
   this[CHILDREN] = children
 }
 
+/** @typedef {string | number | null} Key - props | child | children */
+/** @template F @typedef {F extends () => any ? F : never} ZI - Zero Input fn*/
+/** @template F @typedef {F extends ZI<F> ? ReturnType<ZI<F>> : F} Evaluated */
+/** @template F @typedef {(arg: ReturnType<ZI<F>>) => void} Effect */
 // FAWC: Function Associated With Context
-/** @typedef {string | number | null} Key */
-/** @template F @typedef {F extends () => any ? F : never} ZIF Zero Input Function */
-/** @template F @typedef {F extends () => any ? ReturnType<ZIF<F>> : F} Evaluated */
-/** @template F @typedef {(v: ReturnType<ZIF<F>>) => unknown} Effect */
-/** @template T @typedef {[null, null, ZIF<T>, Effect<T>?]} WatchFawc */
-/** @template T @typedef {[VEl, Key, ZIF<T>]} ElFawc */
+/** @template T @typedef {[null, null, ZI<T>, Effect<T>?]} WatchFawc */
+/** @template T @typedef {[VEl, Key, ZI<T>]} ElFawc */
 /** @template T @typedef {[VEl, Key, T]} NotFawc */
-/** @template T @typedef {ElFawc<T> | WatchFawc<T>} Fawc */
+/** @template T @typedef {ElFawc<T> | WatchFawc<T>} AllFawc */
+/** @typedef {AllFawc<() => any>} Fawc */
 const VEL = 0
 const ZIF = 2
 
-/** @typedef {Fawc<() => any>} AnyFawc */
-let /**@type {AnyFawc?}*/ currentFawc = null
+let /**@type {Fawc?}*/ currentFawc = null
 
 // ROPA: Reactive Object Property Access
-/** @type {Map<AnyFawc, WeakMap<object, Set<string | symbol>>>} */
-export const fawc2ropa = new Map()
-/** @type {WeakMap<object, Record<string | symbol, WeakSet<AnyFawc>>>} */
-export const ropa2fawc = new WeakMap()
+/** @typedef {object} Ro - reactive object */
+/** @typedef {string | symbol} Pa property access */
+/** @type {Map<Fawc, WeakMap<Ro, Set<Pa>>>} */
+export const fawc2ropas = new Map()
+/** @type {WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>} */
+export const ropa2fawcs = new WeakMap()
 
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
@@ -93,7 +94,9 @@ export const tags = new PROXY(
     get: (_, /**@type {ElType}*/ type) =>
       new PROXY(
         {},
-        { get: (_, /**@type {string}*/ tag) => createVEl.bind(null, type, tag) },
+        {
+          get: (_, /**@type {string}*/ tag) => createVEl.bind(null, type, tag),
+        },
       ),
   },
 )
@@ -111,7 +114,9 @@ function createVEl(
   }
   const vel = new VEl(type, tag, OBJECT.create(null), [])
   const /**@type {[Props, [Children] | Child[]]}*/ [props, x] =
-      typeof args[0] === 'object' && !isArray(args[0]) && !(args[0] instanceof VEl)
+      typeof args[0] === 'object' &&
+      !isArray(args[0]) &&
+      !(args[0] instanceof VEl)
         ? [args[0], removeFirst(args)]
         : [{}, args]
   for (const key of OBJECT.getOwnPropertySymbols(props)) {
@@ -127,11 +132,13 @@ function createVEl(
   }
   // args may be like tag(() => Child), not tag(() => Child[]).
   // in this case FAWC key should be 0, not null.
-  // but cannot foresee whether fn returns Child or Child[] before it actually runs
+  // but cannot foresee whether fn returns Child or Child[] before it runs
   // so the wrong FAWC key (null) must be corrected later in reactive/set
   // @ts-ignore ok. guaranteed by x.length === 1
   const /**@type {Children | (() => Child)}*/ children =
-      isArray(x) && x[LENGTH] === 1 && (typeof x[0] === 'function' || isArray(x[0]))
+      isArray(x) &&
+      x[LENGTH] === 1 &&
+      (typeof x[0] === 'function' || isArray(x[0]))
         ? x[0]
         : x
   const y = runFawc([vel, null, children])
@@ -173,18 +180,22 @@ export function mount(
 }
 
 /**
- * run fn() once, and when triggered, rerun fn(), or effectFn(fn()) if has effectFn
- * returns a function that can stop fn from rerunning by removing it from fawc2ropa
- * @template F @param {ZIF<F>} fn @param {Effect<F>=} effectFn @returns {() => void}
+ * run fn() once, and when triggered, rerun fn(), or effect(fn()) if has effect
+ * returns a function that stops fn from rerunning
+ * @template F @param {ZI<F>} fn @param {Effect<F>=} effect @return {() => void}
  */
-export function watch(fn, effectFn) {
-  runFawc([null, null, fn, effectFn])
+export function watch(fn, effect) {
+  runFawc([null, null, fn, effect])
   return () => {
-    for (const fawc of fawc2ropa.keys()) if (fawc[ZIF] === fn) fawc2ropa.delete(fawc)
+    for (const fawc of fawc2ropas.keys()) {
+      if (fawc[ZIF] === fn) {
+        fawc2ropas.delete(fawc)
+      }
+    }
   }
 }
 
-/** @template F @param {ElFawc<F>|NotFawc<F>|WatchFawc<F>} fawc @returns {Evaluated<F>} */
+/** @template F @param {AllFawc<F>|NotFawc<F>} fawc @return {Evaluated<F>} */
 function runFawc(/**@type {any}*/ fawc) {
   const zif = fawc[ZIF]
   if (typeof zif !== 'function') {
@@ -203,7 +214,9 @@ export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
 
 /** create a reactive proxy @type {<T extends object>(obj: T) => T} */
 export function reactive(obj) {
-  if (obj !== OBJECT(obj) || isReactive(obj)) return obj
+  if (obj !== OBJECT(obj) || isReactive(obj)) {
+    return obj
+  }
   return new PROXY(obj, {
     get(obj, prop) {
       // this is how isReactive() works
@@ -218,21 +231,25 @@ export function reactive(obj) {
       // collect current ROPA for current FAWC
       if (currentFawc) {
         DEBUG && console.log('get', ...print(currentFawc), obj, prop)
-        if (!fawc2ropa.has(currentFawc)) {
-          fawc2ropa.set(currentFawc, new WeakMap())
+        if (!fawc2ropas.has(currentFawc)) {
+          fawc2ropas.set(currentFawc, new WeakMap())
         }
-        const ropas = fawc2ropa.get(currentFawc)
+        const ropas = fawc2ropas.get(currentFawc)
         if (ropas) {
-          if (!ropas.has(obj)) ropas.set(obj, new Set())
+          if (!ropas.has(obj)) {
+            ropas.set(obj, new Set())
+          }
           ropas.get(obj)?.add(prop)
         }
         // collect current FAWC for current ROPA, only for debugging purposes
-        if (!ropa2fawc.has(obj)) {
-          ropa2fawc.set(obj, OBJECT.create(null))
+        if (!ropa2fawcs.has(obj)) {
+          ropa2fawcs.set(obj, OBJECT.create(null))
         }
-        const props = ropa2fawc.get(obj)
+        const props = ropa2fawcs.get(obj)
         if (props) {
-          if (!(prop in props)) props[prop] = new WeakSet()
+          if (!(prop in props)) {
+            props[prop] = new WeakSet()
+          }
           props[prop].add(currentFawc)
         }
       }
@@ -241,14 +258,21 @@ export function reactive(obj) {
     set(obj, prop, newValue) {
       const oldValue = REFLECT.get(obj, prop)
       const result = REFLECT.set(obj, prop, newValue)
-      // skip meaningless change, unless touching array[LENGTH] inside array.push() etc.
+      // skip fake change unless touching array.length inside array.push() etc.
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) {
         return result
       }
-      for (const [fawc, ropas] of fawc2ropa.entries()) {
+      for (const [fawc, ropas] of fawc2ropas.entries()) {
         if (ropas.get(obj)?.has(prop)) {
           DEBUG &&
-            console.groupCollapsed('set', ...print(fawc), obj, prop, oldValue, newValue)
+            console.groupCollapsed(
+              'set',
+              ...print(fawc),
+              obj,
+              prop,
+              oldValue,
+              newValue,
+            )
           const [vel, key, zif, effect] = fawc
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
           const /**@type {REl}*/ rel = vel
@@ -260,7 +284,8 @@ export function reactive(obj) {
             typeof key === 'number' ||
             // createVEl can't tell tag(() => Child) from tag(() => Child[]),
             // so key may be wrongly null.
-            (key === null && (typeof value === 'string' || value instanceof VEl))
+            (key === null &&
+              (typeof value === 'string' || value instanceof VEl))
           ) {
             const index = key ?? 0
             removeFawcsInRNodeFromDeps(rel[CHILDREN][index])
@@ -278,10 +303,10 @@ export function reactive(obj) {
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
       DEBUG && console.log('del', obj, prop)
-      for (const ropas of fawc2ropa.values()) {
+      for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
       }
-      delete ropa2fawc.get(obj)?.[prop]
+      delete ropa2fawcs.get(obj)?.[prop]
       return result
     },
   })
@@ -332,8 +357,11 @@ function createRText(/**@type {VText}*/ vtext) {
  * @overload @param {VEl} vel @param {El} el @returns {REl}
  * @overload @param {VText} vtext @param {Text} text @returns {RText}
  */
-function convertVNodeToRNode(/**@type {VNode}*/ vnode, /**@type {El|Text}*/ node) {
-  // @ts-ignore ok. tricky type coercion. rnode and vnode point to the same object
+function convertVNodeToRNode(
+  /**@type {VNode}*/ vnode,
+  /**@type {El|Text}*/ node,
+) {
+  // @ts-ignore ok. tricky coercion. rnode and vnode point to the same object
   const /**@type {RNode}*/ rnode = vnode
   rnode[NODE] = node
   const hasCache =
@@ -353,7 +381,7 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
   const newIds = getFullUniqueIds(newVNodes)
   // if both have full unique ids, smart update
   if (oldIds && newIds) {
-    // remove unmatched children. MUST REMOVE FROM TAIL, otherwise index messed up
+    // remove unmatched children. MUST REMOVE FROM TAIL, otherwise will mess up
     for (let i = oldIds[LENGTH] - 1; i >= 0; i--) {
       if (!newIds.includes(oldIds[i])) {
         removeChild(rel, i)
@@ -367,7 +395,7 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
         // matched in current position, update
         updateChild(rel, i, newVNode)
       } else if (rel[CHILDREN][j]) {
-        // matched in latter position, bring it up, then update. REMOVE FIRST!!!
+        // matched in latter position, bring it up and update. REMOVE FIRST!!!
         insertChild(rel, i, removeChild(rel, j)) // ok, j > i always
         updateChild(rel, i, newVNode)
       } else if (rel[CACHE]?.[id]) {
@@ -423,8 +451,9 @@ function updateChild(
         unsetProp(el, key)
       }
     }
-    // innerText, innerHTML, textContent already deals with children, so skip children
-    if (!['innerText', 'innerHTML', 'textContent'].some((k) => k in newVNode[PROPS])) {
+    // innerText, innerHTML, textContent already deal with children, so skip it
+    const childrenMakers = ['innerText', 'innerHTML', 'textContent']
+    if (!childrenMakers.some((k) => k in newVNode[PROPS])) {
       updateChildren(oldRNode, newVNode[CHILDREN])
     }
     rel[CHILDREN][index] = convertVNodeToRNode(newVNode, oldRNode[NODE])
@@ -442,7 +471,10 @@ function insertChild(
 ) {
   const el = rel[NODE]
   // @ts-ignore ok. stupid ts！
-  const /**@type {RNode}*/ newRNode = newANode[NODE] ? newANode : createRNode(newANode)
+  const /**@type {RNode}*/ newRNode = newANode[NODE]
+      ? newANode
+      : // @ts-ignore ok. stupid ts！
+        createRNode(newANode)
   const node = newRNode[NODE]
   el.insertBefore(node, el.childNodes.item(index))
   DEBUG && console.log('insert', print(el), index, print(node))
@@ -478,8 +510,8 @@ function setProp(
   /**@type {unknown}*/ value,
 ) {
   // IDL properties are getter/setters, proxies of attributes. For example:
-  // getter/setter: on* aria* autofocus id className classList style innerHTML ...
-  // getter only: client* scrollTop tagName dataset attributes children firstChild ...
+  // getter/setter: on* aria* id className classList style innerHTML ...
+  // getter: client* tagName dataset attributes children firstChild ...
   // plain value: blur() focus() after() append() ... (all methods)
   let type
   if (getObjectPropertyType(el, key).includes('set')) {
@@ -498,7 +530,13 @@ function setProp(
     type = '+ attr'
   }
   DEBUG &&
-    console.log(type, print(el), key, '=', typeof value === 'function' ? 'func' : value)
+    console.log(
+      type,
+      print(el),
+      key,
+      '=',
+      typeof value === 'function' ? 'func' : value,
+    )
 }
 
 const /**@type {{[k:string]: string}}*/ prop2attr = {
@@ -508,8 +546,8 @@ const /**@type {{[k:string]: string}}*/ prop2attr = {
   }
 
 function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
-  // remove attr and IDL prop. most IDL props can also be unset by lowercasing into attr
   let type
+  // most IDL props can also be unset by lowercasing into attr
   if (toLowerCase(key) in el.attributes) {
     removeAttribute(el, key)
     type = '- attr'
@@ -531,25 +569,30 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
 }
 
 function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
-  const ids = anodes.map((an) => an[PROPS].id).filter((id) => typeof id === 'string')
+  const ids = anodes
+    .map((an) => an[PROPS].id)
+    .filter((id) => typeof id === 'string')
   return ids[LENGTH] === anodes[LENGTH] && ids[LENGTH] === new Set(ids).size
     ? ids
     : null
 }
 
 function removeFawcsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
-  for (const fawc of fawc2ropa.keys()) {
+  for (const fawc of fawc2ropas.keys()) {
     if (fawcIsInRNode(fawc, rnode)) {
-      fawc2ropa.delete(fawc)
+      fawc2ropas.delete(fawc)
     }
   }
 }
-function fawcIsInRNode(/**@type {Fawc<() => any>}*/ fawc, /**@type {RNode}*/ rnode) {
+function fawcIsInRNode(/**@type {Fawc}*/ fawc, /**@type {RNode}*/ rnode) {
   // @ts-ignore ok. guaranteed by createVEl. now vel is rel and has node
   return fawc[VEL] && rnode[NODE].contains(fawc[VEL]?.[NODE])
 }
 
-function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ prop) {
+function getObjectPropertyType(
+  /**@type {object}}*/ object,
+  /**@type {string}*/ prop,
+) {
   if (!(prop in object)) {
     return []
   }
@@ -567,9 +610,9 @@ function getObjectPropertyType(/**@type {object}}*/ object, /**@type {string}*/ 
 }
 /**
  * @overload @param {Element|Text|VEl} x @returns {string}
- * @overload @param {AnyFawc} x @returns {string[]}
+ * @overload @param {Fawc} x @returns {string[]}
  */
-function print(/**@type {Element|Text|VEl|AnyFawc}*/ x) {
+function print(/**@type {Element|Text|VEl|Fawc}*/ x) {
   if (x instanceof Text) {
     return `"${x.data}"`
   }
