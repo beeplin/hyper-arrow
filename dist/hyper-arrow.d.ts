@@ -64,7 +64,7 @@ export type REl = [El, Tag, Props, RNode[], ElType, Cache?];
  */
 export type VText = [null, Txt, Empty, [], "text"];
 /**
- * - real text nodeS
+ * - real text node
  */
 export type RText = [Text, Txt, Empty, [], "text"];
 /**

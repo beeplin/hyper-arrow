@@ -3,11 +3,11 @@ import { ToDoList } from './model.js'
 export class ToDoListState {
   newInput = ''
   filter = 'all'
-  /**@type {number?}*/ editingId = null
+  /** @type {number?} */ editingId = null
   editInput = ''
 
-  constructor(/**@type {ToDoList}*/ list) {
-    /**@type {ToDoList}*/ this.model = list
+  constructor(/** @type {ToDoList} */ list) {
+    /** @type {ToDoList} */ this.model = list
   }
 
   createFromInput() {
@@ -25,16 +25,16 @@ export class ToDoListState {
       : [...this.model.list].reverse()
   }
 
-  isEditing(/**@type {number}*/ id) {
+  isEditing(/** @type {number} */ id) {
     return this.editingId === id
   }
 
-  updateItemText(/**@type {number}*/ id, /**@type {string}*/ text) {
+  updateItemText(/** @type {number} */ id, /** @type {string} */ text) {
     this.model.update(id, text)
     this.editingId = null
   }
 
-  swap(/**@type {number}*/ i, /**@type {number}*/ j) {
+  swap(/** @type {number} */ i, /** @type {number} */ j) {
     i = this.model.list.findIndex(
       (item, index) => item.id === this.getShownList()[i].id,
     )

@@ -9,8 +9,8 @@ const PROXY = Proxy
 const REFLECT = Reflect
 const DOCUMENT = document
 const isArray = Array.isArray
-const removeFirst = (/**@type {any}*/ x) => x.slice(1)
-const toLowerCase = (/**@type {string}*/ str) => str.toLowerCase()
+const removeFirst = (/** @type {any} */ x) => x.slice(1)
+const toLowerCase = (/** @type {string} */ str) => str.toLowerCase()
 /** @type {(el: El, k: string, v: unknown) => void} */
 // @ts-ignore ok. setAttribute can coerce
 const setAttribute = (el, k, v) => el.setAttribute(k, v)
@@ -48,10 +48,10 @@ const CACHE = 5
 
 /** virtual element, array-like class @constructor */
 export function VEl(
-  /**@type {ElType}*/ type,
-  /**@type {string}*/ tag,
-  /**@type {Props}*/ props,
-  /**@type {VNode[]}*/ children,
+  /** @type {ElType} */ type,
+  /** @type {string} */ tag,
+  /** @type {Props} */ props,
+  /** @type {VNode[]} */ children,
 ) {
   this[TYPE] = type
   this[TAG] = tag
@@ -72,7 +72,7 @@ export function VEl(
 const VEL = 0
 const ZIF = 2
 
-let /**@type {Fawc?}*/ currentFawc = null
+let /** @type {Fawc?} */ currentFawc = null
 
 // ROPA: Reactive Object Property Access
 /** @typedef {object} Ro - reactive object */
@@ -91,11 +91,12 @@ export const ropa2fawcs = new WeakMap()
 export const tags = new PROXY(
   {},
   {
-    get: (_, /**@type {ElType}*/ type) =>
+    get: (_, /** @type {ElType} */ type) =>
       new PROXY(
         {},
         {
-          get: (_, /**@type {string}*/ tag) => createVEl.bind(null, type, tag),
+          get: (_, /** @type {string} */ tag) =>
+            createVEl.bind(null, type, tag),
         },
       ),
   },
@@ -104,16 +105,16 @@ export const tags = new PROXY(
 let isFirstCreateVEl = true
 
 function createVEl(
-  /**@type {ElType}*/ type,
-  /**@type {string}*/ tag,
-  /**@type {Args}*/ ...args
+  /** @type {ElType} */ type,
+  /** @type {string} */ tag,
+  /** @type {Args} */ ...args
 ) {
   if (DEBUG && isFirstCreateVEl) {
     isFirstCreateVEl = false
     console.groupCollapsed('init')
   }
   const vel = new VEl(type, tag, OBJECT.create(null), [])
-  const /**@type {[Props, [Children] | Child[]]}*/ [props, x] =
+  const /** @type {[Props, [Children] | Child[]]} */ [props, x] =
       typeof args[0] === 'object' &&
       !isArray(args[0]) &&
       !(args[0] instanceof VEl)
@@ -135,7 +136,7 @@ function createVEl(
   // but cannot foresee whether fn returns Child or Child[] before it runs
   // so the wrong FAWC key (null) must be corrected later in reactive/set
   // @ts-ignore ok. guaranteed by x.length === 1
-  const /**@type {Children | (() => Child)}*/ children =
+  const /** @type {Children | (() => Child)} */ children =
       isArray(x) &&
       x[LENGTH] === 1 &&
       (typeof x[0] === 'function' || isArray(x[0]))
@@ -152,24 +153,24 @@ function createVEl(
   return vel
 }
 
-function createVNode(/**@type {VEl | string}*/ x) {
+function createVNode(/** @type {VEl | string} */ x) {
   return typeof x === 'string' ? createVText(x) : x
 }
 
-function createVText(/**@type {string}*/ txt) {
-  const /**@type {VText}*/ vtext = [null, txt, {}, [], TEXT]
+function createVText(/** @type {string} */ txt) {
+  const /** @type {VText} */ vtext = [null, txt, {}, [], TEXT]
   return vtext
 }
 
 export const UID_ATTR_NAME = Symbol()
-let /**@type {string | undefined}*/ uidAttrName
+let /** @type {string | undefined} */ uidAttrName
 let currentUid = 0
 
 /** mount virtual element to DOM */
 export function mount(
-  /**@type {string}*/ selector,
-  /**@type {VEl}*/ vel,
-  /**@type {{[UID_ATTR_NAME]?: string}}*/ options = {},
+  /** @type {string} */ selector,
+  /** @type {VEl} */ vel,
+  /** @type {{[UID_ATTR_NAME]?: string}} */ options = {},
 ) {
   uidAttrName = options[UID_ATTR_NAME]
   if (DEBUG) console.groupEnd()
@@ -196,7 +197,7 @@ export function watch(fn, effect) {
 }
 
 /** @template F @param {AllFawc<F>|NotFawc<F>} fawc @return {Evaluated<F>} */
-function runFawc(/**@type {any}*/ fawc) {
+function runFawc(/** @type {any} */ fawc) {
   const zif = fawc[ZIF]
   if (typeof zif !== 'function') {
     return zif
@@ -210,7 +211,7 @@ function runFawc(/**@type {any}*/ fawc) {
 
 const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
-export const isReactive = (/**@type {any}*/ x) => !!x[BRAND_SYMBOL]
+export const isReactive = (/** @type {any} */ x) => !!x[BRAND_SYMBOL]
 
 /** create a reactive proxy @type {<T extends object>(obj: T) => T} */
 export function reactive(obj) {
@@ -275,7 +276,7 @@ export function reactive(obj) {
             )
           const [vel, key, zif, effect] = fawc
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
-          const /**@type {REl}*/ rel = vel
+          const /** @type {REl} */ rel = vel
           const value = runFawc(fawc)
           if (DEBUG) console.groupEnd()
           if (!vel) {
@@ -312,7 +313,7 @@ export function reactive(obj) {
   })
 }
 
-function appendVNodes(/**@type {El}*/ el, /**@type {VNode[]}*/ vnodes) {
+function appendVNodes(/** @type {El} */ el, /** @type {VNode[]} */ vnodes) {
   el.append(...vnodes.map(createRNode).map((rnode) => rnode[NODE]))
   if (DEBUG) {
     for (const c of Array.from(el.children)) {
@@ -321,11 +322,11 @@ function appendVNodes(/**@type {El}*/ el, /**@type {VNode[]}*/ vnodes) {
   }
 }
 
-function createRNode(/**@type {VNode}*/ vnode) {
+function createRNode(/** @type {VNode} */ vnode) {
   return vnode[TYPE] === TEXT ? createRText(vnode) : createREl(vnode)
 }
 
-function createREl(/**@type {VEl}*/ vel) {
+function createREl(/** @type {VEl} */ vel) {
   const el =
     vel[TYPE] === 'html'
       ? DOCUMENT.createElement(vel[TAG])
@@ -347,7 +348,7 @@ function createREl(/**@type {VEl}*/ vel) {
   return convertVNodeToRNode(vel, el)
 }
 
-function createRText(/**@type {VText}*/ vtext) {
+function createRText(/** @type {VText} */ vtext) {
   const node = DOCUMENT.createTextNode(vtext[TXT])
   if (DEBUG) console.log('create', print(node))
   return convertVNodeToRNode(vtext, node)
@@ -358,11 +359,11 @@ function createRText(/**@type {VText}*/ vtext) {
  * @overload @param {VText} vtext @param {Text} text @returns {RText}
  */
 function convertVNodeToRNode(
-  /**@type {VNode}*/ vnode,
-  /**@type {El|Text}*/ node,
+  /** @type {VNode} */ vnode,
+  /** @type {El|Text} */ node,
 ) {
   // @ts-ignore ok. tricky coercion. rnode and vnode point to the same object
-  const /**@type {RNode}*/ rnode = vnode
+  const /** @type {RNode} */ rnode = vnode
   rnode[NODE] = node
   const hasCache =
     rnode instanceof VEl &&
@@ -376,7 +377,10 @@ function convertVNodeToRNode(
   return rnode
 }
 
-function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
+function updateChildren(
+  /** @type {REl} */ rel,
+  /** @type {VNode[]} */ newVNodes,
+) {
   const oldIds = getFullUniqueIds(rel[CHILDREN])
   const newIds = getFullUniqueIds(newVNodes)
   // if both have full unique ids, smart update
@@ -428,9 +432,9 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
 }
 
 function updateChild(
-  /**@type {REl}*/ rel,
-  /**@type {number}*/ index,
-  /**@type {VNode}*/ newVNode,
+  /** @type {REl} */ rel,
+  /** @type {number} */ index,
+  /** @type {VNode} */ newVNode,
 ) {
   const oldRNode = rel[CHILDREN][index]
   // if both vel with same tag, patch the existing el
@@ -464,13 +468,13 @@ function updateChild(
 }
 
 function insertChild(
-  /**@type {REl}*/ rel,
-  /**@type {number}*/ index,
-  /**@type {ANode}*/ newANode,
+  /** @type {REl} */ rel,
+  /** @type {number} */ index,
+  /** @type {ANode} */ newANode,
 ) {
   const el = rel[NODE]
   // @ts-ignore ok. stupid ts！
-  const /**@type {RNode}*/ newRNode = newANode[NODE]
+  const /** @type {RNode} */ newRNode = newANode[NODE]
       ? newANode
       : // @ts-ignore ok. stupid ts！
         createRNode(newANode)
@@ -481,13 +485,13 @@ function insertChild(
   // already brought out, so remove from cache
   if (rel[CACHE]) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-    const /**@type {string}*/ id = newRNode[PROPS].id
+    const /** @type {string} */ id = newRNode[PROPS].id
     if (DEBUG && id in rel[CACHE]) console.log('cache>', print(node))
     delete rel[CACHE][id]
   }
 }
 
-function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
+function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
   if (DEBUG) console.log('remove', print(rel[NODE]), index, print(rnode[NODE]))
@@ -498,7 +502,7 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
     OBJECT.keys(rel[CACHE]).length < rel[PROPS][CACHE_REMOVED_CHILDREN]
   ) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-    const /**@type {string}*/ id = rnode[PROPS].id
+    const /** @type {string} */ id = rnode[PROPS].id
     if (DEBUG && !(id in rnode[PROPS]))
       console.log('cache<', print(rnode[NODE]))
     rel[CACHE][id] = rnode
@@ -507,9 +511,9 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
 }
 
 function setProp(
-  /**@type {El}*/ el,
-  /**@type {string}*/ key,
-  /**@type {unknown}*/ value,
+  /** @type {El} */ el,
+  /** @type {string} */ key,
+  /** @type {unknown} */ value,
 ) {
   let type
   if (getObjectPropertyType(el, key).includes('set')) {
@@ -542,13 +546,13 @@ function setProp(
     )
 }
 
-const /**@type {{[k:string]: string}}*/ prop2attr = {
+const /** @type {{[k:string]: string}} */ prop2attr = {
     defaultValue: 'value',
     htmlFor: 'for',
     className: 'class',
   }
 
-function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
+function unsetProp(/** @type {El} */ el, /** @type {string} */ key) {
   // unset attrs. some IDL props can also be unset by lowercasing into attr
   const lowercase = toLowerCase(key)
   if (lowercase in el.attributes) {
@@ -585,7 +589,7 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
 }
 
-function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
+function getFullUniqueIds(/** @type {ANode[]} */ anodes) {
   const ids = anodes
     .map((an) => an[PROPS].id)
     .filter((id) => typeof id === 'string')
@@ -594,21 +598,21 @@ function getFullUniqueIds(/**@type {ANode[]}*/ anodes) {
     : null
 }
 
-function removeFawcsInRNodeFromDeps(/**@type {RNode}*/ rnode) {
+function removeFawcsInRNodeFromDeps(/** @type {RNode} */ rnode) {
   for (const fawc of fawc2ropas.keys()) {
     if (fawcIsInRNode(fawc, rnode)) {
       fawc2ropas.delete(fawc)
     }
   }
 }
-function fawcIsInRNode(/**@type {Fawc}*/ fawc, /**@type {RNode}*/ rnode) {
+function fawcIsInRNode(/** @type {Fawc} */ fawc, /** @type {RNode} */ rnode) {
   // @ts-ignore ok. guaranteed by createVEl. now vel is rel and has node
   return fawc[VEL] && rnode[NODE].contains(fawc[VEL]?.[NODE])
 }
 
 function getObjectPropertyType(
-  /**@type {object}}*/ object,
-  /**@type {string}*/ prop,
+  /** @type {object}} */ object,
+  /** @type {string} */ prop,
 ) {
   if (!(prop in object)) {
     return []
@@ -626,7 +630,7 @@ function getObjectPropertyType(
   return getObjectPropertyType(proto, prop)
 }
 
-function camel2kebab(/**@type {string}*/ camel) {
+function camel2kebab(/** @type {string} */ camel) {
   return [...camel].reduce(
     (acc, cur) =>
       cur >= 'A' && cur <= 'Z' ? acc + '-' + toLowerCase(cur) : acc + cur,
@@ -638,7 +642,7 @@ function camel2kebab(/**@type {string}*/ camel) {
  * @overload @param {Element|Text|VEl} x @returns {string}
  * @overload @param {Fawc} x @returns {string[]}
  */
-function print(/**@type {Element|Text|VEl|Fawc}*/ x) {
+function print(/** @type {Element|Text|VEl|Fawc} */ x) {
   if (x instanceof Text) {
     return `"${x.data}"`
   }
