@@ -1,7 +1,7 @@
-/** virtual element @constructor */
+/** virtual element, array-like class @constructor */
 export function VEl(type: ElType, tag: string, props: Props, children: VNode[]): void;
 export class VEl {
-    /** virtual element @constructor */
+    /** virtual element, array-like class @constructor */
     constructor(type: ElType, tag: string, props: Props, children: VNode[]);
     4: ElType;
     1: string;
@@ -13,18 +13,20 @@ export function mount(selector: string, vel: VEl, options?: {
     [UID_ATTR_NAME]?: string;
 }): void;
 /**
- * run fn() once, and when triggered, rerun fn(), or effectFn(fn()) if has effectFn
- * returns a function that can stop fn from rerunning by removing it from fawc2ropa
- * @template F @param {ZIF<F>} fn @param {Effect<F>=} effectFn @returns {() => void}
+ * run fn() once, and when triggered, rerun fn(), or effect(fn()) if has effect
+ * returns a function that stops fn from rerunning
+ * @template F @param {ZI<F>} fn @param {Effect<F>=} effect @return {() => void}
  */
-export function watch<F>(fn: ZIF<F>, effectFn?: Effect<F> | undefined): () => void;
+export function watch<F>(fn: ZI<F>, effect?: Effect<F> | undefined): () => void;
 export function reactive<T extends object>(obj: T): T;
 export const ON_CREATE: unique symbol;
 export const CACHE_REMOVED_CHILDREN: unique symbol;
-/** @type {Map<AnyFawc, WeakMap<object, Set<string | symbol>>>} */
-export const fawc2ropa: Map<AnyFawc, WeakMap<object, Set<string | symbol>>>;
-/** @type {WeakMap<object, Record<string | symbol, WeakSet<AnyFawc>>>} */
-export const ropa2fawc: WeakMap<object, Record<string | symbol, WeakSet<AnyFawc>>>;
+/** @typedef {object} Ro - reactive object */
+/** @typedef {string | symbol} Pa property access */
+/** @type {Map<Fawc, WeakMap<Ro, Set<Pa>>>} */
+export const fawc2ropas: Map<Fawc, WeakMap<Ro, Set<Pa>>>;
+/** @type {WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>} */
+export const ropa2fawcs: WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>;
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -53,17 +55,16 @@ export type Empty = {
 export type Cache = {
     [k: string]: RNode;
 };
-export type CacheSize = number;
 /**
- * real element
+ * - real element
  */
-export type REl = [El, Tag, Props, RNode[], ElType, Cache?, CacheSize?];
+export type REl = [El, Tag, Props, RNode[], ElType, Cache?];
 /**
- * virtual text node
+ * - virtual text node
  */
 export type VText = [null, Txt, Empty, [], "text"];
 /**
- * real text node
+ * - real text nodeS
  */
 export type RText = [Text, Txt, Empty, [], "text"];
 /**
@@ -78,18 +79,29 @@ export type RNode = REl | RText;
  * any node
  */
 export type ANode = VNode | RNode;
+/**
+ * - props | child | children
+ */
 export type Key = string | number | null;
 /**
- * Zero Input Function
+ * - Zero Input fn
  */
-export type ZIF<F> = F extends () => any ? F : never;
-export type Evaluated<F> = F extends () => any ? ReturnType<ZIF<F>> : F;
-export type Effect<F> = (v: ReturnType<ZIF<F>>) => unknown;
-export type WatchFawc<T> = [null, null, ZIF<T>, Effect<T>?];
-export type ElFawc<T> = [VEl, Key, ZIF<T>];
+export type ZI<F> = F extends () => any ? F : never;
+export type Evaluated<F> = F extends ZI<F> ? ReturnType<ZI<F>> : F;
+export type Effect<F> = (arg: ReturnType<ZI<F>>) => void;
+export type WatchFawc<T> = [null, null, ZI<T>, Effect<T>?];
+export type ElFawc<T> = [VEl, Key, ZI<T>];
 export type NotFawc<T> = [VEl, Key, T];
-export type Fawc<T> = ElFawc<T> | WatchFawc<T>;
-export type AnyFawc = Fawc<() => any>;
+export type AllFawc<T> = ElFawc<T> | WatchFawc<T>;
+export type Fawc = AllFawc<() => any>;
+/**
+ * - reactive object
+ */
+export type Ro = object;
+/**
+ * property access
+ */
+export type Pa = string | symbol;
 export type Child = VEl | string | (() => (VEl | string));
 export type Children = Child[] | (() => Child[]);
 export type Args = [Props, Children] | [Props, ...Child[]] | [Children] | Child[];

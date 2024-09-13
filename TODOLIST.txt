@@ -14,7 +14,7 @@
 ✔ 区分 VNode RNode @done(24-09-05 22:03)
 ✔ HChildren 支持非数组 @done(24-09-06 01:28)
 ✔ 可配置 cache 上限 @started(24-09-08 16:33) @done(24-09-12 23:36) @lasted(4d7h3m42s)
-☐ unsetProp prop->attr 时支持 camel 转 kebab
+✔ unsetProp prop->attr 时支持 camel 转 kebab @done(24-09-13 11:05)
 ✔ arrow->fawc @done(24-09-08 09:26)
 ✔ debug log @done(24-09-12 23:37)
 ✔ try uglifyjs mangle-props, use class/object, not array @done(24-09-12 23:36)

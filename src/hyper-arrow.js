@@ -172,11 +172,11 @@ export function mount(
   /**@type {{[UID_ATTR_NAME]?: string}}*/ options = {},
 ) {
   uidAttrName = options[UID_ATTR_NAME]
-  DEBUG && console.groupEnd()
-  DEBUG && console.groupCollapsed('mount')
+  if (DEBUG) console.groupEnd()
+  if (DEBUG) console.groupCollapsed('mount')
   // @ts-ignore let it crash if selector not found
   appendVNodes(DOCUMENT.querySelector(selector), [vel])
-  DEBUG && console.groupEnd()
+  if (DEBUG) console.groupEnd()
 }
 
 /**
@@ -230,7 +230,7 @@ export function reactive(obj) {
       }
       // collect current ROPA for current FAWC
       if (currentFawc) {
-        DEBUG && console.log('get', ...print(currentFawc), obj, prop)
+        if (DEBUG) console.log('get', ...print(currentFawc), obj, prop)
         if (!fawc2ropas.has(currentFawc)) {
           fawc2ropas.set(currentFawc, new WeakMap())
         }
@@ -264,7 +264,7 @@ export function reactive(obj) {
       }
       for (const [fawc, ropas] of fawc2ropas.entries()) {
         if (ropas.get(obj)?.has(prop)) {
-          DEBUG &&
+          if (DEBUG)
             console.groupCollapsed(
               'set',
               ...print(fawc),
@@ -277,7 +277,7 @@ export function reactive(obj) {
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
           const /**@type {REl}*/ rel = vel
           const value = runFawc(fawc)
-          DEBUG && console.groupEnd()
+          if (DEBUG) console.groupEnd()
           if (!vel) {
             effect?.(value)
           } else if (
@@ -302,7 +302,7 @@ export function reactive(obj) {
     },
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
-      DEBUG && console.log('del', obj, prop)
+      if (DEBUG) console.log('del', obj, prop)
       for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
       }
@@ -332,7 +332,7 @@ function createREl(/**@type {VEl}*/ vel) {
       : vel[TYPE] === 'svg'
       ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
       : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
-  DEBUG && console.group('create', print(vel))
+  if (DEBUG) console.group('create', print(vel))
   // use uid to track el's identity, only for debugging purposes
   if (uidAttrName) {
     setAttribute(el, uidAttrName, currentUid++)
@@ -340,7 +340,7 @@ function createREl(/**@type {VEl}*/ vel) {
   for (const key in vel[PROPS]) {
     setProp(el, key, vel[PROPS][key])
   }
-  DEBUG && console.groupEnd()
+  if (DEBUG) console.groupEnd()
   appendVNodes(el, vel[CHILDREN])
   // @ts-ignore let it crash if onCreate is not function
   vel[PROPS][ON_CREATE]?.(el)
@@ -349,7 +349,7 @@ function createREl(/**@type {VEl}*/ vel) {
 
 function createRText(/**@type {VText}*/ vtext) {
   const node = DOCUMENT.createTextNode(vtext[TXT])
-  DEBUG && console.log('create', print(node))
+  if (DEBUG) console.log('create', print(node))
   return convertVNodeToRNode(vtext, node)
 }
 
@@ -401,7 +401,6 @@ function updateChildren(/**@type {REl}*/ rel, /**@type {VNode[]}*/ newVNodes) {
       } else if (rel[CACHE]?.[id]) {
         // matched in cache, bring it out, then update
         insertChild(rel, i, rel[CACHE][id])
-        // TODO: log cache action
         updateChild(rel, i, newVNode)
       } else {
         // matched nothing, create and insert
@@ -477,20 +476,21 @@ function insertChild(
         createRNode(newANode)
   const node = newRNode[NODE]
   el.insertBefore(node, el.childNodes.item(index))
-  DEBUG && console.log('insert', print(el), index, print(node))
+  if (DEBUG) console.log('insert', print(el), index, print(node))
   rel[CHILDREN].splice(index, 0, newRNode)
   // already brought out, so remove from cache
   if (rel[CACHE]) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-    delete rel[CACHE][newRNode[PROPS].id]
+    const /**@type {string}*/ id = newRNode[PROPS].id
+    if (DEBUG && id in rel[CACHE]) console.log('cache>', print(node))
+    delete rel[CACHE][id]
   }
-  // TODO: log cache action
 }
 
 function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
-  DEBUG && console.log('remove', print(rel[NODE]), index, print(rnode[NODE]))
+  if (DEBUG) console.log('remove', print(rel[NODE]), index, print(rnode[NODE]))
   // move into cache
   if (
     rel[CACHE] &&
@@ -498,9 +498,11 @@ function removeChild(/**@type {REl}*/ rel, /**@type {number}*/ index) {
     OBJECT.keys(rel[CACHE]).length < rel[PROPS][CACHE_REMOVED_CHILDREN]
   ) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-    rel[CACHE][rnode[PROPS].id] = rnode
+    const /**@type {string}*/ id = rnode[PROPS].id
+    if (DEBUG && !(id in rnode[PROPS]))
+      console.log('cache<', print(rnode[NODE]))
+    rel[CACHE][id] = rnode
   }
-  // TODO: log cache action
   return rnode
 }
 
@@ -530,7 +532,7 @@ function setProp(
     setAttribute(el, key, value)
     type = '+ attr'
   }
-  DEBUG &&
+  if (DEBUG)
     console.log(
       type,
       print(el),
@@ -551,33 +553,33 @@ function unsetProp(/**@type {El}*/ el, /**@type {string}*/ key) {
   const lowercase = toLowerCase(key)
   if (lowercase in el.attributes) {
     removeAttribute(el, lowercase)
-    DEBUG && console.log('- attr', print(el), lowercase)
+    if (DEBUG) console.log('- attr', print(el), lowercase)
     return
   }
   // some IDL props can also be unset by converting into kebab attr
   const kebab = camel2kebab(key)
   if (kebab in el.attributes) {
     removeAttribute(el, kebab)
-    DEBUG && console.log('- attr', print(el), kebab)
+    if (DEBUG) console.log('- attr', print(el), kebab)
     return
   }
   // special cases for IDL prop naming
   if (key in prop2attr) {
     const attr = prop2attr[key]
     removeAttribute(el, attr)
-    DEBUG && console.log('- attr', print(el), attr)
+    if (DEBUG) console.log('- attr', print(el), attr)
     return
   }
   if (key[0] === '_') {
     const remained = removeFirst(key)
     removeAttribute(el, remained)
-    DEBUG && console.log('- attr', print(el), remained)
+    if (DEBUG) console.log('- attr', print(el), remained)
     return
   }
   if (key[0] === '$') {
     const remained = removeFirst(key)
     el.style.removeProperty(remained)
-    DEBUG && console.log('-style', print(el), remained)
+    if (DEBUG) console.log('-style', print(el), remained)
     return
   }
   throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)

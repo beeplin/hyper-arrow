@@ -1,4 +1,4 @@
-import { CACHE_REMOVED_CHILDREN, fawc2ropa, ON_CREATE, ropa2fawc, tags, } from '../../hyper-arrow.js';
+import { CACHE_REMOVED_CHILDREN, fawc2ropas, ON_CREATE, ropa2fawcs, tags, } from '../../hyper-arrow.js';
 import { ToDoListState } from './state.js';
 import { test } from './test.js';
 const { button, div, input, label, li, small, ul } = tags.html;
@@ -12,8 +12,8 @@ export function view(/**@type {ToDoListState}*/ s) {
                 type: 'button',
                 innerText: 'log deps',
                 onclick() {
-                    console.log(fawc2ropa);
-                    console.log(ropa2fawc);
+                    console.log(fawc2ropas);
+                    console.log(ropa2fawcs);
                 },
             }),
             button({
@@ -100,7 +100,11 @@ export function view(/**@type {ToDoListState}*/ s) {
                         s.filter = 'completed';
                     },
                 }),
-                label({ id: 'label-completed', for: 'completed', innerText: 'completed' }),
+                label({
+                    id: 'label-completed',
+                    for: 'completed',
+                    innerText: 'completed',
+                }),
             ]),
             button({
                 id: 'delete-all-completed',
