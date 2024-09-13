@@ -35,18 +35,18 @@ vscode-vim
     {old} & {new}: [ ] b ( ) B { } < > t ' " ` 
   insert
     a A i I gI gi o O 
-  delete (can with "{C})
+  delete (into "{C})
      x {V}x X {V}X d{T} {V}d dd D J {V}J gJ {V}gJ
-  yank (can with "{C})
+  yank (into "{C})
     y{T} {V}y yy Y
-  put (can with "{C})
+  put (from "{C})
     p P gp gP [p ]p
-  replace with register (can with "{C})
+  replace with register (from "{C})
     gr{T} {V}gr grr
-  change (can with "{C})
+  change (delete into "{C} and insert new)
     c{T} {V}c cc C {V}C s {V}s S {V}S (<- shadowed by surround) {V}R 
   change without going into insert mode
-    r{C} {V}r{C} gr{C} R gR ~ {V}~ {V}u {V}U g~{T} gu{T} gU{T} 
+    r{C} {V}r{C} gr{C} (shadowed by replace) R gR ~ {V}~ {V}u {V}U g~{T} gu{T} gU{T}
     ^A ^X <{T} {V}< << >{T} {V}> >> gq{T} ={T} {V}= == gc{T} {V}gc gcc gC{T} {V}gC gCC
     :s & (repeat :s)
   undo redo & repeat change
@@ -65,6 +65,4 @@ vscode-vim
     ^W +: s v h l j k o q c w ^W = < > - +
   insert mode
     ^O{command} ^R{register} ^P ^N ^H ^W ^U ^T ^D ^E ^Y ^A ^@
-  misc
-    ga 
 
