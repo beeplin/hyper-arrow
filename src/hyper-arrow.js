@@ -1,5 +1,8 @@
 // @ts-check
-const DEBUG = true
+let DEBUG = false
+export function debug(value = true) {
+  DEBUG = value
+}
 
 // reassign built-in objects and methods for better minification
 const LENGTH = 'length'
@@ -232,7 +235,7 @@ export function reactive(obj) {
       // collect current ROPA for current FAWC
       if (currentFawc) {
         if (DEBUG) {
-          console.log('get', ...string(currentFawc), obj, prop)
+          console.log('get ', ...string(currentFawc), obj, '.' + String(prop))
         }
         if (!fawc2ropas.has(currentFawc)) {
           fawc2ropas.set(currentFawc, new WeakMap())
@@ -265,19 +268,23 @@ export function reactive(obj) {
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) {
         return result
       }
+      if (DEBUG) {
+        console.log('set', obj, '.' + String(prop), oldValue, '->', newValue)
+      }
       for (const [fawc, ropas] of fawc2ropas.entries()) {
         if (ropas.get(obj)?.has(prop)) {
           if (DEBUG) {
             console.groupCollapsed(
-              'set',
+              'rerun',
               ...string(fawc),
               obj,
-              prop,
+              '.' + String(prop),
               oldValue,
+              '->',
               newValue,
             )
           }
-          const [vel, key, zif, effect] = fawc
+          const [vel, key, _, effect] = fawc
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
           const /** @type {REl} */ rel = vel
           const value = runFawc(fawc)
@@ -300,7 +307,7 @@ export function reactive(obj) {
             rel[CHILDREN].map(removeFawcsInRNodeFromDeps)
             updateChildren(rel, value.map(createVNode))
           } else {
-            setProp(rel[NODE], key, value)
+            resetProp(rel, key, value)
           }
         }
       }
@@ -334,12 +341,14 @@ function fawcIsInRNode(/** @type {Fawc} */ fawc, /** @type {RNode} */ rnode) {
 }
 
 function appendVNodes(/** @type {El} */ el, /** @type {VNode[]} */ vnodes) {
-  el.append(...vnodes.map(createRNode).map((rnode) => rnode[NODE]))
-  if (DEBUG) {
-    for (const c of Array.from(el.children)) {
-      console.log('append', string(el), '<', string(c))
-    }
-  }
+  el.append(
+    ...vnodes.map(createRNode).map((rnode) => {
+      if (DEBUG) {
+        console.log('append', string(el), '<', string(rnode[NODE]))
+      }
+      return rnode[NODE]
+    }),
+  )
 }
 
 function createRNode(/** @type {VNode} */ vnode) {
@@ -356,18 +365,18 @@ function createREl(/** @type {VEl} */ vel) {
   if (DEBUG) {
     console.group('create', string(vel))
   }
+  const rel = vnode2rnode(vel, el)
   // use uid to track el's identity, only for debugging purposes
   if (uidAttrName) {
     setAttribute(el, uidAttrName, currentUid++)
   }
-  for (const key in vel[PROPS]) {
-    setProp(el, key, vel[PROPS][key])
+  for (const key in rel[PROPS]) {
+    setProp(rel, key, rel[PROPS][key])
   }
   if (DEBUG) {
     console.groupEnd()
   }
   appendVNodes(el, vel[CHILDREN])
-  const rel = vnode2rnode(vel, el)
   // @ts-ignore let it crash if onCreate is not function
   const hasCache =
     typeof rel[PROPS][CACHE_REMOVED_CHILDREN] === 'number' &&
@@ -455,21 +464,27 @@ function updateChildren(rel, newVNodes) {
 /** @param {REl} rel @param {number} index @param {VNode} newVNode */
 function updateChild(rel, index, newVNode) {
   const oldRNode = rel[CHILDREN][index]
-  // if both vel with same tag, patch the existing el
-  if (
+  if (oldRNode[TYPE] === TEXT && newVNode[TYPE] === TEXT) {
+    if (oldRNode[TXT] !== newVNode[TXT]) {
+      // if both text node
+      if (DEBUG) {
+        console.log('update', oldRNode[TXT], '->', newVNode[TXT])
+      }
+      oldRNode[NODE].data = newVNode[TXT]
+    }
+    rel[CHILDREN][index] = vnode2rnode(newVNode, oldRNode[NODE])
+  } else if (
     oldRNode[TYPE] !== TEXT &&
     newVNode[TYPE] !== TEXT &&
     oldRNode[TAG] === newVNode[TAG]
   ) {
-    const el = oldRNode[NODE]
+    // if both vel with same tag, patch the existing el
     for (const key in newVNode[PROPS]) {
-      if (oldRNode[PROPS][key] !== newVNode[PROPS][key]) {
-        setProp(el, key, newVNode[PROPS][key])
-      }
+      resetProp(oldRNode, key, newVNode[PROPS][key])
     }
     for (const key in oldRNode[PROPS]) {
       if (!(key in newVNode[PROPS])) {
-        unsetProp(el, key)
+        unsetProp(oldRNode, key)
       }
     }
     // innerText, innerHTML, textContent already deal with children, so skip it
@@ -495,45 +510,92 @@ function insertChild(rel, index, newANode) {
         createRNode(newANode)
   const node = newRNode[NODE]
   el.insertBefore(node, el.childNodes.item(index))
-  if (DEBUG) {
-    console.log('insert', string(el), index, string(node))
-  }
   rel[CHILDREN].splice(index, 0, newRNode)
   // already brought out, so remove from cache
+  let fromCache = false
   if (rel[CACHE]) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
     const /** @type {string} */ id = newRNode[PROPS].id
-    if (DEBUG && id in rel[CACHE]) {
-      console.log('cache>', string(node))
-    }
+    fromCache = id in rel[CACHE]
     delete rel[CACHE][id]
+  }
+  if (DEBUG) {
+    console.log(
+      'insert',
+      string(el),
+      index,
+      '<',
+      string(node),
+      fromCache ? '< cache' : '',
+    )
   }
 }
 
 function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
-  if (DEBUG) {
-    console.log('remove', string(rel[NODE]), index, string(rnode[NODE]))
-  }
   // move into cache
+  let intoCache = false
   if (
     rel[CACHE] &&
     rel[PROPS][CACHE_REMOVED_CHILDREN] != null &&
     OBJECT.keys(rel[CACHE]).length < rel[PROPS][CACHE_REMOVED_CHILDREN]
   ) {
+    intoCache = true
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
     const /** @type {string} */ id = rnode[PROPS].id
-    if (DEBUG && !(id in rnode[PROPS])) {
-      console.log('cache<', string(rnode[NODE]))
-    }
     rel[CACHE][id] = rnode
   }
+  if (DEBUG) {
+    console.log(
+      'remove',
+      string(rel[NODE]),
+      index,
+      '>',
+      string(rnode[NODE]),
+      intoCache ? '> cache' : '',
+    )
+  }
+
   return rnode
 }
 
-/** @param {El} el @param {string} key @param {unknown} value */
-function setProp(el, key, value) {
+/** @param {REl} rel @param {string} key @param {unknown} value */
+function setProp(rel, key, value) {
+  const type = _setProp(rel, key, value)
+  if (DEBUG) {
+    console.log(
+      '+' + type,
+      string(rel[NODE]),
+      key,
+      '=',
+      typeof value === 'function' ? 'func' : value,
+    )
+  }
+}
+
+/** @param {REl} rel @param {string} key @param {unknown} value */
+function resetProp(rel, key, value) {
+  const oldValue = rel[PROPS][key]
+  if (oldValue === value) return
+  const type = _setProp(rel, key, value)
+  if (DEBUG) {
+    console.log(
+      '*' + type,
+      string(rel[NODE]),
+      key,
+      ':',
+      typeof oldValue === 'function' ? 'func' : oldValue,
+      '->',
+      typeof value === 'function' ? 'func' : value,
+    )
+  }
+}
+
+/** @param {REl} rel @param {string} key @param {unknown} value */
+function _setProp(rel, key, value) {
+  rel[PROPS][key] = value
+  const el = rel[NODE]
   let type
   if (getObjectPropertyTypes(el, key).includes('set')) {
     // IDL properties are getter/setters, proxies of attributes. For example:
@@ -542,28 +604,20 @@ function setProp(el, key, value) {
     // plain value: blur() focus() after() append() ... (all methods)
     // @ts-ignore ok, guaranteed by getObjectPropertyType having 'set'
     el[key] = value
-    type = '+ prop'
+    type = ' prop'
   } else if (key[0] === '$') {
     // @ts-ignore ok. style.setProperty can coerce
     el.style.setProperty(removeFirst(key), value)
-    type = '+style'
+    type = 'style'
   } else if (key[0] === '_') {
     setAttribute(el, removeFirst(key), value)
-    type = '+ attr'
+    type = ' attr'
   } else {
     // set every unknown thing as attribute
     setAttribute(el, key, value)
-    type = '+ attr'
+    type = ' attr'
   }
-  if (DEBUG) {
-    console.log(
-      type,
-      string(el),
-      key,
-      '=',
-      typeof value === 'function' ? 'func' : value,
-    )
-  }
+  return type
 }
 
 const /** @type {Record<string, string>} */ prop2attr = {
@@ -572,7 +626,8 @@ const /** @type {Record<string, string>} */ prop2attr = {
     className: 'class',
   }
 
-function unsetProp(/** @type {El} */ el, /** @type {string} */ key) {
+function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
+  const el = rel[NODE]
   // unset attrs. some IDL props can also be unset by lowercasing into attr
   const lowercased = toLowerCase(key)
   if (lowercased in el.attributes) {
@@ -655,7 +710,7 @@ function camel2kebab(/** @type {string} */ camel) {
 }
 
 /**
- * @overload @param {Element|Text|VEl} x @returns {string}
+ * @overload @param {Node|VEl} x @returns {string}
  * @overload @param {Fawc} x @returns {string[]}
  */
 function string(/** @type {Element|Text|VEl|Fawc} */ x) {
@@ -663,10 +718,10 @@ function string(/** @type {Element|Text|VEl|Fawc} */ x) {
     return `"${x.data}"`
   }
   if (x instanceof Element) {
-    return `${x.localName} #${x.id}`
+    return `${x.localName}-#${x.id}`
   }
   if (x instanceof VEl) {
-    return `${x[TAG]} #${x[PROPS].id ?? ''}`
+    return `${x[TAG]}-#${x[PROPS].id ?? ''}`
   }
   const [vel, key, zif, effect] = x
   const lines = zif.toString().split('\n')
