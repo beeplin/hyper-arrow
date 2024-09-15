@@ -6,7 +6,8 @@
   "module": "dist/hyper-arrow.js",
   "scripts": {
     "uglify": "uglifyjs dist/hyper-arrow.js -o dist/hyper-arrow.js --config-file uglifyjs.json",
-    "build": "tsc && npm run uglify",
+    "gzip": "gzipper compress dist/hyper-arrow.js",
+    "build": "tsc && npm run uglify && npm run gzip",
     "clean": "shx rm -rf dist && shx cp -r src dist",
     "prepublishOnly": "npm run clean && npm run build"
   },
@@ -31,6 +32,7 @@
     "@eslint/js": "^9.10.0",
     "eslint": "^9.10.0",
     "globals": "^15.9.0",
+    "gzipper": "^8.1.0",
     "shx": "^0.3.4",
     "typescript": "^5.5.4",
     "uglify-js": "^3.19.2"
