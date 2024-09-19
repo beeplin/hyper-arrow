@@ -34,7 +34,7 @@
     "globals": "^15.9.0",
     "gzipper": "^8.1.0",
     "shx": "^0.3.4",
-    "typescript": "^5.5.4",
-    "uglify-js": "^3.19.2"
+    "typescript": "5.6.2",
+    "uglify-js": "3.19.3"
   }
 }
