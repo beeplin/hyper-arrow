@@ -157,7 +157,7 @@ const view = div({ id: 'root' }, [
 mount('#app', view)
 ```
 
-It generates the DOM three:
+It generates the DOM tree:
 
 ```html
 <div id="root">
