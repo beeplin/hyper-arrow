@@ -556,7 +556,6 @@ function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
       intoCache ? '> cache' : '',
     )
   }
-
   return rnode
 }
 
