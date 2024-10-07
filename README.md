@@ -1,4 +1,4 @@
-# hyper-array
+# hyper-arrow
 
 super tiny front-end UI library, for educational purposes
 
@@ -7,7 +7,7 @@ super tiny front-end UI library, for educational purposes
 - No building steps, easy use via `<script module="type">` tag in plain HTML
 - Proxy-based reactivity, like [`reactive` in Vue 3](https://vuejs.org/api/reactivity-core.html#reactive) or [`makeAutoObservable` in MobX](https://mobx.js.org/observable-state.html#makeautoobservable)
 - No templates or JSX. Tag functions `div`, `button` and etc. work like [`h` in hyperscript](https://github.com/hyperhype/hyperscript) or [`h` in Vue 3](https://vuejs.org/api/render-function.html#h)
-- `=>` arrow functions within tag functions provide reactivity, which is where the name comes ;)
+- `=>` arrow functions within tag functions provide reactivity, which is how the name comes ;)
 - Smart and performant element children inserting, removing, swapping and updating, if all children has unique `id` attributes
 
 ## Get started
