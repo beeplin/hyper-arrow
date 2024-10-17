@@ -121,7 +121,7 @@ Create a reactive proxy for any `object`, and then it can be used in tag functio
 
 ### `tags`
 
-All HTML tag functions are in `tags.html`. `tags.svg` has SVG tag functions, and `tags.mathml` has MathML tag functions.
+All HTML tag functions are in `tags.html`. `tags.svg` contains SVG tag functions, and `tags.mathml` contains MathML tag functions.
 
 ```js
 import { mount, reactive, tags } from '../../hyper-arrow.js'
