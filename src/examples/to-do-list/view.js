@@ -122,8 +122,9 @@ export function view(/** @type {ToDoListState} */ s) {
       }),
     ]),
     ul({ id: 'ul', style: 'padding: 0', [CACHE_REMOVED_CHILDREN]: 10 }, () =>
-      s.getShownList().map((item, i) =>
-        li({ id: () => 'li-' + item.id, class: 'item-container' }, [
+      s.getShownList().map((item, i) => {
+        const isEditing = s.isEditing(item.id)
+        return li({ id: () => 'li-' + item.id, class: 'item-container' }, [
           button({
             id: () => 'up-' + item.id,
             class: 'item-up',
@@ -155,7 +156,7 @@ export function view(/** @type {ToDoListState} */ s) {
             },
           }),
           () =>
-            s.isEditing(item.id)
+            isEditing
               ? input({
                   id: () => 'edit-' + item.id,
                   class: 'item-input',
@@ -179,10 +180,10 @@ export function view(/** @type {ToDoListState} */ s) {
                   $minWidth: '150px',
                 }),
           button({
-            id: () => (s.isEditing(item.id) ? 'ok' : 'edit') + '-' + item.id,
-            class: () => (s.isEditing(item.id) ? 'item-ok' : 'item-edit'),
+            id: () => (isEditing ? 'ok' : 'edit') + '-' + item.id,
+            class: () => (isEditing ? 'item-ok' : 'item-edit'),
             type: 'button',
-            innerText: () => (s.isEditing(item.id) ? '✓' : '🖉'),
+            innerText: () => (isEditing ? '✓' : '🖉'),
             disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id)
@@ -194,19 +195,18 @@ export function view(/** @type {ToDoListState} */ s) {
             },
           }),
           button({
-            id: () =>
-              (s.isEditing(item.id) ? 'cancel' : 'delete') + '-' + item.id,
-            class: () => (s.isEditing(item.id) ? 'item-cancel' : 'item-delete'),
+            id: () => (isEditing ? 'cancel' : 'delete') + '-' + item.id,
+            class: () => (isEditing ? 'item-cancel' : 'item-delete'),
             type: 'button',
-            innerText: () => (s.isEditing(item.id) ? '✗' : '🗑'),
+            innerText: () => (isEditing ? '✗' : '🗑'),
             disabled: () => !!s.editingId && s.editingId !== item.id,
             onClick() {
               if (s.editingId === item.id) s.editingId = null
               else s.model.delete(item.id)
             },
           }),
-        ]),
-      ),
+        ])
+      }),
     ),
   ])
 }
