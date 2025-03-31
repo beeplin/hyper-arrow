@@ -335,4 +335,28 @@ describe('hyper-arrow', () => {
       expect(onClick2).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe('DOM elements with children', () => {
+    it('should handle elements with no attributes, only children', () => {
+      const { html } = tags
+      const vel = html.div(html.span('First'), html.p('Second'), 'Text node')
+
+      mount('#app', vel)
+
+      const div = document.querySelector('div')
+      expect(div).not.toBeNull()
+      console.log(div?.childNodes)
+      // expect(div?.children.length).toBe(2)
+      expect(div?.childNodes.length).toBe(3)
+
+      expect(div?.children[0].tagName.toLowerCase()).toBe('span')
+      expect(div?.children[0].textContent).toBe('First')
+
+      expect(div?.children[1].tagName.toLowerCase()).toBe('p')
+      expect(div?.children[1].textContent).toBe('Second')
+
+      expect(div?.childNodes[2].nodeType).toBe(3) // Text node
+      expect(div?.childNodes[2].textContent).toBe('Text node')
+    })
+  })
 })
