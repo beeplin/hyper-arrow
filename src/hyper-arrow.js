@@ -41,13 +41,13 @@ export const CACHE_REMOVED_CHILDREN = Symbol()
  * @typedef {REl | RText} RNode real node
  * @typedef {VNode | RNode} ANode any node
  */
-const NODE = 0
-const TAG = 1
-const TXT = 1
-const PROPS = 2
-const CHILDREN = 3
-const TYPE = 4
-const CACHE = 5
+export const NODE = 0
+export const TAG = 1
+export const TXT = 1
+export const PROPS = 2
+export const CHILDREN = 3
+export const TYPE = 4
+export const CACHE = 5
 
 /** virtual element, array-like class @constructor */
 export function VEl(

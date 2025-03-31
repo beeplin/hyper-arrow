@@ -18,3 +18,4 @@
 ✔ arrow->fawc @done(24-09-08 09:26)
 ✔ debug log @done(24-09-12 23:37)
 ✔ try uglifyjs mangle-props, use class/object, not array @done(24-09-12 23:36)
+☐ improve test coverage rate

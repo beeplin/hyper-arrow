@@ -5,9 +5,12 @@
   "main": "dist/hyper-arrow.js",
   "module": "dist/hyper-arrow.js",
   "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "uglify": "uglifyjs dist/hyper-arrow.js -o dist/hyper-arrow.js --config-file uglifyjs.json",
     "gzip": "gzipper compress dist/hyper-arrow.js",
-    "build": "tsc && npm run uglify && npm run gzip",
+    "build": "nph test && tsc && npm run uglify && npm run gzip",
     "clean": "shx rm -rf dist && shx cp -r src dist",
     "prepublishOnly": "npm run clean && npm run build"
   },
@@ -29,12 +32,15 @@
   },
   "homepage": "https://github.com/beeplin/hyper-arrow#readme",
   "devDependencies": {
-    "@eslint/js": "^9.10.0",
-    "eslint": "^9.10.0",
-    "globals": "^15.9.0",
-    "gzipper": "^8.1.0",
-    "shx": "^0.3.4",
-    "typescript": "5.6.2",
-    "uglify-js": "3.19.3"
+    "@eslint/js": "9.23.0",
+    "@vitest/coverage-v8": "^3.1.1",
+    "eslint": "9.23.0",
+    "globals": "16.0.0",
+    "gzipper": "8.2.1",
+    "jsdom": "26.0.0",
+    "shx": "0.4.0",
+    "typescript": "5.8.2",
+    "uglify-js": "3.19.3",
+    "vitest": "^3.1.1"
   }
 }
