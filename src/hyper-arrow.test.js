@@ -275,11 +275,11 @@ describe('hyper-arrow', () => {
       expect(Number(secondUid)).toBeGreaterThan(Number(firstUid))
     })
   })
-  describe('dom events with different cases', () => {
-    it('should handle onClick events in PascalCase', () => {
+  describe('dom events', () => {
+    it('should handle onclick events', () => {
       const onClick = vi.fn()
       const { html } = tags
-      const vel = html.button({ onClick }, 'Click me')
+      const vel = html.button({ onclick: onClick }, 'Click me')
 
       mount('#app', vel)
 
