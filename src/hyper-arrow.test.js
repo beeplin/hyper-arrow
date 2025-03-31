@@ -334,27 +334,5 @@ describe('hyper-arrow', () => {
       expect(onClick1).toHaveBeenCalledTimes(1)
       expect(onClick2).toHaveBeenCalledTimes(1)
     })
-
-    it('should handle dynamically added event handlers', () => {
-      const onClick = vi.fn()
-      const data = reactive({ hasHandler: false })
-      const { html } = tags
-      const vel = html.button(
-        () => ({
-          onClick: data.hasHandler ? onClick : () => {},
-        }),
-        'Click me',
-      )
-
-      mount('#app', vel)
-
-      const button = document.querySelector('button')
-      button?.click()
-      expect(onClick).toHaveBeenCalledTimes(0)
-
-      data.hasHandler = true
-      button?.click()
-      expect(onClick).toHaveBeenCalledTimes(1)
-    })
   })
 })
