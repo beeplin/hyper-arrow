@@ -339,24 +339,26 @@ describe('hyper-arrow', () => {
   describe('DOM elements with children', () => {
     it('should handle elements with no attributes, only children', () => {
       const { html } = tags
-      const vel = html.div(html.span('First'), html.p('Second'), 'Text node')
+      const vel = html.p(html.span('First'), html.p('Second'), 'Text node')
 
       mount('#app', vel)
 
-      const div = document.querySelector('div')
-      expect(div).not.toBeNull()
-      console.log(div?.childNodes)
-      // expect(div?.children.length).toBe(2)
-      expect(div?.childNodes.length).toBe(3)
+      const p = document.querySelector('p')
+      expect(p).not.toBeNull()
+      const attributes = p?.attributes
+      console.log(attributes)
+      expect(attributes?.length).toBe(0)
+      expect(p?.children.length).toBe(2)
+      expect(p?.childNodes.length).toBe(3)
 
-      expect(div?.children[0].tagName.toLowerCase()).toBe('span')
-      expect(div?.children[0].textContent).toBe('First')
+      expect(p?.children[0].tagName.toLowerCase()).toBe('span')
+      expect(p?.children[0].textContent).toBe('First')
 
-      expect(div?.children[1].tagName.toLowerCase()).toBe('p')
-      expect(div?.children[1].textContent).toBe('Second')
+      expect(p?.children[1].tagName.toLowerCase()).toBe('p')
+      expect(p?.children[1].textContent).toBe('Second')
 
-      expect(div?.childNodes[2].nodeType).toBe(3) // Text node
-      expect(div?.childNodes[2].textContent).toBe('Text node')
+      expect(p?.childNodes[2].nodeType).toBe(3) // Text node
+      expect(p?.childNodes[2].textContent).toBe('Text node')
     })
   })
 })
