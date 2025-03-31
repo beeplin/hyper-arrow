@@ -13,6 +13,7 @@ import {
   TAG,
   tags,
   TYPE,
+  UID_ATTR_NAME,
   VEl,
   watch,
 } from './hyper-arrow'
@@ -206,6 +207,72 @@ describe('hyper-arrow', () => {
       const af = () => data.count
       watch(af)
       expect(ropa2fawcs.has(obj)).toBe(true)
+    })
+  })
+  describe('UID_ATTR_NAME feature', () => {
+    it('should add unique identifiers to elements when UID_ATTR_NAME is specified', () => {
+      const { html } = tags
+      const vel = html.div(
+        { id: 'parent' },
+        html.div({ id: 'child1' }),
+        html.div({ id: 'child2' }),
+      )
+
+      mount('#app', vel, { [UID_ATTR_NAME]: 'data-uid' })
+
+      const parent = document.querySelector('#parent')
+      const child1 = document.querySelector('#child1')
+      const child2 = document.querySelector('#child2')
+
+      expect(parent?.getAttribute('data-uid')).toBeDefined()
+      expect(child1?.getAttribute('data-uid')).toBeDefined()
+      expect(child2?.getAttribute('data-uid')).toBeDefined()
+
+      // IDs should be unique
+      expect(parent?.getAttribute('data-uid')).not.toBe(
+        child1?.getAttribute('data-uid'),
+      )
+      expect(child1?.getAttribute('data-uid')).not.toBe(
+        child2?.getAttribute('data-uid'),
+      )
+      expect(parent?.getAttribute('data-uid')).not.toBe(
+        child2?.getAttribute('data-uid'),
+      )
+    })
+
+    it('should not add uid attributes when UID_ATTR_NAME is not specified', () => {
+      const { html } = tags
+      const vel = html.div({ id: 'parent' }, html.div({ id: 'child' }))
+
+      mount('#app', vel)
+
+      const parent = document.querySelector('#parent')
+      const child = document.querySelector('#child')
+
+      expect(parent?.getAttribute('data-uid')).toBeNull()
+      expect(child?.getAttribute('data-uid')).toBeNull()
+    })
+
+    it('should increment uid values for each new element', () => {
+      const { html } = tags
+      const vel1 = html.div({ id: 'first' })
+      const vel2 = html.div({ id: 'second' })
+
+      mount('#app', vel1, { [UID_ATTR_NAME]: 'data-uid' })
+      const firstUid = document
+        .querySelector('#first')
+        ?.getAttribute('data-uid')
+
+      const appElement = document.querySelector('#app')
+      if (appElement) appElement.innerHTML = ''
+      mount('#app', vel2, { [UID_ATTR_NAME]: 'data-uid' })
+      const secondUid = document
+        .querySelector('#second')
+        ?.getAttribute('data-uid')
+
+      expect(firstUid).toBeDefined()
+      expect(secondUid).toBeDefined()
+      expect(Number(secondUid)).toBeGreaterThan(Number(firstUid))
     })
   })
 })
