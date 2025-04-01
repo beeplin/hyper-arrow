@@ -294,3 +294,142 @@ mount(
 `WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`。对于每个 **ROPA**，`ropa2fawcs` 存储所有它会触发重新运行的 **FAWC**。
 
 `ropa2fawcs` 纯粹用于调试目的。它在 `hyper-arrow` 的源代码中甚至没有被实际使用。
+
+## 响应式实现原理
+
+响应式系统是 hyper-arrow 的核心特性之一。让我们深入了解它是如何工作的。
+
+### 基本概念
+
+在 hyper-arrow 中，有三种定义响应式属性的方式：
+
+```javascript
+const model = reactive({
+  count: 0,
+  text: 'hello',
+})
+
+const view = div(
+  // 1. 箭头函数 (推荐写法)
+  { textContent: () => model.text },
+
+  // 2. 普通函数
+  {
+    textContent: function () {
+      return model.text
+    },
+  },
+
+  // 3. 方法简写
+  {
+    textContent() {
+      return model.text
+    },
+  },
+)
+```
+
+### 为什么需要函数？
+
+响应式系统通过以下步骤工作：
+
+1. **依赖收集**
+
+简化实现：
+
+```javascript
+function reactive(obj) {
+  return new Proxy(obj, {
+    get(target, key) {
+      // 当正在执行某个函数时，记录这个函数依赖了哪个 ROPA
+      if (currentFawc) {
+        trackDependency(currentFawc, target, key)
+      }
+      return target[key]
+    },
+  })
+}
+```
+
+1. **函数执行**
+
+```javascript
+function runFawc(fawc) {
+  const fn = fawc[2] // 获取函数
+  currentFawc = fawc // 标记当前正在执行的函数
+  const result = fn() // 执行函数，触发 proxy.get，收集依赖
+  currentFawc = null
+  return result
+}
+```
+
+3. **更新触发**
+
+当响应式对象的属性发生变化时：
+
+- 系统找到所有依赖这个属性的函数
+- 重新执行这些函数
+- 用新的返回值更新 DOM
+
+### 依赖追踪机制
+
+hyper-arrow 使用两个主要的数据结构来追踪依赖关系：
+
+```typescript
+// 存储每个函数的依赖关系
+export const fawc2ropas = new Map<Fawc, WeakMap<Ro, Set<Pa>>>()
+
+// 存储每个响应式对象的依赖函数
+export const ropa2fawcs = new WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>()
+```
+
+#### 依赖收集过程
+
+1. 当执行响应式函数时，设置 `currentFawc`
+2. 函数执行过程中访问响应式属性会触发 Proxy 的 get 拦截器
+3. get 拦截器记录当前函数与被访问的属性之间的依赖关系
+
+#### 更新过程
+
+1. 响应式对象的属性被修改时触发 Proxy 的 set 拦截器
+2. 查找依赖这个属性的所有函数
+3. 重新执行这些函数
+4. 更新相应的 DOM 元素
+
+### 为什么推荐箭头函数？
+
+1. **简洁性**：语法更简洁，易于阅读
+2. **this 绑定**：避免 this 指向问题
+3. **设计意图**：清晰表达这是一个响应式属性
+
+### 实际应用示例
+
+```javascript
+import { reactive, div, mount } from 'hyper-arrow'
+
+// 创建响应式数据
+const model = reactive({
+  count: 0,
+  message: 'Hello',
+})
+
+// 创建视图
+const view = div({
+  class: () => (model.count > 0 ? 'active' : ''),
+  textContent: () => `${model.message} (${model.count})`,
+})
+
+// 挂载到 DOM
+mount('#app', view)
+
+// 数据变化会自动触发视图更新
+model.count++
+model.message = 'Hi'
+```
+
+### 总结
+
+1. 任何形式的函数都可以用于创建响应式属性
+2. 箭头函数是推荐的写法，但不是强制要求
+3. 响应式系统的核心是依赖收集和自动更新
+4. 使用函数是为了能够追踪属性访问并在需要时重新执行

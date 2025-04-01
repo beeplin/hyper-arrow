@@ -295,3 +295,142 @@ You may never need to use `fawc2ropas` directly. It's for internal use, and is e
 `WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`. For each **ROPA**, `ropa2fawcs` stores all **FAWC**s it would trigger to rerun.
 
 `ropa2fawcs` is purely for debugging purposes. It's not even actually used in `hyper-arrow`'s own source code.
+
+## Reactive Implementation Details
+
+The reactive system is one of hyper-arrow's core features. Let's dive into how it works.
+
+### Basic Concepts
+
+In hyper-arrow, there are three ways to define reactive properties:
+
+```javascript
+const model = reactive({
+  count: 0,
+  text: 'hello',
+})
+
+const view = div(
+  // 1. Arrow function (recommended)
+  { textContent: () => model.text },
+
+  // 2. Regular function
+  {
+    textContent: function () {
+      return model.text
+    },
+  },
+
+  // 3. Method shorthand
+  {
+    textContent() {
+      return model.text
+    },
+  },
+)
+```
+
+### Why Functions?
+
+The reactive system works through following steps:
+
+1. **Dependency Collection**
+
+Simplified implementation:
+
+```javascript
+function reactive(obj) {
+  return new Proxy(obj, {
+    get(target, key) {
+      // When executing a function, record which ROPA it depends on
+      if (currentFawc) {
+        trackDependency(currentFawc, target, key)
+      }
+      return target[key]
+    },
+  })
+}
+```
+
+2. **Function Execution**
+
+```javascript
+function runFawc(fawc) {
+  const fn = fawc[2] // Get function
+  currentFawc = fawc // Mark currently executing function
+  const result = fn() // Execute function, trigger proxy.get, collect dependencies
+  currentFawc = null
+  return result
+}
+```
+
+3. **Update Triggering**
+
+When reactive object property changes:
+
+- System finds all functions depending on this property
+- Reruns these functions
+- Updates DOM with new return values
+
+### Dependency Tracking Mechanism
+
+hyper-arrow uses two main data structures to track dependencies:
+
+```typescript
+// Store each function's dependencies
+export const fawc2ropas = new Map<Fawc, WeakMap<Ro, Set<Pa>>>()
+
+// Store each reactive object's dependent functions
+export const ropa2fawcs = new WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>()
+```
+
+#### Dependency Collection Process
+
+1. Set `currentFawc` when executing reactive function
+2. Accessing reactive property during function execution triggers Proxy's get interceptor
+3. Get interceptor records dependency between current function and accessed property
+
+#### Update Process
+
+1. Modifying reactive object property triggers Proxy's set interceptor
+2. Look up all functions depending on this property
+3. Rerun these functions
+4. Update corresponding DOM elements
+
+### Why Arrow Functions Recommended?
+
+1. **Conciseness**: More concise syntax, easier to read
+2. **this binding**: Avoids this binding issues
+3. **Design intent**: Clearly expresses this is a reactive property
+
+### Practical Example
+
+```javascript
+import { reactive, div, mount } from 'hyper-arrow'
+
+// Create reactive data
+const model = reactive({
+  count: 0,
+  message: 'Hello',
+})
+
+// Create view
+const view = div({
+  class: () => (model.count > 0 ? 'active' : ''),
+  textContent: () => `${model.message} (${model.count})`,
+})
+
+// Mount to DOM
+mount('#app', view)
+
+// Data changes automatically trigger view updates
+model.count++
+model.message = 'Hi'
+```
+
+### Summary
+
+1. Any form of function can be used for reactive properties
+2. Arrow functions are recommended but not required
+3. Core of reactive system is dependency collection and automatic updates
+4. Functions are used to track property access and rerun when needed
