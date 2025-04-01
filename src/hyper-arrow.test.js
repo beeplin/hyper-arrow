@@ -873,13 +873,13 @@ describe('hyper-arrow', () => {
       })
 
       consoleSpy.mockClear() // Clear initial access logs
-      
+
       data.count = 1
 
       // Just verify that get and set operations are logged in some form
-      const calls = consoleSpy.mock.calls.map(call => call[0])
+      const calls = consoleSpy.mock.calls.map((call) => call[0])
       expect(calls).toContain('set')
-      expect(calls.some(call => call.includes('get'))).toBe(true)
+      expect(calls.some((call) => call.includes('get'))).toBe(true)
     })
 
     it('should log conditional rendering changes', () => {
@@ -888,11 +888,11 @@ describe('hyper-arrow', () => {
 
       mount('#app', vel)
       consoleSpy.mockClear()
-      
+
       data.show = false
-      
+
       // Verify that property change is logged
-      const setCall = consoleSpy.mock.calls.find(call => call[0] === 'set')
+      const setCall = consoleSpy.mock.calls.find((call) => call[0] === 'set')
       expect(setCall).toBeDefined()
       expect(setCall?.[2]).toBe('.show')
       expect(setCall?.[3]).toBe(true)
@@ -901,21 +901,24 @@ describe('hyper-arrow', () => {
 
     it('should log array operations', () => {
       const data = reactive({ items: ['a', 'b'] })
-      const vel = ul(() => data.items.map(item => li(item)))
+      const vel = ul(() => data.items.map((item) => li(item)))
 
       mount('#app', vel)
       consoleSpy.mockClear()
-      
+
       data.items.push('c')
 
       // Should have logged array modification
       const calls = consoleSpy.mock.calls
-      const setCalls = calls.filter(call => call[0] === 'set')
-      
+      const setCalls = calls.filter((call) => call[0] === 'set')
+
       // Should have logged adding new item and length change
-      expect(setCalls.some(call => 
-        call[2] === '.2' && call[3] === undefined && call[5] === 'c'
-      )).toBe(true)
+      expect(
+        setCalls.some(
+          (call) =>
+            call[2] === '.2' && call[3] === undefined && call[5] === 'c',
+        ),
+      ).toBe(true)
     })
 
     it('should log multiline function string conversion', () => {
