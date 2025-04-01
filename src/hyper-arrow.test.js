@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CACHE_REMOVED_CHILDREN,
   CHILDREN,
@@ -25,7 +25,7 @@ const { circle } = tags.svg
 
 describe('hyper-arrow', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="app"></div>'
+    document.body.innerHTML = '<main id="app"></main>'
     debug(false) // Reset debug mode
   })
 
@@ -354,6 +354,608 @@ describe('hyper-arrow', () => {
 
       expect(pEl?.childNodes[2].nodeType).toBe(3) // Text node
       expect(pEl?.childNodes[2].textContent).toBe('Text node')
+    })
+  })
+
+  describe('style properties', () => {
+    it('should handle style properties with $ prefix', () => {
+      const vel = div({
+        $color: 'red',
+        $backgroundColor: 'blue',
+        '$font-size': '16px',
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.style.getPropertyValue('color')).toBe('red')
+      expect(divEl?.style.getPropertyValue('background-color')).toBe('blue')
+      expect(divEl?.style.getPropertyValue('font-size')).toBe('16px')
+    })
+
+    it('should handle dynamic style properties', () => {
+      const data = reactive({ color: 'red' })
+      const vel = div({
+        $color: () => data.color,
+        $padding: '10px',
+        $backgroundColor: 'yellow',
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.style.getPropertyValue('color')).toBe('red')
+      expect(divEl?.style.getPropertyValue('padding')).toBe('10px')
+      expect(divEl?.style.getPropertyValue('background-color')).toBe('yellow')
+
+      data.color = 'blue'
+      expect(divEl?.style.getPropertyValue('color')).toBe('blue')
+    })
+
+    it('should remove style properties when value is null or undefined', () => {
+      const data = reactive({ color: 'red' })
+      const vel = div({
+        $color: () => data.color,
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.style.getPropertyValue('color')).toBe('red')
+
+      // @ts-ignore
+      data.color = undefined
+      expect(divEl?.style.getPropertyValue('color')).toBe('')
+    })
+  })
+
+  describe('reactive arrays', () => {
+    it('should handle array methods properly', () => {
+      const data = reactive({ items: ['a', 'b', 'c'] })
+      const vel = ul(() => data.items.map((item) => li(item)))
+
+      mount('#app', vel)
+      const lis = document.querySelectorAll('li')
+      expect(lis.length).toBe(3)
+      expect(lis[0].textContent).toBe('a')
+
+      data.items.push('d')
+      const lisAfterPush = document.querySelectorAll('li')
+      expect(lisAfterPush.length).toBe(4)
+      expect(lisAfterPush[3].textContent).toBe('d')
+
+      data.items.pop()
+      const lisAfterPop = document.querySelectorAll('li')
+      expect(lisAfterPop.length).toBe(3)
+
+      data.items.unshift('x')
+      const lisAfterUnshift = document.querySelectorAll('li')
+      expect(lisAfterUnshift.length).toBe(4)
+      expect(lisAfterUnshift[0].textContent).toBe('x')
+    })
+
+    it('should handle deeply nested reactive arrays', () => {
+      const data = reactive({
+        nested: {
+          items: [
+            { id: 1, text: 'a' },
+            { id: 2, text: 'b' },
+          ],
+        },
+      })
+
+      const vel = ul(() =>
+        data.nested.items.map((item) =>
+          li({ id: item.id.toString() }, item.text),
+        ),
+      )
+
+      mount('#app', vel)
+      const lis = document.querySelectorAll('li')
+      expect(lis.length).toBe(2)
+      expect(lis[0].textContent).toBe('a')
+
+      data.nested.items[0].text = 'modified'
+      expect(lis[0].textContent).toBe('modified')
+
+      data.nested.items.push({ id: 3, text: 'c' })
+      const lisAfterPush = document.querySelectorAll('li')
+      expect(lisAfterPush.length).toBe(3)
+      expect(lisAfterPush[2].textContent).toBe('c')
+    })
+  })
+
+  describe('special properties', () => {
+    it('should handle attributes with _ prefix', () => {
+      const vel = div({
+        '_custom-attr': 'test',
+        _data: '123',
+        _complex_multi_word_attr: 'value',
+        _myCustomComplexAttr: 'camelCase',
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.getAttribute('custom-attr')).toBe('test')
+      expect(divEl?.getAttribute('data')).toBe('123')
+      expect(divEl?.getAttribute('complex_multi_word_attr')).toBe('value')
+      expect(divEl?.getAttribute('my-custom-complex-attr')).toBe('camelCase')
+    })
+
+    it('should handle camelCase to kebab-case conversion', () => {
+      const vel = div({
+        dataTestId: 'test',
+        _ariaLabel: 'label',
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.getAttribute('data-test-id')).toBe('test')
+      expect(divEl?.getAttribute('aria-label')).toBe('label')
+    })
+  })
+
+  describe('textContent and innerHTML', () => {
+    it('should handle textContent property', () => {
+      const data = reactive({ text: 'hello' })
+      const vel = div({ textContent: () => data.text })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.textContent).toBe('hello')
+
+      data.text = 'world'
+      expect(divEl?.textContent).toBe('world')
+    })
+
+    it('should handle innerHTML property', () => {
+      const data = reactive({ html: '<span>test</span>' })
+      const vel = div({ innerHTML: () => data.html })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.innerHTML).toBe('<span>test</span>')
+
+      data.html = '<p>changed</p>'
+      expect(divEl?.innerHTML).toBe('<p>changed</p>')
+    })
+  })
+
+  describe('error handling', () => {
+    it('should handle invalid mount selector gracefully', () => {
+      const vel = div('test')
+      expect(() => mount('#nonexistent', vel)).toThrow()
+    })
+
+    it('should handle setting invalid properties', () => {
+      const vel = div({ invalidProp: 'value' })
+      mount('#app', vel)
+      // Should not throw
+    })
+
+    it('should handle undefined children', () => {
+      const data = reactive({ items: [1, 2, 3] })
+      const vel = ul(() =>
+        data.items
+          .map((item) => (item === 2 ? undefined : li(item.toString())))
+          .filter((item) => item !== undefined),
+      )
+
+      mount('#app', vel)
+      const lis = document.querySelectorAll('li')
+      expect(lis.length).toBe(2)
+      expect(lis[0].textContent).toBe('1')
+      expect(lis[1].textContent).toBe('3')
+    })
+  })
+
+  describe('MathML and SVG elements', () => {
+    it('should create and update MathML elements', () => {
+      const { math, mn, mi, mfrac } = tags.mathml
+      const data = reactive({ value: 10 })
+      const vel = math(
+        mfrac(
+          mi('x'),
+          mn(() => data.value.toString()),
+        ),
+      )
+
+      mount('#app', vel)
+      const mathEl = document.querySelector('math')
+      expect(mathEl).not.toBeNull()
+      expect(mathEl?.namespaceURI).toBe('http://www.w3.org/1998/Math/MathML')
+
+      const mnEl = document.querySelector('mn')
+      expect(mnEl?.textContent).toBe('10')
+
+      data.value = 20
+      expect(mnEl?.textContent).toBe('20')
+    })
+
+    it('should handle nested SVG elements with attributes', () => {
+      const { svg, g, circle, path } = tags.svg
+      const data = reactive({ radius: 5, color: 'red' })
+
+      const vel = svg(
+        { width: '100', height: '100' },
+        g(
+          { transform: 'translate(50,50)' },
+          circle({
+            r: () => data.radius.toString(),
+            fill: () => data.color,
+          }),
+          path({ d: 'M0,0L10,10' }),
+        ),
+      )
+
+      mount('#app', vel)
+      const svgEl = document.querySelector('svg')
+      expect(svgEl?.namespaceURI).toBe('http://www.w3.org/2000/svg')
+
+      const circleEl = document.querySelector('circle')
+      expect(circleEl?.getAttribute('r')).toBe('5')
+      expect(circleEl?.getAttribute('fill')).toBe('red')
+
+      data.radius = 10
+      data.color = 'blue'
+      expect(circleEl?.getAttribute('r')).toBe('10')
+      expect(circleEl?.getAttribute('fill')).toBe('blue')
+    })
+  })
+
+  describe('complex watch scenarios', () => {
+    it('should handle multiple nested watches', () => {
+      const data = reactive({
+        a: { value: 1 },
+        b: { value: 2 },
+      })
+
+      let aCount = 0
+      let bCount = 0
+      let sumCount = 0
+      let currentSum = 0
+
+      watch(
+        () => data.a.value,
+        () => {
+          aCount++
+        },
+      )
+      watch(
+        () => data.b.value,
+        () => {
+          bCount++
+        },
+      )
+      watch(() => {
+        currentSum = data.a.value + data.b.value
+        sumCount++
+      })
+
+      expect(currentSum).toBe(3)
+      expect(aCount).toBe(0)
+      expect(bCount).toBe(0)
+      expect(sumCount).toBe(1)
+
+      data.a.value = 10
+      expect(currentSum).toBe(12)
+      expect(aCount).toBe(1)
+      expect(bCount).toBe(0)
+      expect(sumCount).toBe(2)
+
+      data.b.value = 20
+      expect(currentSum).toBe(30)
+      expect(aCount).toBe(1)
+      expect(bCount).toBe(1)
+      expect(sumCount).toBe(3)
+    })
+
+    it('should handle cleanup in nested watch scenarios', () => {
+      const data = reactive({
+        show: true,
+        value: 0,
+      })
+
+      let innerCount = 0
+      /**
+       * @type {(() => void) | null}
+       */
+      let innerCleanup = null
+      const cleanup = watch(() => {
+        if (data.show) {
+          if (innerCleanup) innerCleanup()
+          innerCleanup = watch(
+            () => data.value,
+            () => {
+              innerCount++
+            },
+          )
+        } else if (innerCleanup) {
+          innerCleanup()
+          innerCleanup = null
+        }
+      })
+
+      data.value = 1
+      expect(innerCount).toBe(1)
+
+      data.show = false
+      data.value = 2
+      expect(innerCount).toBe(1)
+
+      data.show = true
+      data.value = 3
+      expect(innerCount).toBe(2)
+
+      cleanup()
+      data.show = false
+      data.value = 4
+      expect(innerCount).toBe(3)
+    })
+  })
+
+  describe('complex children updates', () => {
+    it('should handle conditional children rendering', () => {
+      const data = reactive({
+        show: true,
+        items: ['a', 'b', 'c'],
+      })
+
+      const vel = div([
+        div(() => (data.show ? [p('Visible')] : [])),
+        ul(() => (data.show ? data.items.map((item) => li(item)) : [])),
+      ])
+
+      mount('#app', vel)
+      expect(document.querySelector('p')?.textContent).toBe('Visible')
+      expect(document.querySelectorAll('li').length).toBe(3)
+
+      data.show = false
+      expect(document.querySelector('p')).toBeNull()
+      expect(document.querySelectorAll('li').length).toBe(0)
+
+      data.show = true
+      data.items.push('d')
+      expect(document.querySelector('p')?.textContent).toBe('Visible')
+      expect(document.querySelectorAll('li').length).toBe(4)
+    })
+  })
+
+  describe('utility functions and edge cases', () => {
+    it('should handle property descriptor edge cases', () => {
+      const vel = div({
+        get testProp() {
+          return 'test'
+        },
+      })
+      mount('#app', vel)
+      // Should not throw when handling getter properties
+    })
+
+    it('should handle cache management with non-unique ids', () => {
+      const data = reactive({
+        items: [
+          { id: '1', text: 'a' },
+          { id: '1', text: 'b' }, // Duplicate id
+          { text: 'c' }, // Missing id
+        ],
+      })
+
+      const vel = div({ [CACHE_REMOVED_CHILDREN]: 2 }, () =>
+        data.items.map((item) => div({ id: item.id }, item.text)),
+      )
+
+      mount('#app', vel)
+      // Should handle non-unique and missing ids gracefully
+      const divs = document.querySelectorAll('div > div')
+      expect(divs.length).toBe(3)
+
+      data.items.length = 0
+      const divsAfterClear = document.querySelectorAll('div > div')
+      expect(divsAfterClear.length).toBe(0)
+
+      data.items.push({ id: '1', text: 'new' })
+      const divsAfterAdd = document.querySelectorAll('div > div')
+      expect(divsAfterAdd.length).toBe(1)
+    })
+
+    it('should handle special attribute cases', () => {
+      const data = reactive({ show: true })
+      const vel = div({
+        'data-test': 'test',
+        role: undefined,
+        ariaLabel: null,
+        class: () => (data.show ? 'visible' : ''), // Changed from className to class
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+      expect(divEl?.getAttribute('data-test')).toBe('test')
+      expect(divEl?.hasAttribute('role')).toBe(false)
+      expect(divEl?.hasAttribute('aria-label')).toBe(false)
+      expect(divEl?.className).toBe('visible')
+
+      data.show = false
+      expect(divEl?.className).toBe('')
+    })
+
+    it('should handle prototype chain property lookups', () => {
+      class CustomElement extends HTMLDivElement {}
+      const proto = Object.getPrototypeOf(CustomElement.prototype)
+      const vel = div({
+        [Object.getOwnPropertyNames(proto)[0]]: 'test',
+      })
+
+      mount('#app', vel)
+      // Should handle properties from prototype chain
+    })
+
+    it('should handle string conversion edge cases', () => {
+      const data = reactive({ value: 0 })
+      const multilineFunc = () => {
+        return data.value
+      }
+
+      const vel = div({
+        onClick: multilineFunc,
+      })
+
+      mount('#app', vel)
+      // Should handle multiline function string conversion
+      // Debug output will be tested through the debug mode test
+    })
+  })
+
+  describe('debug mode console output', () => {
+    /**
+     * @type {import("vitest").MockInstance<(...data: any[]) => void>}
+     */
+    let consoleSpy
+
+    beforeEach(() => {
+      consoleSpy = vi.spyOn(console, 'log')
+      consoleSpy.mockClear()
+      vi.spyOn(console, 'group')
+      vi.spyOn(console, 'groupCollapsed')
+      vi.spyOn(console, 'groupEnd')
+      debug(true)
+    })
+
+    afterEach(() => {
+      consoleSpy.mockRestore()
+      debug(false)
+    })
+
+    it('should log element creation and mounting', () => {
+      const vel = div({ id: 'test' }, 'Hello')
+      mount('#app', vel)
+
+      expect(console.groupCollapsed).toHaveBeenCalledWith('init')
+      expect(console.groupCollapsed).toHaveBeenCalledWith('mount')
+      expect(console.group).toHaveBeenCalledWith('create', 'div-#test')
+      expect(console.log).toHaveBeenCalledWith(
+        'append',
+        expect.any(String),
+        '<',
+        '"Hello"',
+      )
+    })
+
+    it('should log style property changes', () => {
+      const data = reactive({ color: 'red' })
+      const vel = div({
+        $color: () => data.color,
+        $background: 'blue',
+      })
+
+      mount('#app', vel)
+      data.color = 'green'
+
+      expect(console.log).toHaveBeenCalledWith(
+        '+style',
+        expect.any(String),
+        '$color',
+        '=',
+        'red',
+      )
+      expect(console.log).toHaveBeenCalledWith(
+        'set',
+        expect.any(Object),
+        '.color',
+        'red',
+        '->',
+        'green',
+      )
+    })
+
+    it('should log reactive property access and changes', () => {
+      const data = reactive({ count: 0 })
+
+      watch(() => {
+        data.count
+      })
+
+      consoleSpy.mockClear() // Clear initial access logs
+      
+      data.count = 1
+
+      // Just verify that get and set operations are logged in some form
+      const calls = consoleSpy.mock.calls.map(call => call[0])
+      expect(calls).toContain('set')
+      expect(calls.some(call => call.includes('get'))).toBe(true)
+    })
+
+    it('should log conditional rendering changes', () => {
+      const data = reactive({ show: true })
+      const vel = div(() => (data.show ? [p('Visible')] : []))
+
+      mount('#app', vel)
+      consoleSpy.mockClear()
+      
+      data.show = false
+      
+      // Verify that property change is logged
+      const setCall = consoleSpy.mock.calls.find(call => call[0] === 'set')
+      expect(setCall).toBeDefined()
+      expect(setCall?.[2]).toBe('.show')
+      expect(setCall?.[3]).toBe(true)
+      expect(setCall?.[5]).toBe(false)
+    })
+
+    it('should log array operations', () => {
+      const data = reactive({ items: ['a', 'b'] })
+      const vel = ul(() => data.items.map(item => li(item)))
+
+      mount('#app', vel)
+      consoleSpy.mockClear()
+      
+      data.items.push('c')
+
+      // Should have logged array modification
+      const calls = consoleSpy.mock.calls
+      const setCalls = calls.filter(call => call[0] === 'set')
+      
+      // Should have logged adding new item and length change
+      expect(setCalls.some(call => 
+        call[2] === '.2' && call[3] === undefined && call[5] === 'c'
+      )).toBe(true)
+    })
+
+    it('should log multiline function string conversion', () => {
+      const multilineFunc = () => {
+        return 'test'
+      }
+      const vel = div({
+        onClick: multilineFunc,
+      })
+
+      mount('#app', vel)
+
+      // Should have logged the first line with ...
+      expect(console.log).toHaveBeenCalledWith(
+        '+ prop',
+        expect.any(String),
+        'onclick',
+        '=',
+        'func',
+      )
+    })
+
+    it('should log cache operations', () => {
+      const data = reactive({ items: [{ id: '1', text: 'a' }] })
+      const vel = div({ [CACHE_REMOVED_CHILDREN]: 1 }, () =>
+        data.items.map((item) => div({ id: item.id }, item.text)),
+      )
+
+      mount('#app', vel)
+      data.items.length = 0
+      data.items.push({ id: '1', text: 'new' })
+
+      expect(console.log).toHaveBeenCalledWith(
+        'remove',
+        expect.any(String),
+        0,
+        '>',
+        expect.any(String),
+        '> cache',
+      )
     })
   })
 })

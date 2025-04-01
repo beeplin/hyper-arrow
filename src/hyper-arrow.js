@@ -605,15 +605,16 @@ function _setProp(rel, key, value) {
     el[key] = value
     type = ' prop'
   } else if (key[0] === '$') {
-    // @ts-ignore ok. style.setProperty can coerce
-    el.style.setProperty(removeFirst(key), value)
+    // Remove $ prefix and convert camelCase to kebab-case
+    const propertyName = camel2kebab(removeFirst(key))
+    el.style.setProperty(propertyName, value == null ? null : String(value))
     type = 'style'
   } else if (key[0] === '_') {
-    setAttribute(el, removeFirst(key), value)
+    setAttribute(el, camel2kebab(removeFirst(key)), value)
     type = ' attr'
   } else {
-    // set every unknown thing as attribute
-    setAttribute(el, key, value)
+    // Convert camelCase to kebab-case for other attributes
+    setAttribute(el, camel2kebab(key), value)
     type = ' attr'
   }
   return type
