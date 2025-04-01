@@ -80,7 +80,7 @@ const view = div(
       model.clear()
     },
   }),
-  // element properties can be omitted, if none exists
+  // the first element properties can be omitted, if none exists
   ul(
     // children can also be an arrow function, also reactive
     () => model.list.map((item) => li(item)),
@@ -211,7 +211,7 @@ This is useful, for example, when checking if the parent element, when doing sma
 
 ### `CACHE_REMOVED_CHILDREN`
 
-A unique symbol key that allows allow a parent DOM element to cache all it's removed children elements, so instead of creating new children, it can reuse the cached ones when needed, as long as the children's `id` attributes match.
+A unique symbol key that allows allow a parent DOM element to cache it's removed children elements, so instead of creating new children, it can reuse the cached ones when needed, as long as the children's `id` attributes match.
 
 ```js
 import {
@@ -282,7 +282,7 @@ Run `fn()` once, and whenever `fn`'s dependencies (see below) change, automatica
 
 ### `fawc2ropas`
 
-`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`. For each **function-associated-with-context** (**FAWC**), `fawc2ropas` stores all the **reactive-object-property-access**es (**ROPA**s) within the function call. When any **ROPA** changes, the corresponding function of the **FAWC** reruns, and updates the correct position of the DOM with the help of its contextual info. `fn`s of `watch`s also go into `fawc2ropas`.
+`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`. For each **function-associated-with-context** (**FAWC**), `fawc2ropas` stores all the **reactive-object-property-access**es (**ROPA**s)appearing within the function call. When any **ROPA** changes, the corresponding function of the **FAWC** reruns, and with the help of its contextual info, updates the correct position of the DOM as its new returned value. `fn`s of `watch`s also go into `fawc2ropas`.
 
 Keep in mind that your **FAWC**s' returned value must rely only on **ROPA**s (like `ro.p` or `ro[p]`) within the **FAWC**, not on any other things like non-reactive object, free variable bindings (like `let x = 1` inside the function), or global/closure variables.
 
