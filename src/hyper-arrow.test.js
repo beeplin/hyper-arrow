@@ -212,7 +212,7 @@ describe('hyper-arrow', () => {
   })
 
   describe('UID_ATTR_NAME feature', () => {
-    it('should add unique ids to elements when UID_ATTR_NAME is specified', () => {
+    it('should add uids to elements when UID_ATTR_NAME is specified', () => {
       const vel = div({ id: 'parent' }, [
         div({ id: 'child1' }),
         div({ id: 'child2' }),
@@ -240,7 +240,7 @@ describe('hyper-arrow', () => {
       )
     })
 
-    it('should not add uid attributes when UID_ATTR_NAME is not specified', () => {
+    it('should not add uid attrs when UID_ATTR_NAME is not specified', () => {
       const vel = div({ id: 'parent' }, [div({ id: 'child' })])
 
       mount('#app', vel)
