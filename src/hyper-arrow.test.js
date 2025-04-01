@@ -18,6 +18,11 @@ import {
   watch,
 } from './hyper-arrow'
 
+// Extract commonly used tags
+const { div, button, p, span, ul, li } = tags.html
+
+const { circle } = tags.svg
+
 describe('hyper-arrow', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="app"></div>'
@@ -69,29 +74,23 @@ describe('hyper-arrow', () => {
 
   describe('tags factory', () => {
     it('should create HTML elements', () => {
-      const { html } = tags
-      const div = html.div({ class: 'test' }, 'content')
-
-      expect(div instanceof VEl).toBe(true)
-      expect(div[TAG]).toBe('div')
-      expect(div[PROPS].class).toBe('test')
+      const vel = div({ class: 'test' }, 'content')
+      expect(vel instanceof VEl).toBe(true)
+      expect(vel[TAG]).toBe('div')
+      expect(vel[PROPS].class).toBe('test')
     })
 
     it('should create SVG elements', () => {
-      const { svg } = tags
-      const circle = svg.circle({ r: 5 })
-
-      expect(circle[TYPE]).toBe('svg')
-      expect(circle[TAG]).toBe('circle')
-      expect(circle[PROPS].r).toBe(5)
+      const vel = circle({ r: 5 })
+      expect(vel[TYPE]).toBe('svg')
+      expect(vel[TAG]).toBe('circle')
+      expect(vel[PROPS].r).toBe(5)
     })
   })
 
   describe('mount function', () => {
     it('should mount virtual element to DOM', () => {
-      const { html } = tags
-      const vel = html.div({ id: 'test' }, 'Hello')
-
+      const vel = div({ id: 'test' }, 'Hello')
       mount('#app', vel)
 
       const mountedEl = document.querySelector('#test')
@@ -101,8 +100,7 @@ describe('hyper-arrow', () => {
 
     it('should handle lifecycle hooks', () => {
       const onCreate = vi.fn()
-      const { html } = tags
-      const vel = html.div({
+      const vel = div({
         id: 'test',
         [ON_CREATE]: onCreate,
       })
@@ -162,12 +160,15 @@ describe('hyper-arrow', () => {
 
   describe('caching system', () => {
     it('should reuse cached elements when re-adding children', async () => {
-      const { div } = tags.html
       const child1 = { id: 'child1' }
       const child2 = { id: 'child2' }
       const children = reactive([child1, child2])
-      const vel = div({ id: 'parent', [CACHE_REMOVED_CHILDREN]: 2 }, () =>
-        children.map((c) => div(c)),
+      const vel = div(
+        {
+          id: 'parent',
+          [CACHE_REMOVED_CHILDREN]: 2,
+        },
+        () => children.map((c) => div(c)),
       )
 
       mount('#app', vel)
@@ -209,14 +210,13 @@ describe('hyper-arrow', () => {
       expect(ropa2fawcs.has(obj)).toBe(true)
     })
   })
+
   describe('UID_ATTR_NAME feature', () => {
-    it('should add unique identifiers to elements when UID_ATTR_NAME is specified', () => {
-      const { html } = tags
-      const vel = html.div(
-        { id: 'parent' },
-        html.div({ id: 'child1' }),
-        html.div({ id: 'child2' }),
-      )
+    it('should add unique ids to elements when UID_ATTR_NAME is specified', () => {
+      const vel = div({ id: 'parent' }, [
+        div({ id: 'child1' }),
+        div({ id: 'child2' }),
+      ])
 
       mount('#app', vel, { [UID_ATTR_NAME]: 'data-uid' })
 
@@ -241,8 +241,7 @@ describe('hyper-arrow', () => {
     })
 
     it('should not add uid attributes when UID_ATTR_NAME is not specified', () => {
-      const { html } = tags
-      const vel = html.div({ id: 'parent' }, html.div({ id: 'child' }))
+      const vel = div({ id: 'parent' }, [div({ id: 'child' })])
 
       mount('#app', vel)
 
@@ -254,9 +253,8 @@ describe('hyper-arrow', () => {
     })
 
     it('should increment uid values for each new element', () => {
-      const { html } = tags
-      const vel1 = html.div({ id: 'first' })
-      const vel2 = html.div({ id: 'second' })
+      const vel1 = div({ id: 'first' })
+      const vel2 = div({ id: 'second' })
 
       mount('#app', vel1, { [UID_ATTR_NAME]: 'data-uid' })
       const firstUid = document
@@ -275,16 +273,16 @@ describe('hyper-arrow', () => {
       expect(Number(secondUid)).toBeGreaterThan(Number(firstUid))
     })
   })
+
   describe('dom events', () => {
     it('should handle onclick events', () => {
       const onClick = vi.fn()
-      const { html } = tags
-      const vel = html.button({ onclick: onClick }, 'Click me')
+      const vel = button({ onclick: onClick }, 'Click me')
 
       mount('#app', vel)
 
-      const button = document.querySelector('button')
-      button?.click()
+      const buttonEl = document.querySelector('button')
+      buttonEl?.click()
 
       expect(onClick).toHaveBeenCalledTimes(1)
     })
@@ -293,8 +291,7 @@ describe('hyper-arrow', () => {
       const onClick = vi.fn()
       const onMouseDown = vi.fn()
       const onMOUSEUP = vi.fn()
-      const { html } = tags
-      const vel = html.button(
+      const vel = button(
         {
           onClick,
           onMouseDown,
@@ -305,10 +302,10 @@ describe('hyper-arrow', () => {
 
       mount('#app', vel)
 
-      const button = document.querySelector('button')
-      button?.click()
-      button?.dispatchEvent(new MouseEvent('mousedown'))
-      button?.dispatchEvent(new MouseEvent('mouseup'))
+      const buttonEl = document.querySelector('button')
+      buttonEl?.click()
+      buttonEl?.dispatchEvent(new MouseEvent('mousedown'))
+      buttonEl?.dispatchEvent(new MouseEvent('mouseup'))
 
       expect(onClick).toHaveBeenCalledTimes(1)
       expect(onMouseDown).toHaveBeenCalledTimes(1)
@@ -319,18 +316,17 @@ describe('hyper-arrow', () => {
       const onClick1 = vi.fn()
       const onClick2 = vi.fn()
       const data = reactive({ handler: onClick1 })
-      const { html } = tags
-      const vel = html.button({ onClick: () => data.handler() }, 'Click me')
+      const vel = button({ onClick: () => data.handler() }, 'Click me')
 
       mount('#app', vel)
 
-      const button = document.querySelector('button')
-      button?.click()
+      const buttonEl = document.querySelector('button')
+      buttonEl?.click()
       expect(onClick1).toHaveBeenCalledTimes(1)
       expect(onClick2).toHaveBeenCalledTimes(0)
 
       data.handler = onClick2
-      button?.click()
+      buttonEl?.click()
       expect(onClick1).toHaveBeenCalledTimes(1)
       expect(onClick2).toHaveBeenCalledTimes(1)
     })
@@ -338,27 +334,26 @@ describe('hyper-arrow', () => {
 
   describe('DOM elements with children', () => {
     it('should handle elements with no attributes, only children', () => {
-      const { html } = tags
-      const vel = html.p(html.span('First'), html.p('Second'), 'Text node')
+      const vel = p(span('First'), p('Second'), 'Text node')
 
       mount('#app', vel)
 
-      const p = document.querySelector('p')
-      expect(p).not.toBeNull()
-      const attributes = p?.attributes
+      const pEl = document.querySelector('p')
+      expect(pEl).not.toBeNull()
+      const attributes = pEl?.attributes
       console.log(attributes)
       expect(attributes?.length).toBe(0)
-      expect(p?.children.length).toBe(2)
-      expect(p?.childNodes.length).toBe(3)
+      expect(pEl?.children.length).toBe(2)
+      expect(pEl?.childNodes.length).toBe(3)
 
-      expect(p?.children[0].tagName.toLowerCase()).toBe('span')
-      expect(p?.children[0].textContent).toBe('First')
+      expect(pEl?.children[0].tagName.toLowerCase()).toBe('span')
+      expect(pEl?.children[0].textContent).toBe('First')
 
-      expect(p?.children[1].tagName.toLowerCase()).toBe('p')
-      expect(p?.children[1].textContent).toBe('Second')
+      expect(pEl?.children[1].tagName.toLowerCase()).toBe('p')
+      expect(pEl?.children[1].textContent).toBe('Second')
 
-      expect(p?.childNodes[2].nodeType).toBe(3) // Text node
-      expect(p?.childNodes[2].textContent).toBe('Text node')
+      expect(pEl?.childNodes[2].nodeType).toBe(3) // Text node
+      expect(pEl?.childNodes[2].textContent).toBe('Text node')
     })
   })
 })
