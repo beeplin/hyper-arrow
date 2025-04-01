@@ -1,5 +1,7 @@
 # hyper-arrow
 
+[中文版](./README.zh-CN.md)
+
 super tiny front-end UI library, for educational purposes
 
 - **~4.5KB** minified

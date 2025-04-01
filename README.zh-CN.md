@@ -1,5 +1,7 @@
 # hyper-arrow
 
+[English version](./README.md)
+
 超轻量级前端 UI 库（教学用途）
 
 - **压缩后仅 4.5KB**
