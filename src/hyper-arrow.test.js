@@ -54,7 +54,7 @@ describe('hyper-arrow', () => {
     it('should track property access and trigger updates', () => {
       const data = reactive({ count: 0 })
       let triggered = false
-
+      debug(true)
       watch(
         () => data.count,
         (newValue) => {
@@ -794,12 +794,14 @@ describe('hyper-arrow', () => {
 
   describe('property handling', () => {
     it('should properly unset properties from elements', () => {
+      debug(true)
       const data = reactive({ show: true })
       const vel = div({
         id: () => (data.show ? 'test-id' : undefined),
-        class: () => (data.show ? 'test-class' : null),
+        className: () => (data.show ? 'test-class' : null),
         title: () => (data.show ? 'Test Title' : null),
-        'data-custom': () => (data.show ? 'custom' : undefined),
+        innerText: () => (data.show ? 'text' : null),
+        dataCustom: () => (data.show ? 'custom' : undefined),
       })
 
       mount('#app', vel)
@@ -809,6 +811,7 @@ describe('hyper-arrow', () => {
       expect(divEl?.id).toBe('test-id')
       expect(divEl?.className).toBe('test-class')
       expect(divEl?.title).toBe('Test Title')
+      expect(divEl?.innerText).toBe('text')
       expect(divEl?.getAttribute('data-custom')).toBe('custom')
 
       // Trigger property removal
@@ -818,6 +821,7 @@ describe('hyper-arrow', () => {
       expect(divEl?.hasAttribute('id')).toBe(false)
       expect(divEl?.hasAttribute('class')).toBe(false)
       expect(divEl?.hasAttribute('title')).toBe(false)
+      expect(divEl?.hasAttribute('innertext')).toBe(false)
       expect(divEl?.hasAttribute('data-custom')).toBe(false)
     })
 
@@ -917,7 +921,7 @@ describe('hyper-arrow', () => {
         threshold: 5,
       })
       const vel = div({
-        class: () => {
+        className: () => {
           const sum = data.numbers.reduce((a, b) => a + b, 0)
           return sum > data.threshold ? 'over' : undefined
         },
@@ -1127,7 +1131,7 @@ describe('hyper-arrow', () => {
           (call) =>
             call[0] === 'remove' &&
             call[1].includes('div-#') &&
-            call[5]?.includes('cache'),
+            call[6]?.includes('cache'),
         ),
       ).toBe(true)
     })
@@ -1375,24 +1379,53 @@ describe('hyper-arrow', () => {
       expect(fawc2ropas.size).toBe(2)
     })
 
-    // it('should update deps when delete prop', () => {
-    //   const arr = ['a']
-    //   const s = reactive(arr)
-    //   mount(
-    //     '#app',
-    //     div(() => s[0]),
-    //   )
-    //   expect([...fawc2ropas.values()][0].get(arr)?.has('0')).toBe(true)
-    //   expect(document.querySelector('div')?.textContent).toBe('a')
+    it('should correctly update dynamic children', () => {
+      const s = reactive({ prop: { id: '1' }, show: true })
+      mount(
+        '#app',
+        div(
+          () => p(s.prop, 'a'),
+          () => (s.show ? 'b' : span('c')),
+        ),
+      )
 
-    //   delete s[0]
-    //   expect([...fawc2ropas.values()][0].get(arr)?.has('0')).toBe(false)
-    //   expect(document.querySelector('div')?.textContent).toBe('a')
+      const el = document.querySelector('p')
+      expect(el?.id).toBe('1')
+      expect(el?.innerText).toBe('a')
 
-    //   s[0] = 'b'
-    //   expect([...fawc2ropas.values()][0].get(arr)?.has('0')).toBe(false)
-    //   expect(document.querySelector('div')?.textContent).toBe('a')
-    // })
+      // @ts-ignore
+      s.prop = { innerText: 'b' }
+      expect(el?.id).toBe('')
+      expect(el?.innerText).toBe('b')
+
+      s.show = false
+      expect(document.querySelector('span')?.innerText).toBe('c')
+    })
+
+    it('should insert child from cache and log it', () => {
+      debug()
+      const s = reactive({ list: ['a'] })
+      mount(
+        '#app',
+        div({ [CACHE_REMOVED_CHILDREN]: 2 }, () =>
+          s.list.map((item) =>
+            p({ id: item, $color: null, onclick: () => {} }, item),
+          ),
+        ),
+        { [UID_ATTR_NAME]: 'uid' },
+      )
+      const el = document.querySelector('p')
+      expect(el?.id).toBe('a')
+      expect(el?.getAttribute('uid')).toBe('1')
+
+      s.list.pop()
+      expect(document.querySelector('p')).toBeNull()
+
+      s.list.push('a')
+      const el2 = document.querySelector('p')
+      expect(el2?.id).toBe('a')
+      expect(el2?.getAttribute('uid')).toBe('1')
+    })
 
     it('should handle complex children update with uid', () => {
       const data = reactive({
@@ -1434,6 +1467,7 @@ describe('hyper-arrow', () => {
       expect(after[3].className).toBe('a')
       expect(after[0].className).toBe('')
     })
+
     it('should handle complex children update without uid', () => {
       const data = reactive({
         items: [{ id: 'a', class: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }],

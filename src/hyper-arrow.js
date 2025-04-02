@@ -279,7 +279,7 @@ export function reactive(obj) {
       }
       if (DEBUG) {
         console.log(
-          ' @ set',
+          ' ! set',
           JSON.stringify(obj) + '.' + String(prop),
           ':',
           JSON.stringify(oldValue),
@@ -334,7 +334,7 @@ export function reactive(obj) {
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
       if (DEBUG) {
-        console.log(' @ del', JSON.stringify(obj) + '.' + String(prop), '\n')
+        console.log(' ! del', JSON.stringify(obj) + '.' + String(prop), '\n')
       }
       for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
@@ -546,8 +546,9 @@ function insertChild(rel, index, newANode) {
     console.log(
       'insert',
       string(el),
+      '@',
       index,
-      '<',
+      ':',
       string(node),
       fromCache ? '< cache' : '',
       '\n',
@@ -574,6 +575,7 @@ function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
     console.log(
       'remove',
       string(rel[NODE]),
+      '@',
       index,
       ':',
       string(rnode[NODE]),
@@ -646,7 +648,7 @@ function _setProp(rel, key, value) {
   if (key[0] === '$') {
     // Remove $ prefix and convert camelCase to kebab-case
     const propertyName = camel2kebab(removeFirst(key))
-    el.style.setProperty(propertyName, value == null ? null : String(value))
+    el.style.setProperty(propertyName, String(value))
     return ' styl'
   }
   if (key[0] === '_') {
@@ -740,9 +742,10 @@ function getObjectPropertyTypes(object, prop) {
       .filter((x) => x)
   }
   const proto = OBJECT.getPrototypeOf(object)
-  if (!proto) {
-    return []
-  }
+  // // only used for el here, not possible to have no prototype
+  // if (!proto) {
+  //   return []
+  // }
   return getObjectPropertyTypes(proto, prop)
 }
 
