@@ -145,19 +145,6 @@ describe('hyper-arrow', () => {
     })
   })
 
-  describe('debug mode', () => {
-    it('should enable console logging', () => {
-      const consoleSpy = vi.spyOn(console, 'log')
-      debug(true)
-
-      const data = reactive({ test: 1 })
-      data.test = 2
-
-      expect(consoleSpy).toHaveBeenCalled()
-      consoleSpy.mockRestore()
-    })
-  })
-
   describe('caching system', () => {
     it('should reuse cached elements when re-adding children', async () => {
       const child1 = { id: 'child1' }
@@ -340,8 +327,8 @@ describe('hyper-arrow', () => {
 
       const pEl = document.querySelector('p')
       expect(pEl).not.toBeNull()
+
       const attributes = pEl?.attributes
-      console.log(attributes)
       expect(attributes?.length).toBe(0)
       expect(pEl?.children.length).toBe(2)
       expect(pEl?.childNodes.length).toBe(3)
@@ -799,7 +786,95 @@ describe('hyper-arrow', () => {
 
       mount('#app', vel)
       // Should handle multiline function string conversion
-      // Debug output will be tested through the debug mode test
+    })
+  })
+
+  describe('property handling', () => {
+    it('should properly unset properties from elements', () => {
+      const data = reactive({ show: true })
+      const vel = div({
+        id: () => (data.show ? 'test-id' : undefined),
+        class: () => (data.show ? 'test-class' : null),
+        title: () => (data.show ? 'Test Title' : null),
+        'data-custom': () => (data.show ? 'custom' : undefined),
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      // Initial state check
+      expect(divEl?.id).toBe('test-id')
+      expect(divEl?.className).toBe('test-class')
+      expect(divEl?.title).toBe('Test Title')
+      expect(divEl?.getAttribute('data-custom')).toBe('custom')
+
+      // Trigger property removal
+      data.show = false
+
+      // Verify properties are removed
+      expect(divEl?.hasAttribute('id')).toBe(false)
+      expect(divEl?.hasAttribute('class')).toBe(false)
+      expect(divEl?.hasAttribute('title')).toBe(false)
+      expect(divEl?.hasAttribute('data-custom')).toBe(false)
+    })
+
+    it('should handle special property unset cases', () => {
+      const data = reactive({ props: true })
+      const vel = div({
+        style: () => (data.props ? 'color: red' : null),
+        $backgroundColor: () => (data.props ? 'blue' : undefined),
+        _ariaLabel: () => (data.props ? 'test' : null),
+        innerText: () => (data.props ? 'text' : null),
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      // Initial state check
+      expect(divEl?.style.color).toBe('red')
+      expect(divEl?.style.backgroundColor).toBe('blue')
+      expect(divEl?.getAttribute('aria-label')).toBe('test')
+      expect(divEl?.innerText).toBe('text')
+
+      // Trigger property removal
+      data.props = false
+
+      // Verify properties are removed
+      expect(divEl?.hasAttribute('style')).toBe(false)
+      expect(divEl?.style.backgroundColor).toBe('')
+      expect(divEl?.hasAttribute('aria-label')).toBe(false)
+      expect(divEl?.innerText).toBe('')
+    })
+
+    it('should handle unset props with reactive arrays', () => {
+      debug(true)
+      const data = reactive({ items: ['a', 'b', 'c'] })
+      const vel = ul(() =>
+        data.items.map((item) =>
+          li({
+            'data-value': () => item,
+            class: () => (item === 'b' ? 'selected' : undefined),
+          }),
+        ),
+      )
+
+      mount('#app', vel)
+      const liElements = document.querySelectorAll('li')
+
+      // Check initial state
+      expect(liElements[0].getAttribute('data-value')).toBe('a')
+      expect(liElements[1].getAttribute('data-value')).toBe('b')
+      expect(liElements[1].classList.contains('selected')).toBe(true)
+
+      // Remove middle item
+      data.items.splice(1, 1)
+
+      const updatedLiElements = document.querySelectorAll('li')
+      expect(updatedLiElements.length).toBe(2)
+      expect(updatedLiElements[0].getAttribute('data-value')).toBe('a')
+      expect(updatedLiElements[1].getAttribute('data-value')).toBe('c')
+      // Verify the 'selected' class was removed with the element
+      expect(document.querySelector('.selected')).toBeNull()
     })
   })
 

@@ -12,6 +12,8 @@ const PROXY = Proxy
 const REFLECT = Reflect
 const DOCUMENT = document
 const isArray = Array.isArray
+const CHILDREN_MAKERS = ['innerText', 'innerHTML', 'textContent']
+
 const removeFirst = (/** @type {any} */ x) => x.slice(1)
 const toLowerCase = (/** @type {string} */ str) => str.toLowerCase()
 /** @type {(el: El, k: string, v: unknown) => void} */
@@ -269,13 +271,13 @@ export function reactive(obj) {
         return result
       }
       if (DEBUG) {
-        console.log('set', obj, '.' + String(prop), oldValue, '->', newValue)
+        console.log('set ', obj, '.' + String(prop), oldValue, '->', newValue)
       }
       for (const [fawc, ropas] of fawc2ropas.entries()) {
         if (ropas.get(obj)?.has(prop)) {
           if (DEBUG) {
             console.groupCollapsed(
-              'rerun',
+              'rerun ',
               ...string(fawc),
               obj,
               '.' + String(prop),
@@ -316,7 +318,7 @@ export function reactive(obj) {
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
       if (DEBUG) {
-        console.log('del', obj, prop)
+        console.log('del ', obj, prop)
       }
       for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
@@ -488,8 +490,7 @@ function updateChild(rel, index, newVNode) {
       }
     }
     // innerText, innerHTML, textContent already deal with children, so skip it
-    const childrenMakers = ['innerText', 'innerHTML', 'textContent']
-    if (!childrenMakers.some((k) => k in newVNode[PROPS])) {
+    if (!CHILDREN_MAKERS.some((k) => k in newVNode[PROPS])) {
       updateChildren(oldRNode, newVNode[CHILDREN])
     }
     rel[CHILDREN][index] = vnode2rnode(newVNode, oldRNode[NODE])
@@ -561,6 +562,10 @@ function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
 
 /** @param {REl} rel @param {string} key @param {unknown} value */
 function setProp(rel, key, value) {
+  if (value == null) {
+    unsetProp(rel, key)
+    return
+  }
   const type = _setProp(rel, key, value)
   if (DEBUG) {
     console.log(
@@ -575,6 +580,10 @@ function setProp(rel, key, value) {
 
 /** @param {REl} rel @param {string} key @param {unknown} value */
 function resetProp(rel, key, value) {
+  if (value == null) {
+    unsetProp(rel, key)
+    return
+  }
   const oldValue = rel[PROPS][key]
   if (oldValue === value) return
   const type = _setProp(rel, key, value)
@@ -595,29 +604,31 @@ function resetProp(rel, key, value) {
 function _setProp(rel, key, value) {
   rel[PROPS][key] = value
   const el = rel[NODE]
-  let type
-  if (getObjectPropertyTypes(el, key).includes('set')) {
+  if (
+    CHILDREN_MAKERS.includes(key) ||
+    getObjectPropertyTypes(el, key).includes('set')
+  ) {
     // IDL properties are getter/setters, proxies of attributes. For example:
     // getter/setter: on* aria* id className classList style innerHTML ...
     // getter: client* tagName dataset attributes children firstChild ...
     // plain value: blur() focus() after() append() ... (all methods)
     // @ts-ignore ok, guaranteed by getObjectPropertyType having 'set'
     el[key] = value
-    type = ' prop'
-  } else if (key[0] === '$') {
+    return ' prop'
+  }
+  if (key[0] === '$') {
     // Remove $ prefix and convert camelCase to kebab-case
     const propertyName = camel2kebab(removeFirst(key))
     el.style.setProperty(propertyName, value == null ? null : String(value))
-    type = 'style'
-  } else if (key[0] === '_') {
-    setAttribute(el, camel2kebab(removeFirst(key)), value)
-    type = ' attr'
-  } else {
-    // Convert camelCase to kebab-case for other attributes
-    setAttribute(el, camel2kebab(key), value)
-    type = ' attr'
+    return ' styl'
   }
-  return type
+  if (key[0] === '_') {
+    setAttribute(el, camel2kebab(removeFirst(key)), value)
+    return ' attr'
+  }
+  // Convert camelCase to kebab-case for other attributes
+  setAttribute(el, camel2kebab(key), value)
+  return ' attr'
 }
 
 const /** @type {Record<string, string>} */ prop2attr = {
@@ -628,6 +639,22 @@ const /** @type {Record<string, string>} */ prop2attr = {
 
 function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
   const el = rel[NODE]
+  if (CHILDREN_MAKERS.includes(key)) {
+    el[key] = ''
+    if (DEBUG) {
+      console.log('- prop', string(el), key)
+    }
+    return
+  }
+  if (key[0] === '$') {
+    const remained = removeFirst(key)
+    el.style.removeProperty(remained)
+    if (DEBUG) {
+      console.log('- styl', string(el), remained)
+    }
+    return
+  }
+  if (key[0] === '_') key = removeFirst(key)
   // unset attrs. some IDL props can also be unset by lowercasing into attr
   const lowercased = toLowerCase(key)
   if (lowercased in el.attributes) {
@@ -655,23 +682,19 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
     }
     return
   }
-  if (key[0] === '_') {
-    const remained = removeFirst(key)
-    removeAttribute(el, remained)
+  if (getObjectPropertyTypes(el, key).includes('set')) {
+    el[key] = null
     if (DEBUG) {
-      console.log('- attr', string(el), remained)
+      console.log('- prop', string(el), key)
     }
     return
   }
-  if (key[0] === '$') {
-    const remained = removeFirst(key)
-    el.style.removeProperty(remained)
-    if (DEBUG) {
-      console.log('-style', string(el), remained)
-    }
-    return
+  removeAttribute(el, key)
+  if (DEBUG) {
+    console.log('- attr', string(el), key)
   }
-  throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
+  return
+  // throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
 }
 
 function getFullUniqueIds(/** @type {ANode[]} */ anodes) {
