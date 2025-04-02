@@ -604,10 +604,7 @@ function resetProp(rel, key, value) {
 function _setProp(rel, key, value) {
   rel[PROPS][key] = value
   const el = rel[NODE]
-  if (
-    CHILDREN_MAKERS.includes(key) ||
-    getObjectPropertyTypes(el, key).includes('set')
-  ) {
+  if (getObjectPropertyTypes(el, key).includes('set')) {
     // IDL properties are getter/setters, proxies of attributes. For example:
     // getter/setter: on* aria* id className classList style innerHTML ...
     // getter: client* tagName dataset attributes children firstChild ...
@@ -640,6 +637,7 @@ const /** @type {Record<string, string>} */ prop2attr = {
 function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
   const el = rel[NODE]
   if (CHILDREN_MAKERS.includes(key)) {
+    // @ts-ignore ok. guaranteed by if condition
     el[key] = ''
     if (DEBUG) {
       console.log('- prop', string(el), key)
@@ -683,6 +681,7 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
     return
   }
   if (getObjectPropertyTypes(el, key).includes('set')) {
+    // @ts-ignore ok. guaranteed by if condition
     el[key] = null
     if (DEBUG) {
       console.log('- prop', string(el), key)

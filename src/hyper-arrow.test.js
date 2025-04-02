@@ -902,9 +902,14 @@ describe('hyper-arrow', () => {
       const vel = div({ id: 'test' }, 'Hello')
       mount('#app', vel)
 
-      expect(console.groupCollapsed).toHaveBeenCalledWith('init')
       expect(console.groupCollapsed).toHaveBeenCalledWith('mount')
-      expect(console.group).toHaveBeenCalledWith('create', 'div-#test')
+      expect(console.log).toHaveBeenCalledWith(
+        '+ prop',
+        expect.any(String),
+        'id',
+        '=',
+        'test',
+      )
       expect(console.log).toHaveBeenCalledWith(
         'append',
         expect.any(String),
@@ -924,16 +929,17 @@ describe('hyper-arrow', () => {
       data.color = 'green'
 
       expect(console.log).toHaveBeenCalledWith(
-        '+style',
+        '+ styl',
         expect.any(String),
         '$color',
         '=',
         'red',
       )
       expect(console.log).toHaveBeenCalledWith(
-        'set',
-        expect.any(Object),
-        '.color',
+        '* styl',
+        expect.any(String),
+        '$color',
+        ':',
         'red',
         '->',
         'green',
@@ -947,14 +953,13 @@ describe('hyper-arrow', () => {
         data.count
       })
 
-      consoleSpy.mockClear() // Clear initial access logs
+      consoleSpy.mockClear()
 
       data.count = 1
 
-      // Just verify that get and set operations are logged in some form
       const calls = consoleSpy.mock.calls.map((call) => call[0])
-      expect(calls).toContain('set')
-      expect(calls.some((call) => call.includes('get'))).toBe(true)
+      expect(calls).toContain('set ')
+      expect(calls.some((call) => call === 'get ')).toBe(true)
     })
 
     it('should log conditional rendering changes', () => {
@@ -966,8 +971,7 @@ describe('hyper-arrow', () => {
 
       data.show = false
 
-      // Verify that property change is logged
-      const setCall = consoleSpy.mock.calls.find((call) => call[0] === 'set')
+      const setCall = consoleSpy.mock.calls.find((call) => call[0] === 'set ')
       expect(setCall).toBeDefined()
       expect(setCall?.[2]).toBe('.show')
       expect(setCall?.[3]).toBe(true)
@@ -983,11 +987,9 @@ describe('hyper-arrow', () => {
 
       data.items.push('c')
 
-      // Should have logged array modification
       const calls = consoleSpy.mock.calls
-      const setCalls = calls.filter((call) => call[0] === 'set')
+      const setCalls = calls.filter((call) => call[0] === 'set ')
 
-      // Should have logged adding new item and length change
       expect(
         setCalls.some(
           (call) =>
