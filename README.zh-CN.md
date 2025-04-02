@@ -289,12 +289,6 @@ mount(
 
 你可能永远不需要直接使用 `fawc2ropas`。它仅供内部使用，暴露出来只是为了调试目的。
 
-### `ropa2fawcs`
-
-`WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`。对于每个 **ROPA**，`ropa2fawcs` 存储所有它会触发重新运行的 **FAWC**。
-
-`ropa2fawcs` 纯粹用于调试目的。它在 `hyper-arrow` 的源代码中甚至没有被实际使用。
-
 ## 响应式实现原理
 
 响应式系统是 hyper-arrow 的核心特性之一。让我们深入了解它是如何工作的。

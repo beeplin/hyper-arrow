@@ -290,12 +290,6 @@ Keep in mind that your **FAWC**s' returned value must rely only on **ROPA**s (li
 
 You may never need to use `fawc2ropas` directly. It's for internal use, and is exposed only for debugging purposes.
 
-### `ropa2fawcs`
-
-`WeakMap<ReactiveObject, Record<PropertyAccess, WeakSet<FunctionAssociatedWithContext>>>`. For each **ROPA**, `ropa2fawcs` stores all **FAWC**s it would trigger to rerun.
-
-`ropa2fawcs` is purely for debugging purposes. It's not even actually used in `hyper-arrow`'s own source code.
-
 ## Reactive Implementation Details
 
 The reactive system is one of hyper-arrow's core features. Let's dive into how it works.
