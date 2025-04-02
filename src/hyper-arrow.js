@@ -237,7 +237,12 @@ export function reactive(obj) {
       // collect current ROPA for current FAWC
       if (currentFawc) {
         if (DEBUG) {
-          console.log('get ', ...string(currentFawc), obj, '.' + String(prop))
+          console.log(
+            'get ',
+            ...string(currentFawc),
+            JSON.stringify(obj),
+            '.' + String(prop),
+          )
         }
         if (!fawc2ropas.has(currentFawc)) {
           fawc2ropas.set(currentFawc, new WeakMap())
@@ -271,7 +276,14 @@ export function reactive(obj) {
         return result
       }
       if (DEBUG) {
-        console.log('set ', obj, '.' + String(prop), oldValue, '->', newValue)
+        console.log(
+          'set ',
+          JSON.stringify(obj),
+          '.' + String(prop),
+          JSON.stringify(oldValue),
+          '->',
+          JSON.stringify(newValue),
+        )
       }
       for (const [fawc, ropas] of fawc2ropas.entries()) {
         if (ropas.get(obj)?.has(prop)) {
@@ -279,11 +291,11 @@ export function reactive(obj) {
             console.groupCollapsed(
               'rerun ',
               ...string(fawc),
-              obj,
+              JSON.stringify(obj),
               '.' + String(prop),
-              oldValue,
+              JSON.stringify(oldValue),
               '->',
-              newValue,
+              JSON.stringify(newValue),
             )
           }
           const [vel, key, , effect] = fawc
@@ -318,7 +330,7 @@ export function reactive(obj) {
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
       if (DEBUG) {
-        console.log('del ', obj, prop)
+        console.log('del ', JSON.stringify(obj), prop)
       }
       for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
@@ -635,15 +647,8 @@ const /** @type {Record<string, string>} */ prop2attr = {
   }
 
 function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
+  delete rel[PROPS][key]
   const el = rel[NODE]
-  if (CHILDREN_MAKERS.includes(key)) {
-    // @ts-ignore ok. guaranteed by if condition
-    el[key] = ''
-    if (DEBUG) {
-      console.log('- prop', string(el), key)
-    }
-    return
-  }
   if (key[0] === '$') {
     const remained = removeFirst(key)
     el.style.removeProperty(remained)
@@ -748,6 +753,11 @@ function string(/** @type {Element|Text|VEl|Fawc} */ x) {
   const [vel, key, zif, effect] = x
   const lines = zif.toString().split('\n')
   const firstLine = lines[0]
-  const result = lines.length === 1 ? firstLine : firstLine + ' ...'
+  const result = zif
+    .toString()
+    .replace(/[\r\n]/g, ';')
+    .replace(/ +/g, ' ')
+    .replace(/;+/g, ';')
+    .replace(/\{;/, '{')
   return vel ? [string(vel), key, result] : ['watch', result, effect]
 }

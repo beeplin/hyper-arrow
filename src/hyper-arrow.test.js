@@ -847,7 +847,6 @@ describe('hyper-arrow', () => {
     })
 
     it('should handle unset props with reactive arrays', () => {
-      debug(true)
       const data = reactive({ items: ['a', 'b', 'c'] })
       const vel = ul(() =>
         data.items.map((item) =>
@@ -875,6 +874,154 @@ describe('hyper-arrow', () => {
       expect(updatedLiElements[1].getAttribute('data-value')).toBe('c')
       // Verify the 'selected' class was removed with the element
       expect(document.querySelector('.selected')).toBeNull()
+    })
+
+    it('should handle unset props with dynamic keys', () => {
+      const data = reactive({
+        show: true,
+        propName: 'test-prop',
+        propValue: 'test-value',
+      })
+      const vel = div({
+        // @ts-ignore
+        [() => data.propName]: () => (data.show ? data.propValue : undefined),
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      expect(divEl?.getAttribute('test-prop')).toBe('test-value')
+
+      data.show = false
+      expect(divEl?.hasAttribute('test-prop')).toBe(false)
+
+      data.show = true
+      data.propName = 'new-prop'
+      expect(divEl?.hasAttribute('test-prop')).toBe(false)
+      expect(divEl?.getAttribute('new-prop')).toBe('test-value')
+    })
+
+    it('should handle unset props with multiple reactive dependencies', () => {
+      const data = reactive({
+        condition1: true,
+        condition2: true,
+        value1: 'one',
+        value2: 'two',
+      })
+      const vel = div({
+        'data-test': () => {
+          if (!data.condition1) return undefined
+          if (!data.condition2) return null
+          return data.value1 + '-' + data.value2
+        },
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      expect(divEl?.getAttribute('data-test')).toBe('one-two')
+
+      data.condition1 = false
+      expect(divEl?.hasAttribute('data-test')).toBe(false)
+
+      data.condition1 = true
+      data.condition2 = false
+      expect(divEl?.hasAttribute('data-test')).toBe(false)
+
+      data.condition2 = true
+      data.value1 = 'new'
+      expect(divEl?.getAttribute('data-test')).toBe('new-two')
+    })
+
+    it('should handle unset props with computed values', () => {
+      const data = reactive({
+        numbers: [1, 2, 3],
+        threshold: 5,
+      })
+      const vel = div({
+        class: () => {
+          const sum = data.numbers.reduce((a, b) => a + b, 0)
+          return sum > data.threshold ? 'over' : undefined
+        },
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      expect(divEl?.hasAttribute('class')).toBe(true)
+      expect(divEl?.className).toBe('over')
+
+      data.numbers.pop()
+      expect(divEl?.hasAttribute('class')).toBe(false)
+
+      data.threshold = 2
+      expect(divEl?.className).toBe('over')
+    })
+
+    it('should handle unset props with conditional CSS classes', () => {
+      const data = reactive({
+        isActive: true,
+        isDisabled: false,
+        isPending: true,
+      })
+      const vel = div({
+        class: () => {
+          const classes = []
+          if (data.isActive) classes.push('active')
+          if (data.isDisabled) classes.push('disabled')
+          if (data.isPending) classes.push('pending')
+          return classes.length > 0 ? classes.join(' ') : undefined
+        },
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      expect(divEl?.className).toBe('active pending')
+
+      data.isActive = false
+      data.isPending = false
+      expect(divEl?.hasAttribute('class')).toBe(false)
+
+      data.isDisabled = true
+      expect(divEl?.className).toBe('disabled')
+    })
+
+    it('should handle unset props with nested objects', () => {
+      const data = reactive({
+        styles: {
+          color: 'red',
+          fontSize: '14px',
+        },
+        theme: {
+          enabled: true,
+          primary: 'blue',
+        },
+      })
+      const vel = div({
+        style: () =>
+          data.theme.enabled
+            ? `color: ${data.styles.color}; font-size: ${data.styles.fontSize}`
+            : undefined,
+        class: () =>
+          data.theme.enabled ? `theme-${data.theme.primary}` : undefined,
+      })
+
+      mount('#app', vel)
+      const divEl = document.querySelector('div')
+
+      expect(divEl?.style.color).toBe('red')
+      expect(divEl?.style.fontSize).toBe('14px')
+      expect(divEl?.className).toBe('theme-blue')
+
+      data.theme.enabled = false
+      expect(divEl?.hasAttribute('style')).toBe(false)
+      expect(divEl?.hasAttribute('class')).toBe(false)
+
+      data.theme.enabled = true
+      data.styles.color = 'green'
+      expect(divEl?.style.color).toBe('green')
+      expect(divEl?.className).toBe('theme-blue')
     })
   })
 
