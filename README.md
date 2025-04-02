@@ -4,7 +4,7 @@
 
 super tiny front-end UI library, for educational purposes
 
-- **~4.5KB** minified
+- **~2.4KB** gzipped
 - **ZERO** dependencies
 - No building steps, easy use via `<script module="type">` tag in plain HTML
 - Proxy-based reactivity, like [`reactive` in Vue 3](https://vuejs.org/api/reactivity-core.html#reactive) or [`makeAutoObservable` in MobX](https://mobx.js.org/observable-state.html#makeautoobservable)

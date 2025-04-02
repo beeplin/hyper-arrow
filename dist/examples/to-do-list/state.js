@@ -44,5 +44,9 @@ export class ToDoListState {
         // this.model.list[i] = x
         // best solution
         this.model.list = this.model.list.map((_, index) => this.model.list[index === i ? j : index === j ? i : index]);
+        // ;[this.model.list[i], this.model.list[j]] = [
+        //   this.model.list[j],
+        //   this.model.list[i],
+        // ]
     }
 }

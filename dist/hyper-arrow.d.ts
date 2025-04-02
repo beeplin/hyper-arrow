@@ -23,12 +23,33 @@ export function watch<F>(fn: ZI<F>, effect?: Effect<F> | undefined): () => void;
 export function reactive<T extends object>(obj: T): T;
 export const ON_CREATE: unique symbol;
 export const CACHE_REMOVED_CHILDREN: unique symbol;
-/** @typedef {object} Ro - reactive object */
-/** @typedef {string | symbol} Pa property access */
-/** @type {Map<Fawc, WeakMap<Ro, Set<Pa>>>} */
-export const fawc2ropas: Map<Fawc, WeakMap<Ro, Set<Pa>>>;
-/** @type {WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>} */
-export const ropa2fawcs: WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>;
+/**
+ * @typedef {'html' | 'svg' | 'mathml'} ElType
+ * @typedef {HTMLElement | SVGElement | MathMLElement} El
+ * @typedef {string} Tag
+ * @typedef {string} Txt
+ * @typedef {{[k: string | symbol]: unknown,
+ *            [CACHE_REMOVED_CHILDREN]?: number,
+ *            [ON_CREATE]?: (el: Element) => void}} Props
+ * @typedef {{[k: string]: never}} Empty
+ * @typedef {{[k: string]: RNode}} Cache
+ * @_______ {[null, Tag, Props, VNode[], ElType]} VEl - virtual element (class)
+ * @typedef {[El,   Tag, Props, RNode[], ElType, Cache?]} REl - real element
+ * @typedef {[null, Txt, Empty, [],     'text']} VText - virtual text node
+ * @typedef {[Text, Txt, Empty, [],     'text']} RText - real text node
+ * @typedef {VEl | VText} VNode virtual node
+ * @typedef {REl | RText} RNode real node
+ * @typedef {VNode | RNode} ANode any node
+ */
+export const NODE: 0;
+export const TAG: 1;
+export const TXT: 1;
+export const PROPS: 2;
+export const CHILDREN: 3;
+export const TYPE: 4;
+export const CACHE: 5;
+/** @type {Map<Fac, WeakMap<object, Set<string | symbol>>>} */
+export const fac2opas: Map<Fac, WeakMap<object, Set<string | symbol>>>;
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
  * @typedef {Child[] | (() => Child[])} Children
@@ -41,6 +62,10 @@ export const tags: {
     };
 };
 export const UID_ATTR_NAME: unique symbol;
+export namespace uidAttr {
+    let name: string | undefined;
+    let count: number;
+}
 export function isReactive(x: any): boolean;
 /**
  * mount virtual element to DOM
@@ -97,19 +122,11 @@ export type Key = string | number | null;
 export type ZI<F> = F extends () => any ? F : never;
 export type Evaluated<F> = F extends ZI<F> ? ReturnType<ZI<F>> : F;
 export type Effect<F> = (arg: ReturnType<ZI<F>>) => void;
-export type WatchFawc<T> = [null, null, ZI<T>, Effect<T>?];
-export type ElFawc<T> = [VEl, Key, ZI<T>];
-export type NotFawc<T> = [VEl, Key, T];
-export type AllFawc<T> = ElFawc<T> | WatchFawc<T>;
-export type Fawc = AllFawc<() => any>;
-/**
- * - reactive object
- */
-export type Ro = object;
-/**
- * property access
- */
-export type Pa = string | symbol;
+export type WatchFac<T> = [null, null, ZI<T>, Effect<T>?];
+export type ElFac<T> = [VEl, Key, ZI<T>];
+export type NotFac<T> = [VEl, Key, T];
+export type AllFac<T> = ElFac<T> | WatchFac<T>;
+export type Fac = AllFac<() => any>;
 export type Child = VEl | string | (() => (VEl | string));
 export type Children = Child[] | (() => Child[]);
 export type Args = [Props, Children] | [Props, ...Child[]] | [Children] | Child[];

@@ -4,7 +4,7 @@
 
 超轻量级前端 UI 库（教学用途）
 
-- **压缩后仅 4.5KB**
+- **压缩后仅 2.4KB**
 - **零依赖**
 - 无需构建步骤，通过 `<script type="module">` 标签在普通 HTML 中直接使用
 - 基于 Proxy 的响应式系统，类似 [Vue 3 的 `reactive`](https://vuejs.org/api/reactivity-core.html#reactive) 或 [MobX 的 `makeAutoObservable`](https://mobx.js.org/observable-state.html#makeautoobservable)
