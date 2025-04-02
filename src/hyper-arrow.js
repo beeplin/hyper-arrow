@@ -85,7 +85,7 @@ let /** @type {Fawc?} */ currentFawc = null
 /** @type {Map<Fawc, WeakMap<Ro, Set<Pa>>>} */
 export const fawc2ropas = new Map()
 /** @type {WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>} */
-export const ropa2fawcs = new WeakMap()
+// export const ropa2fawcs = new WeakMap()
 
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
@@ -162,15 +162,17 @@ function createVText(/** @type {string} */ txt) {
 }
 
 export const UID_ATTR_NAME = Symbol()
-let /** @type {string | undefined} */ uidAttrName
-let currentUid = 0
+export const uidAttr = {
+  /** @type {string | undefined} */ name: undefined,
+  count: 0,
+}
 
 /** mount virtual element to DOM
  * @typedef {{[UID_ATTR_NAME]?: string}} Options
  * @param {string} selector @param {VEl} vel @param {Options} options
  */
 export function mount(selector, vel, options = {}) {
-  uidAttrName = options[UID_ATTR_NAME]
+  uidAttr.name = options[UID_ATTR_NAME]
   if (DEBUG) {
     console.groupEnd()
     console.groupCollapsed('mount')
@@ -247,31 +249,31 @@ export function reactive(obj) {
         if (!fawc2ropas.has(currentFawc)) {
           fawc2ropas.set(currentFawc, new WeakMap())
         }
+        /** @type {  WeakMap<object, Set<Pa>>} */
+        // @ts-ignore ok. guaranteed by previous if condition
         const ropas = fawc2ropas.get(currentFawc)
-        if (ropas) {
-          if (!ropas.has(obj)) {
-            ropas.set(obj, new Set())
-          }
-          ropas.get(obj)?.add(prop)
+        if (!ropas.has(obj)) {
+          ropas.set(obj, new Set())
         }
-        // collect current FAWC for current ROPA, only for debugging purposes
-        if (!ropa2fawcs.has(obj)) {
-          ropa2fawcs.set(obj, OBJECT.create(null))
-        }
-        const props = ropa2fawcs.get(obj)
-        if (props) {
-          if (!(prop in props)) {
-            props[prop] = new WeakSet()
-          }
-          props[prop].add(currentFawc)
-        }
+        ropas.get(obj)?.add(prop)
+        // // collect current FAWC for current ROPA, only for debugging purposes
+        // if (!ropa2fawcs.has(obj)) {
+        //   ropa2fawcs.set(obj, OBJECT.create(null))
+        // }
+        // const props = ropa2fawcs.get(obj)
+        // if (props) {
+        //   if (!(prop in props)) {
+        //     props[prop] = new WeakSet()
+        //   }
+        //   props[prop].add(currentFawc)
+        // }
       }
       return reactive(result)
     },
     set(obj, prop, newValue) {
       const oldValue = REFLECT.get(obj, prop)
       const result = REFLECT.set(obj, prop, newValue)
-      // skip fake change unless touching array.length inside array.push() etc.
+      // skip noop change unless touching array.length inside array.push() etc.
       if (oldValue === newValue && !(isArray(obj) && prop === LENGTH)) {
         return result
       }
@@ -337,7 +339,7 @@ export function reactive(obj) {
       for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
       }
-      delete ropa2fawcs.get(obj)?.[prop]
+      // delete ropa2fawcs.get(obj)?.[prop]
       return result
     },
   })
@@ -383,8 +385,8 @@ function createREl(/** @type {VEl} */ vel) {
   }
   const rel = vnode2rnode(vel, el)
   // use uid to track el's identity, only for debugging purposes
-  if (uidAttrName) {
-    setAttribute(el, uidAttrName, currentUid++)
+  if (uidAttr.name) {
+    setAttribute(el, uidAttr.name, uidAttr.count++)
   }
   for (const key in rel[PROPS]) {
     setProp(rel, key, rel[PROPS][key])
@@ -484,7 +486,13 @@ function updateChild(rel, index, newVNode) {
     if (oldRNode[TXT] !== newVNode[TXT]) {
       // if both text node
       if (DEBUG) {
-        console.log('update', oldRNode[TXT], '->', newVNode[TXT], '\n')
+        console.log(
+          'update',
+          '"' + oldRNode[TXT] + '"',
+          '->',
+          '"' + newVNode[TXT] + '"',
+          '\n',
+        )
       }
       oldRNode[NODE].data = newVNode[TXT]
     }

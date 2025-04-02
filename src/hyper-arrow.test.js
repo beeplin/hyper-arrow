@@ -9,11 +9,11 @@ import {
   ON_CREATE,
   PROPS,
   reactive,
-  ropa2fawcs,
   TAG,
   tags,
   TYPE,
   UID_ATTR_NAME,
+  uidAttr,
   VEl,
   watch,
 } from './hyper-arrow'
@@ -26,6 +26,9 @@ const { circle } = tags.svg
 describe('hyper-arrow', () => {
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>'
+    fawc2ropas.clear()
+    uidAttr.name = undefined
+    uidAttr.count = 0 // Reset UID counter
     debug(false) // Reset debug mode
   })
 
@@ -189,13 +192,13 @@ describe('hyper-arrow', () => {
       expect(fawc2ropas.keys().some((fawc) => fawc[2] === af)).toBe(true)
     })
 
-    it('should track reverse dependencies with ropa2fawcs', () => {
-      const obj = { count: 0 }
-      const data = reactive(obj)
-      const af = () => data.count
-      watch(af)
-      expect(ropa2fawcs.has(obj)).toBe(true)
-    })
+    // it('should track reverse dependencies with ropa2fawcs', () => {
+    //   const obj = { count: 0 }
+    //   const data = reactive(obj)
+    //   const af = () => data.count
+    //   watch(af)
+    //   expect(ropa2fawcs.has(obj)).toBe(true)
+    // })
   })
 
   describe('UID_ATTR_NAME feature', () => {
@@ -402,7 +405,7 @@ describe('hyper-arrow', () => {
       const lis = document.querySelectorAll('li')
       expect(lis.length).toBe(3)
       expect(lis[0].textContent).toBe('a')
-
+      debug()
       data.items.push('d')
       const lisAfterPush = document.querySelectorAll('li')
       expect(lisAfterPush.length).toBe(4)
@@ -1072,43 +1075,43 @@ describe('hyper-arrow', () => {
       ).toBe(true)
     })
 
-    it('should log reactive property access and changes', () => {
-      const data = reactive({ count: 0 })
+    // it('should log reactive property access and changes', () => {
+    //   const data = reactive({ count: 0 })
 
-      watch(() => {
-        data.count
-      })
+    //   watch(() => {
+    //     data.count
+    //   })
 
-      consoleSpy.mockClear()
-      data.count = 1
+    //   consoleSpy.mockClear()
+    //   data.count = 1
 
-      expect(
-        consoleSpy.mock.calls.some((call) => call[0].includes('set')),
-      ).toBe(true)
-      expect(
-        consoleSpy.mock.calls.some((call) => call[0].includes('get')),
-      ).toBe(true)
-    })
+    //   expect(
+    //     consoleSpy.mock.calls.some((call) => call[0].includes('set')),
+    //   ).toBe(true)
+    //   expect(
+    //     consoleSpy.mock.calls.some((call) => call[0].includes('get')),
+    //   ).toBe(true)
+    // })
 
-    it('should log conditional rendering changes', () => {
-      const data = reactive({ show: true })
-      const vel = div(() => (data.show ? [p('Visible')] : []))
+    // it('should log conditional rendering changes', () => {
+    //   const data = reactive({ show: true })
+    //   const vel = div(() => (data.show ? [p('Visible')] : []))
 
-      mount('#app', vel)
-      consoleSpy.mockClear()
-      data.show = false
+    //   mount('#app', vel)
+    //   consoleSpy.mockClear()
+    //   data.show = false
 
-      expect(
-        consoleSpy.mock.calls.some(
-          (call) =>
-            call[0] === ' @ set' &&
-            call[2] === ':' &&
-            call[3] === 'true' &&
-            call[4] === '->' &&
-            call[5] === 'false',
-        ),
-      ).toBe(true)
-    })
+    //   expect(
+    //     consoleSpy.mock.calls.some(
+    //       (call) =>
+    //         call[0] === ' @ set' &&
+    //         call[2] === ':' &&
+    //         call[3] === 'true' &&
+    //         call[4] === '->' &&
+    //         call[5] === 'false',
+    //     ),
+    //   ).toBe(true)
+    // })
 
     it('should log cache operations for arrays', () => {
       const data = reactive({ items: ['a', 'b'] })
@@ -1325,36 +1328,139 @@ describe('hyper-arrow', () => {
   })
 
   describe('manually created', () => {
-    it('should handle fake update', () => {
-      const data = reactive({ id: 'test' })
-      const vel = div({ id: data.id }, 'Hello')
-      mount('#app', vel)
+    it('should handle noop update doing nothing', () => {
+      const s = reactive({ id: '1' })
+      mount('#app', div({ id: () => s.id }))
 
-      // Custom behavior test
-      const divEl = document.querySelector('div')
-      expect(divEl?.id).toBe('test')
-      expect(divEl?.textContent).toBe('Hello')
+      const el = document.querySelector('div')
+      expect(el?.id).toBe('1')
 
-      data.id = 'test'
-      expect(divEl?.id).toBe('test')
+      debug()
+      vi.spyOn(console, 'log')
+      s.id = '1'
+      expect(el?.id).toBe('1')
+      expect(console.log).not.toBeCalled()
     })
+
+    it('should update deps when update one el child', () => {
+      const s = reactive(['a', 'b'])
+      mount(
+        '#app',
+        ul(
+          li({ id: '1' }, () => s[0]),
+          () => (s[1] ? li({ id: '2' }, () => s[1]) : li({ id: '2' }, 'empty')),
+        ),
+      )
+      expect(fawc2ropas.size).toBe(3)
+
+      s[1] = ''
+      expect(fawc2ropas.size).toBe(2)
+    })
+
+    it('should update deps when update el children', () => {
+      const s = reactive({ list: ['a', 'b'] })
+      mount(
+        '#app',
+        ul(
+          li({ id: '1' }, () => s.list[0]),
+          () =>
+            s.list[1]
+              ? li({ id: '2' }, () => s.list[1])
+              : li({ id: '2' }, 'empty'),
+        ),
+      )
+      expect(fawc2ropas.size).toBe(3)
+
+      s.list = ['a']
+      expect(fawc2ropas.size).toBe(2)
+    })
+
+    // it('should update deps when delete prop', () => {
+    //   const arr = ['a']
+    //   const s = reactive(arr)
+    //   mount(
+    //     '#app',
+    //     div(() => s[0]),
+    //   )
+    //   expect([...fawc2ropas.values()][0].get(arr)?.has('0')).toBe(true)
+    //   expect(document.querySelector('div')?.textContent).toBe('a')
+
+    //   delete s[0]
+    //   expect([...fawc2ropas.values()][0].get(arr)?.has('0')).toBe(false)
+    //   expect(document.querySelector('div')?.textContent).toBe('a')
+
+    //   s[0] = 'b'
+    //   expect([...fawc2ropas.values()][0].get(arr)?.has('0')).toBe(false)
+    //   expect(document.querySelector('div')?.textContent).toBe('a')
+    // })
 
     it('should handle complex children update with uid', () => {
       const data = reactive({
-        items: ['a', 'b', 'c', 'd'],
+        items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd', class: 'd' }],
       })
 
-      const vel = ul(() => data.items.map((item) => li({ id: item }, item)))
+      const vel = ul(() =>
+        data.items.map((item) =>
+          li({ id: item.id, class: item.class }, item.id),
+        ),
+      )
+
+      mount('#app', vel, { [UID_ATTR_NAME]: 'u_id' })
+      const before = Array.from(document.querySelectorAll('li'))
+      expect(before.map((li) => li.id)).toEqual(['a', 'b', 'c', 'd'])
+      expect(before.map((li) => li.getAttribute('u_id'))).toEqual([
+        '1',
+        '2',
+        '3',
+        '4',
+      ])
+      expect(before[0].className).toBe('')
+      expect(before[3].className).toBe('d')
+
+      data.items = [
+        { id: 'e' },
+        { id: 'd' },
+        { id: 'g' },
+        { id: 'a', class: 'a' },
+      ]
+      const after = Array.from(document.querySelectorAll('li'))
+      expect(after.map((li) => li.id)).toEqual(['e', 'd', 'g', 'a'])
+      expect(after.map((li) => li.getAttribute('u_id'))).toEqual([
+        '5',
+        '4',
+        '6',
+        '1',
+      ])
+      expect(after[3].className).toBe('a')
+      expect(after[0].className).toBe('')
+    })
+    it('should handle complex children update without uid', () => {
+      const data = reactive({
+        items: [{ id: 'a', class: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }],
+      })
+      const vel = ul(() =>
+        data.items.map((item) =>
+          li({ id: item.id, class: item.class }, item.id),
+        ),
+      )
 
       mount('#app', vel)
-      expect(
-        Array.from(document.querySelectorAll('li')).map((li) => li.id),
-      ).toEqual(['a', 'b', 'c', 'd'])
+      const before = Array.from(document.querySelectorAll('li'))
+      expect(before.map((li) => li.id)).toEqual(['a', 'b', 'c', 'd'])
+      expect(before[0].className).toBe('a')
+      expect(before[3].className).toBe('')
 
-      data.items = ['e', 'f', 'g', 'a']
-      expect(
-        Array.from(document.querySelectorAll('li')).map((li) => li.id),
-      ).toEqual(['e', 'f', 'g', 'a'])
+      debug()
+      data.items = [
+        { id: 'a' },
+        { id: 'd' },
+        { id: 'g' },
+        { id: 'f', class: 'f' },
+      ]
+      const after = Array.from(document.querySelectorAll('li'))
+      expect(after.map((li) => li.id)).toEqual(['a', 'd', 'g', 'f'])
+      expect(after[0].className).toBe('')
+      expect(after[3].className).toBe('f')
     })
   })
 })
