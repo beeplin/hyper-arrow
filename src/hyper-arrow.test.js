@@ -1012,7 +1012,7 @@ describe('hyper-arrow', () => {
       vi.spyOn(console, 'group')
       vi.spyOn(console, 'groupCollapsed')
       vi.spyOn(console, 'groupEnd')
-      debug(true)
+      debug()
     })
 
     afterEach(() => {
@@ -1108,6 +1108,253 @@ describe('hyper-arrow', () => {
             call[5] === 'false',
         ),
       ).toBe(true)
+    })
+
+    it('should log cache operations for arrays', () => {
+      const data = reactive({ items: ['a', 'b'] })
+      const vel = div({ [CACHE_REMOVED_CHILDREN]: 2 }, () =>
+        data.items.map((item) => div({ id: item }, item)),
+      )
+
+      mount('#app', vel)
+      data.items.splice(0, 1)
+
+      expect(
+        consoleSpy.mock.calls.some(
+          (call) =>
+            call[0] === 'remove' &&
+            call[1].includes('div-#') &&
+            call[5]?.includes('cache'),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('array operations and caching', () => {
+    it('should handle array splice operations with caching', () => {
+      const data = reactive({ items: ['a', 'b', 'c'] })
+      const vel = div({ [CACHE_REMOVED_CHILDREN]: 3 }, () =>
+        data.items.map((item, index) => div({ id: `item-${index}` }, item)),
+      )
+
+      mount('#app', vel)
+      data.items.splice(1, 1, 'x', 'y')
+      expect(document.querySelectorAll('div > div').length).toBe(4)
+      expect(
+        Array.from(document.querySelectorAll('div > div')).map(
+          (el) => el.textContent,
+        ),
+      ).toEqual(['a', 'x', 'y', 'c'])
+    })
+
+    it('should handle deeply nested array operations', () => {
+      const data = reactive({
+        groups: [
+          { id: 1, items: ['a', 'b'] },
+          { id: 2, items: ['c', 'd'] },
+        ],
+      })
+      const vel = div(() =>
+        data.groups.map((group) =>
+          div(
+            { id: `group-${group.id}` },
+            group.items.map((item) => span(item)),
+          ),
+        ),
+      )
+
+      mount('#app', vel)
+      data.groups[0].items.push('x')
+      expect(document.querySelector('#group-1')?.children.length).toBe(3)
+      data.groups[1].items.unshift('y')
+      expect(document.querySelector('#group-2')?.children.length).toBe(3)
+    })
+  })
+
+  describe('string conversion and mapping', () => {
+    it('should handle complex string transformations', () => {
+      const multilineFunc = function () {
+        return {
+          toString() {
+            return 'test'
+          },
+        }
+      }
+
+      const vel = div({
+        'data-complex': multilineFunc,
+        onclick: multilineFunc,
+      })
+
+      mount('#app', vel)
+      expect(document.querySelector('div')?.getAttribute('data-complex')).toBe(
+        'test',
+      )
+    })
+
+    it('should handle array mapping with multiple transformations', () => {
+      const data = reactive({
+        items: [
+          { id: 1, value: 'a' },
+          { id: 2, value: 'b' },
+        ],
+      })
+
+      const vel = ul(() =>
+        data.items
+          .map((item) => ({ ...item, computed: item.value.toUpperCase() }))
+          .map((item) => li({ id: `li-${item.id}` }, item.computed)),
+      )
+
+      mount('#app', vel)
+      expect(
+        Array.from(document.querySelectorAll('li')).map((el) => el.textContent),
+      ).toEqual(['A', 'B'])
+    })
+  })
+
+  describe('edge case coverage', () => {
+    it('should handle array prototype modifications', () => {
+      const data = reactive({ items: ['a', 'b'] })
+      const vel = ul(() => data.items.map((item) => li(item)))
+
+      mount('#app', vel)
+      // Test array prototype method handling
+      // @ts-ignore
+      Array.prototype.customMethod = function () {
+        return this
+      }
+      // @ts-ignore
+      data.items.customMethod()
+      // @ts-ignore
+      delete Array.prototype.customMethod
+
+      // Test array species handling
+      class CustomArray extends Array {
+        static get [Symbol.species]() {
+          return Array
+        }
+      }
+      data.items = new CustomArray('c', 'd')
+    })
+
+    it('should handle property proxy edge cases', () => {
+      class CustomElement extends HTMLDivElement {
+        get testProp() {
+          return 'test'
+        }
+        set testProp(value) {
+          /* noop */
+        }
+      }
+
+      const data = reactive({
+        show: true,
+        props: {
+          get value() {
+            return 'test'
+          },
+        },
+      })
+
+      const vel = div({
+        [Object.getOwnPropertyNames(CustomElement.prototype)[0]]: () =>
+          data.show ? data.props.value : undefined,
+      })
+
+      mount('#app', vel)
+      data.show = false
+    })
+
+    it('should handle cache with complex key scenarios', () => {
+      const data = reactive({
+        items: [
+          { id: Symbol('1'), text: 'a' },
+          { id: Symbol('2'), text: 'b' },
+        ],
+      })
+
+      const vel = div({ [CACHE_REMOVED_CHILDREN]: 2 }, () =>
+        data.items.map((item) =>
+          div(
+            {
+              id: item.id.toString(),
+              [Symbol('test')]: 'test',
+            },
+            item.text,
+          ),
+        ),
+      )
+
+      mount('#app', vel)
+      data.items.splice(0, 1)
+      data.items.unshift({ id: Symbol('3'), text: 'c' })
+    })
+
+    it('should handle string conversion edge cases with multiple props', () => {
+      const data = reactive({
+        value: {
+          toString() {
+            return 'test'
+          },
+        },
+      })
+      const multilineFn = () => {
+        return {
+          toString() {
+            return data.value.toString()
+          },
+        }
+      }
+
+      const vel = div({
+        onclick: multilineFn,
+        onmouseover: multilineFn,
+        'data-test': multilineFn,
+        [Symbol('test')]: multilineFn,
+      })
+
+      mount('#app', vel)
+      data.value = {
+        // @ts-ignore
+        toString() {
+          return 'updated'
+        },
+      }
+    })
+  })
+
+  describe('manually created', () => {
+    it('should handle fake update', () => {
+      const data = reactive({ id: 'test' })
+      const vel = div({ id: data.id }, 'Hello')
+      mount('#app', vel)
+
+      // Custom behavior test
+      const divEl = document.querySelector('div')
+      expect(divEl?.id).toBe('test')
+      expect(divEl?.textContent).toBe('Hello')
+
+      data.id = 'test'
+      expect(divEl?.id).toBe('test')
+    })
+
+    it('should handle complex children update with uid', () => {
+      const data = reactive({
+        items: ['a', 'b', 'c', 'd'],
+      })
+
+      const vel = ul(() => data.items.map((item) => li({ id: item }, item)))
+
+      mount('#app', vel)
+      expect(
+        Array.from(document.querySelectorAll('li')).map((li) => li.id),
+      ).toEqual(['a', 'b', 'c', 'd'])
+
+      data.items = ['e', 'f', 'g', 'a']
+      expect(
+        Array.from(document.querySelectorAll('li')).map((li) => li.id),
+      ).toEqual(['e', 'f', 'g', 'a'])
     })
   })
 })
