@@ -1,8 +1,7 @@
 import {
   CACHE_REMOVED_CHILDREN,
-  fawc2ropas,
+  fac2opas,
   ON_CREATE,
-  ropa2fawcs,
   tags,
 } from '../../hyper-arrow.js'
 import { ToDoListState } from './state.js'
@@ -20,8 +19,7 @@ export function view(/** @type {ToDoListState} */ s) {
         type: 'button',
         innerText: 'log deps',
         onclick() {
-          console.log(fawc2ropas)
-          console.log(ropa2fawcs)
+          console.log(fac2opas)
         },
       }),
       button({

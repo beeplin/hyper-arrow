@@ -3,7 +3,7 @@ import {
   CACHE_REMOVED_CHILDREN,
   CHILDREN,
   debug,
-  fawc2ropas,
+  fac2opas,
   isReactive,
   mount,
   ON_CREATE,
@@ -26,7 +26,7 @@ const { circle } = tags.svg
 describe('hyper-arrow', () => {
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>'
-    fawc2ropas.clear()
+    fac2opas.clear()
     uidAttr.name = undefined
     uidAttr.count = 0 // Reset UID counter
     debug(false) // Reset debug mode
@@ -185,20 +185,12 @@ describe('hyper-arrow', () => {
   })
 
   describe('dependency tracking', () => {
-    it('should track dependencies with fawc2ropas', () => {
+    it('should track dependencies with fac2opas', () => {
       const data = reactive({ count: 0 })
       const af = () => data.count
       watch(af)
-      expect(fawc2ropas.keys().some((fawc) => fawc[2] === af)).toBe(true)
+      expect(fac2opas.keys().some((fac) => fac[2] === af)).toBe(true)
     })
-
-    // it('should track reverse dependencies with ropa2fawcs', () => {
-    //   const obj = { count: 0 }
-    //   const data = reactive(obj)
-    //   const af = () => data.count
-    //   watch(af)
-    //   expect(ropa2fawcs.has(obj)).toBe(true)
-    // })
   })
 
   describe('UID_ATTR_NAME feature', () => {
@@ -1079,44 +1071,6 @@ describe('hyper-arrow', () => {
       ).toBe(true)
     })
 
-    // it('should log reactive property access and changes', () => {
-    //   const data = reactive({ count: 0 })
-
-    //   watch(() => {
-    //     data.count
-    //   })
-
-    //   consoleSpy.mockClear()
-    //   data.count = 1
-
-    //   expect(
-    //     consoleSpy.mock.calls.some((call) => call[0].includes('set')),
-    //   ).toBe(true)
-    //   expect(
-    //     consoleSpy.mock.calls.some((call) => call[0].includes('get')),
-    //   ).toBe(true)
-    // })
-
-    // it('should log conditional rendering changes', () => {
-    //   const data = reactive({ show: true })
-    //   const vel = div(() => (data.show ? [p('Visible')] : []))
-
-    //   mount('#app', vel)
-    //   consoleSpy.mockClear()
-    //   data.show = false
-
-    //   expect(
-    //     consoleSpy.mock.calls.some(
-    //       (call) =>
-    //         call[0] === ' @ set' &&
-    //         call[2] === ':' &&
-    //         call[3] === 'true' &&
-    //         call[4] === '->' &&
-    //         call[5] === 'false',
-    //     ),
-    //   ).toBe(true)
-    // })
-
     it('should log cache operations for arrays', () => {
       const data = reactive({ items: ['a', 'b'] })
       const vel = div({ [CACHE_REMOVED_CHILDREN]: 2 }, () =>
@@ -1355,10 +1309,10 @@ describe('hyper-arrow', () => {
           () => (s[1] ? li({ id: '2' }, () => s[1]) : li({ id: '2' }, 'empty')),
         ),
       )
-      expect(fawc2ropas.size).toBe(3)
+      expect(fac2opas.size).toBe(3)
 
       s[1] = ''
-      expect(fawc2ropas.size).toBe(2)
+      expect(fac2opas.size).toBe(2)
     })
 
     it('should update deps when update el children', () => {
@@ -1373,10 +1327,10 @@ describe('hyper-arrow', () => {
               : li({ id: '2' }, 'empty'),
         ),
       )
-      expect(fawc2ropas.size).toBe(3)
+      expect(fac2opas.size).toBe(3)
 
       s.list = ['a']
-      expect(fawc2ropas.size).toBe(2)
+      expect(fac2opas.size).toBe(2)
     })
 
     it('should correctly update dynamic children', () => {

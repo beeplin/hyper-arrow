@@ -282,13 +282,11 @@ Check if an `object` is a reactive proxy.
 
 Run `fn()` once, and whenever `fn`'s dependencies (see below) change, automatically rerun `fn()`, or, if `effectFn` provided, run `effectFn(fn())`.
 
-### `fawc2ropas`
+### `fac2opas`
 
-`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`. For each **function-associated-with-context** (**FAWC**), `fawc2ropas` stores all the **reactive-object-property-access**es (**ROPA**s)appearing within the function call. When any **ROPA** changes, the corresponding function of the **FAWC** reruns, and with the help of its contextual info, updates the correct position of the DOM as its new returned value. `fn`s of `watch`s also go into `fawc2ropas`.
+`Map<FunctionAndContext, WeakMap<Object, Set<Property>>>`. For each **function-and-context** (**FAC**), `fac2opas` stores all the **object-property-access**es (**OPA**s) appearing within the function call. When any **OPA** changes, the corresponding function of the **FAC** reruns, and with the help of its contextual info, updates the correct position of the DOM as its new returned value. `fn`s of `watch`s also go into `fac2opas`.
 
-Keep in mind that your **FAWC**s' returned value must rely only on **ROPA**s (like `ro.p` or `ro[p]`) within the **FAWC**, not on any other things like non-reactive object, free variable bindings (like `let x = 1` inside the function), or global/closure variables.
-
-You may never need to use `fawc2ropas` directly. It's for internal use, and is exposed only for debugging purposes.
+Keep in mind that your **FAC**s' returned value must rely only on reactive **OPA**s (like `o.p` or `o[p]`) within the **FAC**, not on any other things like non-reactive object, free variable bindings (like `let x = 1` inside the function), or global/closure variables.
 
 ## Reactive Implementation Details
 
@@ -336,9 +334,9 @@ Simplified implementation:
 function reactive(obj) {
   return new Proxy(obj, {
     get(target, key) {
-      // When executing a function, record which ROPA it depends on
-      if (currentFawc) {
-        trackDependency(currentFawc, target, key)
+      // When executing a function, record which OPA it depends on
+      if (currentFac) {
+        trackDependency(currentFac, target, key)
       }
       return target[key]
     },
@@ -349,11 +347,11 @@ function reactive(obj) {
 2. **Function Execution**
 
 ```javascript
-function runFawc(fawc) {
-  const fn = fawc[2] // Get function
-  currentFawc = fawc // Mark currently executing function
+function runFac(fac) {
+  const fn = fac[2] // Get function
+  currentFac = fac // Mark currently executing function
   const result = fn() // Execute function, trigger proxy.get, collect dependencies
-  currentFawc = null
+  currentFac = null
   return result
 }
 ```
@@ -368,19 +366,16 @@ When reactive object property changes:
 
 ### Dependency Tracking Mechanism
 
-hyper-arrow uses two main data structures to track dependencies:
+hyper-arrow uses the following data structure to track dependencies:
 
 ```typescript
 // Store each function's dependencies
-export const fawc2ropas = new Map<Fawc, WeakMap<Ro, Set<Pa>>>()
-
-// Store each reactive object's dependent functions
-export const ropa2fawcs = new WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>()
+export const fac2opas = new Map<Fac, WeakMap<object, Set<property>>>()
 ```
 
 #### Dependency Collection Process
 
-1. Set `currentFawc` when executing reactive function
+1. Set `currentFac` when executing reactive function
 2. Accessing reactive property during function execution triggers Proxy's get interceptor
 3. Get interceptor records dependency between current function and accessed property
 

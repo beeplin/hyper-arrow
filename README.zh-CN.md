@@ -281,13 +281,13 @@ mount(
 
 运行一次 `fn()`，并且当 `fn` 的依赖（见下文）发生变化时，自动重新运行 `fn()`，或者如果提供了 `effectFn`，则运行 `effectFn(fn())`。
 
-### `fawc2ropas`
+### `fac2opas`
 
-`Map<FunctionAssociatedWithContext, WeakMap<ReactiveObject, Set<PropertyAccess>>>`。对于每个**箭头函数及其上下文**（**FAWC**），`fawc2ropas` 存储函数调用中出现的所有**响应式对象属性访问**（**ROPA**）。当任何 **ROPA** 发生变化时，相应的 **FAWC** 函数会重新运行，并借助其上下文信息把 DOM 中相应位置更新为其新的返回值。`watch` 中的 `fn` 也会进入 `fawc2ropas`。
+`Map<FunctionAndContext, WeakMap<Object, Set<Property>>>`。对于每个**函数及上下文**（**FAC**），`fac2opas` 存储函数调用中出现的所有**对象属性访问**（**OPA**）。当任何 **OPA** 发生变化时，相应的 **FAC** 函数会重新运行，并借助其上下文信息把 DOM 中相应位置更新为其新的返回值。`watch` 中的 `fn` 也会进入 `fac2opas`。
 
-请注意，你的 **FAWC** 返回值必须只依赖于 **FAWC** 内的 **ROPA**（如 `ro.p` 或 `ro[p]`），而不能依赖其他内容，比如非响应式对象、自由变量绑定（如函数内的 `let x = 1`）或全局/闭包变量。
+请注意，你的 **FAC** 返回值必须只依赖于 **FAC** 内的响应式 **OPA**（如 `o.p` 或 `o[p]`），而不能依赖其他内容，比如非响应式对象、自由变量绑定（如函数内的 `let x = 1`）或全局/闭包变量。
 
-你可能永远不需要直接使用 `fawc2ropas`。它仅供内部使用，暴露出来只是为了调试目的。
+你可能永远不需要直接使用 `fac2opas`。它仅供内部使用，暴露出来只是为了调试目的。
 
 ## 响应式实现原理
 
@@ -335,9 +335,9 @@ const view = div(
 function reactive(obj) {
   return new Proxy(obj, {
     get(target, key) {
-      // 当正在执行某个函数时，记录这个函数依赖了哪个 ROPA
-      if (currentFawc) {
-        trackDependency(currentFawc, target, key)
+      // 当正在执行某个函数时，记录这个函数依赖了哪个 OPA
+      if (currentFac) {
+        trackDependency(currentFac, target, key)
       }
       return target[key]
     },
@@ -348,11 +348,11 @@ function reactive(obj) {
 1. **函数执行**
 
 ```javascript
-function runFawc(fawc) {
-  const fn = fawc[2] // 获取函数
-  currentFawc = fawc // 标记当前正在执行的函数
+function runFac(fac) {
+  const fn = fac[2] // 获取函数
+  currentFac = fac // 标记当前正在执行的函数
   const result = fn() // 执行函数，触发 proxy.get，收集依赖
-  currentFawc = null
+  currentFac = null
   return result
 }
 ```
@@ -367,19 +367,16 @@ function runFawc(fawc) {
 
 ### 依赖追踪机制
 
-hyper-arrow 使用两个主要的数据结构来追踪依赖关系：
+hyper-arrow 使用以下数据结构来追踪依赖关系：
 
 ```typescript
 // 存储每个函数的依赖关系
-export const fawc2ropas = new Map<Fawc, WeakMap<Ro, Set<Pa>>>()
-
-// 存储每个响应式对象的依赖函数
-export const ropa2fawcs = new WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>()
+export const fac2opas = new Map<Fac, WeakMap<object, Set<property>>>()
 ```
 
 #### 依赖收集过程
 
-1. 当执行响应式函数时，设置 `currentFawc`
+1. 当执行响应式函数时，设置 `currentFac`
 2. 函数执行过程中访问响应式属性会触发 Proxy 的 get 拦截器
 3. get 拦截器记录当前函数与被访问的属性之间的依赖关系
 

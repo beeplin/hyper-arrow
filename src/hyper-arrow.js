@@ -64,28 +64,26 @@ export function VEl(
   this[CHILDREN] = children
 }
 
-// FAWC: Function Associated With Context
+// FAC: Function And Context
 /** @typedef {string | number | null} Key - props | child | children */
 /** @template F @typedef {F extends () => any ? F : never} ZI - Zero Input fn */
 /** @template F @typedef {F extends ZI<F> ? ReturnType<ZI<F>> : F} Evaluated */
 /** @template F @typedef {(arg: ReturnType<ZI<F>>) => void} Effect */
-/** @template T @typedef {[null, null, ZI<T>, Effect<T>?]} WatchFawc */
-/** @template T @typedef {[VEl, Key, ZI<T>]} ElFawc */
-/** @template T @typedef {[VEl, Key, T]} NotFawc */
-/** @template T @typedef {ElFawc<T> | WatchFawc<T>} AllFawc */
-/** @typedef {AllFawc<() => any>} Fawc */
+/** @template T @typedef {[null, null, ZI<T>, Effect<T>?]} WatchFac */
+/** @template T @typedef {[VEl, Key, ZI<T>]} ElFac */
+/** @template T @typedef {[VEl, Key, T]} NotFac */
+/** @template T @typedef {ElFac<T> | WatchFac<T>} AllFac */
+/** @typedef {AllFac<() => any>} Fac */
 const VEL = 0
 const ZIF = 2
 
-let /** @type {Fawc?} */ currentFawc = null
+let /** @type {Fac?} */ currentFac = null
 
-// ROPA: Reactive Object Property Access
-/** @typedef {object} Ro - reactive object */
-/** @typedef {string | symbol} Pa property access */
-/** @type {Map<Fawc, WeakMap<Ro, Set<Pa>>>} */
-export const fawc2ropas = new Map()
-/** @type {WeakMap<Ro, Record<Pa, WeakSet<Fawc>>>} */
-// export const ropa2fawcs = new WeakMap()
+// OPA: Object Property Access
+/** @type {Map<Fac, WeakMap<object, Set<string | symbol>>>} */
+export const fac2opas = new Map()
+// /** @type {WeakMap<object, Record<string | symbol, WeakSet<Fac>>>} */
+// export const opa2facs = new WeakMap()
 
 /**
  * @typedef {VEl | string | (() => (VEl | string))} Child
@@ -126,17 +124,17 @@ function createVEl(type, tag, ...args) {
     vel[PROPS][key] = props[key]
   }
   for (const key in props) {
-    // on* event handlers, all lowercase, not FAWC, not evaluated
+    // on* event handlers, all lowercase, not FAC, not evaluated
     if (key.startsWith('on')) {
       vel[PROPS][toLowerCase(key)] = props[key]
     } else {
-      vel[PROPS][key] = runFawc([vel, key, props[key]])
+      vel[PROPS][key] = runFac([vel, key, props[key]])
     }
   }
   // args may be like tag(() => Child), not tag(() => Child[]).
-  // in this case FAWC key should be 0, not null.
+  // in this case FAC key should be 0, not null.
   // but cannot foresee whether fn returns Child or Child[] before it runs
-  // so the wrong FAWC key (null) must be corrected later in reactive/set
+  // so the wrong FAC key (null) must be corrected later in reactive/set
   // @ts-ignore ok. guaranteed by x.length === 1
   const /** @type {Children | (() => Child)} */ children =
       isArray(x) &&
@@ -144,10 +142,10 @@ function createVEl(type, tag, ...args) {
       (typeof x[0] === 'function' || isArray(x[0]))
         ? x[0]
         : x
-  const y = runFawc([vel, null, children])
+  const y = runFac([vel, null, children])
   const z = isArray(y) ? y : [y]
   for (const i in z) {
-    vel[CHILDREN].push(createVNode(runFawc([vel, +i, z[i]])))
+    vel[CHILDREN].push(createVNode(runFac([vel, +i, z[i]])))
   }
   return vel
 }
@@ -190,29 +188,29 @@ export function mount(selector, vel, options = {}) {
  * @template F @param {ZI<F>} fn @param {Effect<F>=} effect @return {() => void}
  */
 export function watch(fn, effect) {
-  runFawc([null, null, fn, effect])
+  runFac([null, null, fn, effect])
   return () => {
-    for (const fawc of fawc2ropas.keys()) {
-      if (fawc[ZIF] === fn) {
-        fawc2ropas.delete(fawc)
+    for (const fac of fac2opas.keys()) {
+      if (fac[ZIF] === fn) {
+        fac2opas.delete(fac)
       }
     }
   }
 }
 
-/** @template F @param {AllFawc<F>|NotFawc<F>} fawc @return {Evaluated<F>} */
-function runFawc(fawc) {
-  const zif = fawc[ZIF]
+/** @template F @param {AllFac<F>|NotFac<F>} fac @return {Evaluated<F>} */
+function runFac(fac) {
+  const zif = fac[ZIF]
   if (typeof zif !== 'function') {
     // @ts-ignore ok. difficult typing!
     return zif
   }
-  const previousFawc = currentFawc
+  const previousFac = currentFac
   // @ts-ignore ok. difficult typing!
-  currentFawc = fawc
+  currentFac = fac
   // @ts-ignore ok. difficult typing!
   const result = zif()
-  currentFawc = previousFawc
+  currentFac = previousFac
   return result
 }
 
@@ -236,36 +234,36 @@ export function reactive(obj) {
       if (typeof obj === 'function' && prop === 'prototype') {
         return result
       }
-      // collect current ROPA for current FAWC
-      if (currentFawc) {
+      // collect current OPA for current FAC
+      if (currentFac) {
         if (DEBUG) {
           console.log(
             '   get',
-            ...string(currentFawc),
+            ...string(currentFac),
             JSON.stringify(obj) + '.' + String(prop),
             '\n',
           )
         }
-        if (!fawc2ropas.has(currentFawc)) {
-          fawc2ropas.set(currentFawc, new WeakMap())
+        if (!fac2opas.has(currentFac)) {
+          fac2opas.set(currentFac, new WeakMap())
         }
-        /** @type {  WeakMap<object, Set<Pa>>} */
+        /** @type {  WeakMap<object, Set<string | symbol>>} */
         // @ts-ignore ok. guaranteed by previous if condition
-        const ropas = fawc2ropas.get(currentFawc)
-        if (!ropas.has(obj)) {
-          ropas.set(obj, new Set())
+        const opas = fac2opas.get(currentFac)
+        if (!opas.has(obj)) {
+          opas.set(obj, new Set())
         }
-        ropas.get(obj)?.add(prop)
-        // // collect current FAWC for current ROPA, only for debugging purposes
-        // if (!ropa2fawcs.has(obj)) {
-        //   ropa2fawcs.set(obj, OBJECT.create(null))
+        opas.get(obj)?.add(prop)
+        // // collect current FAC for current OPA, only for debugging purposes
+        // if (!opa2facs.has(obj)) {
+        //   opa2facs.set(obj, OBJECT.create(null))
         // }
-        // const props = ropa2fawcs.get(obj)
+        // const props = opa2facs.get(obj)
         // if (props) {
         //   if (!(prop in props)) {
         //     props[prop] = new WeakSet()
         //   }
-        //   props[prop].add(currentFawc)
+        //   props[prop].add(currentFac)
         // }
       }
       return reactive(result)
@@ -288,12 +286,12 @@ export function reactive(obj) {
           '\n',
         )
       }
-      for (const [fawc, ropas] of fawc2ropas.entries()) {
-        if (ropas.get(obj)?.has(prop)) {
+      for (const [fac, opas] of fac2opas.entries()) {
+        if (opas.get(obj)?.has(prop)) {
           if (DEBUG) {
             console.groupCollapsed(
               'rerun ',
-              ...string(fawc),
+              ...string(fac),
               JSON.stringify(obj),
               '.' + String(prop),
               JSON.stringify(oldValue),
@@ -302,10 +300,10 @@ export function reactive(obj) {
               '\n',
             )
           }
-          const [vel, key, , effect] = fawc
+          const [vel, key, , effect] = fac
           // @ts-ignore ok. guaranteed by createREl(). vel now becomes rel
           const /** @type {REl} */ rel = vel
-          const value = runFawc(fawc)
+          const value = runFac(fac)
           if (DEBUG) {
             console.groupEnd()
           }
@@ -319,10 +317,10 @@ export function reactive(obj) {
               (typeof value === 'string' || value instanceof VEl))
           ) {
             const index = key ?? 0
-            removeFawcsInRNodeFromDeps(rel[CHILDREN][index])
+            removeFacsInRNodeFromDeps(rel[CHILDREN][index])
             updateChild(rel, index, createVNode(value))
           } else if (key === null) {
-            rel[CHILDREN].map(removeFawcsInRNodeFromDeps)
+            rel[CHILDREN].map(removeFacsInRNodeFromDeps)
             updateChildren(rel, value.map(createVNode))
           } else {
             resetProp(rel, key, value)
@@ -336,26 +334,26 @@ export function reactive(obj) {
       if (DEBUG) {
         console.log(' ! del', JSON.stringify(obj) + '.' + String(prop), '\n')
       }
-      for (const ropas of fawc2ropas.values()) {
-        ropas.get(obj)?.delete(prop)
+      for (const opas of fac2opas.values()) {
+        opas.get(obj)?.delete(prop)
       }
-      // delete ropa2fawcs.get(obj)?.[prop]
+      // delete opa2facs.get(obj)?.[prop]
       return result
     },
   })
 }
 
-function removeFawcsInRNodeFromDeps(/** @type {RNode} */ rnode) {
-  for (const fawc of fawc2ropas.keys()) {
-    if (fawcIsInRNode(fawc, rnode)) {
-      fawc2ropas.delete(fawc)
+function removeFacsInRNodeFromDeps(/** @type {RNode} */ rnode) {
+  for (const fac of fac2opas.keys()) {
+    if (facIsInRNode(fac, rnode)) {
+      fac2opas.delete(fac)
     }
   }
 }
 
-function fawcIsInRNode(/** @type {Fawc} */ fawc, /** @type {RNode} */ rnode) {
+function facIsInRNode(/** @type {Fac} */ fac, /** @type {RNode} */ rnode) {
   // @ts-ignore ok. guaranteed by createVEl. now vel is rel and has node
-  return fawc[VEL] && rnode[NODE].contains(fawc[VEL]?.[NODE])
+  return fac[VEL] && rnode[NODE].contains(fac[VEL]?.[NODE])
 }
 
 function appendVNodes(/** @type {El} */ el, /** @type {VNode[]} */ vnodes) {
@@ -759,9 +757,9 @@ function camel2kebab(/** @type {string} */ camel) {
 
 /**
  * @overload @param {Node|VEl} x @returns {string}
- * @overload @param {Fawc} x @returns {string[]}
+ * @overload @param {Fac} x @returns {string[]}
  */
-function string(/** @type {Element|Text|VEl|Fawc} */ x) {
+function string(/** @type {Element|Text|VEl|Fac} */ x) {
   if (x instanceof Text) {
     return `"${x.data}"`
   }
