@@ -238,10 +238,10 @@ export function reactive(obj) {
       if (currentFawc) {
         if (DEBUG) {
           console.log(
-            'get ',
+            '   get',
             ...string(currentFawc),
-            JSON.stringify(obj),
-            '.' + String(prop),
+            JSON.stringify(obj) + '.' + String(prop),
+            '\n',
           )
         }
         if (!fawc2ropas.has(currentFawc)) {
@@ -277,12 +277,13 @@ export function reactive(obj) {
       }
       if (DEBUG) {
         console.log(
-          'set ',
-          JSON.stringify(obj),
-          '.' + String(prop),
+          ' @ set',
+          JSON.stringify(obj) + '.' + String(prop),
+          ':',
           JSON.stringify(oldValue),
           '->',
           JSON.stringify(newValue),
+          '\n',
         )
       }
       for (const [fawc, ropas] of fawc2ropas.entries()) {
@@ -296,6 +297,7 @@ export function reactive(obj) {
               JSON.stringify(oldValue),
               '->',
               JSON.stringify(newValue),
+              '\n',
             )
           }
           const [vel, key, , effect] = fawc
@@ -330,7 +332,7 @@ export function reactive(obj) {
     deleteProperty(obj, prop) {
       const result = REFLECT.deleteProperty(obj, prop)
       if (DEBUG) {
-        console.log('del ', JSON.stringify(obj), prop)
+        console.log(' @ del', JSON.stringify(obj) + '.' + String(prop), '\n')
       }
       for (const ropas of fawc2ropas.values()) {
         ropas.get(obj)?.delete(prop)
@@ -358,7 +360,7 @@ function appendVNodes(/** @type {El} */ el, /** @type {VNode[]} */ vnodes) {
   el.append(
     ...vnodes.map(createRNode).map((rnode) => {
       if (DEBUG) {
-        console.log('append', string(el), '<', string(rnode[NODE]))
+        console.log('append', string(rnode[NODE]), '>', string(el), '\n')
       }
       return rnode[NODE]
     }),
@@ -405,7 +407,7 @@ function createREl(/** @type {VEl} */ vel) {
 function createRText(/** @type {VText} */ vtext) {
   const node = DOCUMENT.createTextNode(vtext[TXT])
   if (DEBUG) {
-    console.log('create', string(node))
+    console.log('create', string(node), '\n')
   }
   return vnode2rnode(vtext, node)
 }
@@ -482,7 +484,7 @@ function updateChild(rel, index, newVNode) {
     if (oldRNode[TXT] !== newVNode[TXT]) {
       // if both text node
       if (DEBUG) {
-        console.log('update', oldRNode[TXT], '->', newVNode[TXT])
+        console.log('update', oldRNode[TXT], '->', newVNode[TXT], '\n')
       }
       oldRNode[NODE].data = newVNode[TXT]
     }
@@ -540,6 +542,7 @@ function insertChild(rel, index, newANode) {
       '<',
       string(node),
       fromCache ? '< cache' : '',
+      '\n',
     )
   }
 }
@@ -564,9 +567,10 @@ function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
       'remove',
       string(rel[NODE]),
       index,
-      '>',
+      ':',
       string(rnode[NODE]),
       intoCache ? '> cache' : '',
+      '\n',
     )
   }
   return rnode
@@ -586,6 +590,7 @@ function setProp(rel, key, value) {
       key,
       '=',
       typeof value === 'function' ? 'func' : value,
+      '\n',
     )
   }
 }
@@ -597,6 +602,10 @@ function resetProp(rel, key, value) {
     return
   }
   const oldValue = rel[PROPS][key]
+  if (oldValue == null) {
+    setProp(rel, key, value)
+    return
+  }
   if (oldValue === value) return
   const type = _setProp(rel, key, value)
   if (DEBUG) {
@@ -608,6 +617,7 @@ function resetProp(rel, key, value) {
       typeof oldValue === 'function' ? 'func' : oldValue,
       '->',
       typeof value === 'function' ? 'func' : value,
+      '\n',
     )
   }
 }
@@ -653,7 +663,7 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
     const remained = removeFirst(key)
     el.style.removeProperty(remained)
     if (DEBUG) {
-      console.log('- styl', string(el), remained)
+      console.log('- styl', string(el), remained, '\n')
     }
     return
   }
@@ -663,7 +673,7 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
   if (lowercased in el.attributes) {
     removeAttribute(el, lowercased)
     if (DEBUG) {
-      console.log('- attr', string(el), lowercased)
+      console.log('- attr', string(el), lowercased, '\n')
     }
     return
   }
@@ -672,7 +682,7 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
   if (converted in el.attributes) {
     removeAttribute(el, converted)
     if (DEBUG) {
-      console.log('- attr', string(el), converted)
+      console.log('- attr', string(el), converted, '\n')
     }
     return
   }
@@ -681,7 +691,7 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
     const mapped = prop2attr[key]
     removeAttribute(el, mapped)
     if (DEBUG) {
-      console.log('- attr', string(el), mapped)
+      console.log('- attr', string(el), mapped, '\n')
     }
     return
   }
@@ -689,13 +699,13 @@ function unsetProp(/** @type {REl} */ rel, /** @type {string} */ key) {
     // @ts-ignore ok. guaranteed by if condition
     el[key] = null
     if (DEBUG) {
-      console.log('- prop', string(el), key)
+      console.log('- prop', string(el), key, '\n')
     }
     return
   }
   removeAttribute(el, key)
   if (DEBUG) {
-    console.log('- attr', string(el), key)
+    console.log('- attr', string(el), key, '\n')
   }
   return
   // throw Error(`unknown prop '${key}' to unset from <${el.nodeName}>`)
@@ -751,13 +761,13 @@ function string(/** @type {Element|Text|VEl|Fawc} */ x) {
     return `${x[TAG]}-#${x[PROPS].id ?? ''}`
   }
   const [vel, key, zif, effect] = x
-  const lines = zif.toString().split('\n')
-  const firstLine = lines[0]
   const result = zif
     .toString()
     .replace(/[\r\n]/g, ';')
     .replace(/ +/g, ' ')
+    .replace(/ +;/g, ';')
     .replace(/;+/g, ';')
-    .replace(/\{;/, '{')
+    .replace(/\{;/g, '{')
+    .replace(/=>;/g, '=>')
   return vel ? [string(vel), key, result] : ['watch', result, effect]
 }
