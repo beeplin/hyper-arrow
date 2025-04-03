@@ -770,7 +770,7 @@ function string(/** @type {Element|Text|VEl|Fac} */ x) {
     return `${x[TAG]}-#${x[PROPS].id ?? ''}`
   }
   const [vel, key, zif, effect] = x
-  const result = zif
+  const fnStr = zif
     .toString()
     .replace(/[\r\n]/g, ';')
     .replace(/ +/g, ' ')
@@ -778,5 +778,6 @@ function string(/** @type {Element|Text|VEl|Fac} */ x) {
     .replace(/;+/g, ';')
     .replace(/\{;/g, '{')
     .replace(/=>;/g, '=>')
+  const result = fnStr.length > 20 ? fnStr.substring(0, 20) + '...' : fnStr
   return vel ? [string(vel), key, result] : ['watch', result, effect]
 }
