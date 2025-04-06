@@ -213,7 +213,7 @@ mount('#app', view, { [UID_ATTR_NAME]: 'uid' })
 
 ### `CACHE_REMOVED_CHILDREN`
 
-一个唯一符号键 (unique symbol key)，允许父 DOM 元素缓存被移除的子元素。这样可以在需要时重用已缓存的元素，而不是创建新的元素，前提是子元素的 `id` 属性匹配。
+一个唯一符号键 (unique symbol key)，值为允许父 DOM 元素缓存被移除的子元素的最大数量。这样可以在需要时重用已缓存的元素，而不是创建新的元素，前提是子元素的 `id` 属性匹配。
 
 ```js
 import {

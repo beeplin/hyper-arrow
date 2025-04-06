@@ -214,7 +214,7 @@ This is useful, for example, when checking if the parent element, when doing sma
 
 ### `CACHE_REMOVED_CHILDREN`
 
-A unique symbol key that allows allow a parent DOM element to cache it's removed children elements, so instead of creating new children, it can reuse the cached ones when needed, as long as the children's `id` attributes match.
+A unique symbol key that indicates how many removed children elements a parent DOM element can cache, so instead of creating new children, it can reuse the cached ones when needed, as long as the children's `id` attributes match.
 
 ```js
 import {

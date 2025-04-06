@@ -214,7 +214,7 @@ function runFac(fac) {
   return result
 }
 
-const BRAND_KEY = '__hyper_arrow__'
+export const BRAND_KEY = '__hyper_arrow__'
 const BRAND_SYMBOL = Symbol(BRAND_KEY)
 export const isReactive = (/** @type {any} */ x) => !!x[BRAND_SYMBOL]
 
