@@ -266,6 +266,7 @@ export function reactive(obj) {
         //   props[prop].add(currentFac)
         // }
       }
+      // @ts-ignore ok. reacive actually accepts non-obejcts
       return reactive(result)
     },
     set(obj, prop, newValue) {
