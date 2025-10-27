@@ -16,6 +16,7 @@
 ## 快速开始
 
 ```js
+// @ts-nocheck
 import { mount, reactive, tags } from '../../hyper-arrow.js'
 
 class Model {
@@ -298,7 +299,7 @@ mount(
 
 在 hyper-arrow 中，有三种定义响应式属性的方式：
 
-```javascript
+```js
 const model = reactive({
   count: 0,
   text: 'hello',
@@ -332,7 +333,7 @@ const view = div(
 
 简化实现：
 
-```javascript
+```js
 function reactive(obj) {
   return new Proxy(obj, {
     get(target, key) {
@@ -348,7 +349,7 @@ function reactive(obj) {
 
 1. **函数执行**
 
-```javascript
+```js
 function runFac(fac) {
   const fn = fac[2] // 获取函数
   currentFac = fac // 标记当前正在执行的函数
@@ -358,7 +359,7 @@ function runFac(fac) {
 }
 ```
 
-3. **更新触发**
+1. **更新触发**
 
 当响应式对象的属性发生变化时：
 
@@ -370,7 +371,7 @@ function runFac(fac) {
 
 hyper-arrow 使用以下数据结构来追踪依赖关系：
 
-```typescript
+```ts
 // 存储每个函数的依赖关系
 export const fac2opas = new Map<Fac, WeakMap<object, Set<property>>>()
 ```
@@ -396,7 +397,7 @@ export const fac2opas = new Map<Fac, WeakMap<object, Set<property>>>()
 
 ### 实际应用示例
 
-```javascript
+```js
 import { reactive, div, mount } from 'hyper-arrow'
 
 // 创建响应式数据

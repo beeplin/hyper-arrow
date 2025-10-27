@@ -297,7 +297,7 @@ The reactive system is one of hyper-arrow's core features. Let's dive into how i
 
 In hyper-arrow, there are three ways to define reactive properties:
 
-```javascript
+```js
 const model = reactive({
   count: 0,
   text: 'hello',
@@ -331,7 +331,7 @@ The reactive system works through following steps:
 
 Simplified implementation:
 
-```javascript
+```js
 function reactive(obj) {
   return new Proxy(obj, {
     get(target, key) {
@@ -347,7 +347,7 @@ function reactive(obj) {
 
 2. **Function Execution**
 
-```javascript
+```js
 function runFac(fac) {
   const fn = fac[2] // Get function
   currentFac = fac // Mark currently executing function
@@ -369,7 +369,7 @@ When reactive object property changes:
 
 hyper-arrow uses the following data structure to track dependencies:
 
-```typescript
+```ts
 // Store each function's dependencies
 export const fac2opas = new Map<Fac, WeakMap<object, Set<property>>>()
 ```
@@ -395,7 +395,7 @@ export const fac2opas = new Map<Fac, WeakMap<object, Set<property>>>()
 
 ### Practical Example
 
-```javascript
+```js
 import { reactive, div, mount } from 'hyper-arrow'
 
 // Create reactive data
