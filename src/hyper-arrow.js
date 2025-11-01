@@ -377,8 +377,11 @@ function createREl(/** @type {VEl} */ vel) {
     vel[TYPE] === 'html'
       ? DOCUMENT.createElement(vel[TAG])
       : vel[TYPE] === 'svg'
-      ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
-      : DOCUMENT.createElementNS('http://www.w3.org/1998/Math/MathML', vel[TAG])
+        ? DOCUMENT.createElementNS('http://www.w3.org/2000/svg', vel[TAG])
+        : DOCUMENT.createElementNS(
+            'http://www.w3.org/1998/Math/MathML',
+            vel[TAG],
+          )
   if (DEBUG) {
     console.group('create', string(vel))
   }
