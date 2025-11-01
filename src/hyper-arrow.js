@@ -562,16 +562,13 @@ function removeChild(/** @type {REl} */ rel, /** @type {number} */ index) {
   const rnode = rel[CHILDREN].splice(index, 1)[0]
   rnode[NODE].remove()
   // move into cache
-  let intoCache = false
-  if (
+  const intoCache =
     rel[CACHE] &&
     rel[PROPS][CACHE_REMOVED_CHILDREN] != null &&
     OBJECT.keys(rel[CACHE]).length < rel[PROPS][CACHE_REMOVED_CHILDREN]
-  ) {
-    intoCache = true
+  if (intoCache) {
     // @ts-ignore ok. partly guaranteed by getFullUniqueIds, and can coerce
-    const /** @type {string} */ id = rnode[PROPS].id
-    rel[CACHE][id] = rnode
+    rel[CACHE][rnode[PROPS].id] = rnode
   }
   if (DEBUG) {
     console.log(
